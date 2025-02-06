@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="MedRAX, Chest X-ray AI, Medical AI, CXR interpretation, Medical reasoning, AI in radiology, ChestAgentBench, Medical VQA, AI healthcare, Automated diagnosis">
+    <meta name="description" content="MedRAX is an advanced AI agent for Chest X-ray interpretation, seamlessly integrating multimodal reasoning and structured tool-based decision-making to improve complex medical query analysis. MedRAX outperforms existing models, setting a new benchmark in automated CXR diagnosis with ChestAgentBench.">    
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <!--Main Scripts-->
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="script.js" defer=""></script>
+    <!-- MatJax -->
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+    <script type="text/javascript" async=""
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_CHTML">
+        </script>
+    <!--Jquery-->
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.0.min.js" defer=""></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-migrate-1.2.1.min.js" defer=""></script>
+    <title>MedRAX: Medical Reasoning Agent for Chest X-ray</title>
+</head>
+
+<body>
+    <div class="toggle-container">
+        <button id="toggleButton" class="inactive">Dark Mode</button>
+
+        <div id="navigateAndButton">
+            <a href=#menu class="scroll-link"><button id="jumpTo">Navigate</button></a>
+            <div id="navigation-content">
+                <div id="navigation">
+                    <span class="inline-heading-2"><a href=#header class="scroll-link">Return to Top</a></span>
+                    <span class="inline-heading"><a href=#Abstract class="scroll-link">1. Abstract</a></span>
+                    <span class="inline-heading"><a href=#KeyContributions class="scroll-link">2. Key Contributions</a></span>
+                    <span class="inline-heading"><a href=#MedRAXFramework class="scroll-link">3. MedRAX Framework</a></span>
+                    <span class="inline-heading"><a href=#ChestAgentBench class="scroll-link">4. ChestAgentBench</a></span>
+                    <span class="inline-heading"><a href=#Experiments class="scroll-link">5. Experiments</a></span>
+                    <span class="inline-heading"><a href=#CaseStudy class="scroll-link">6. Case Study</a></span>
+                    <p><a href="#6a" class="scroll-link">a. Medical Device Identification (Eurorad Case 17576)</a></p>
+                    <p><a href="#6b" class="scroll-link">b. Multi-step Disease Diagnosis (Eurorad Case 16703)</a></p>
+                    <span class="inline-heading"><a href=#Conclusion class="scroll-link">7. Conclusion</a></span>
+                    <span class="inline-heading"><a href=#Reference class="scroll-link">8. Reference</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="outer-container">
+
+        <div class="header" , id="header">
+            <h1>MedRAX</h1>
+            <p class="subheading">MedRAX: Medical Reasoning Agent for Chest X-ray</p>
+            <!-- <p class="paper-links">
+                <a href="" target="_blank" rel=noopener>
+                    <button id="paperLinkButton">
+                        <span class="icon">
+                            <svg class="svg-inline--fa fa-file-pdf fa-w-12" aria-hidden="true" focusable="false"
+                                data-prefix="fas" data-icon="file-pdf" role="img" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 384 512" data-fa-i2svg="">
+                                <path fill="currentColor"
+                                    d="M181.9 256.1c-5-16-4.9-46.9-2-46.9 8.4 0 7.6 36.9 2 46.9zm-1.7 47.2c-7.7 20.2-17.3 43.3-28.4 62.7 18.3-7 39-17.2 62.9-21.9-12.7-9.6-24.9-23.4-34.5-40.8zM86.1 428.1c0 .8 13.2-5.4 34.9-40.2-6.7 6.3-29.1 24.5-34.9 40.2zM248 160h136v328c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V24C0 10.7 10.7 0 24 0h200v136c0 13.2 10.8 24 24 24zm-8 171.8c-20-12.2-33.3-29-42.7-53.8 4.5-18.5 11.6-46.6 6.2-64.2-4.7-29.4-42.4-26.5-47.8-6.8-5 18.3-.4 44.1 8.1 77-11.6 27.6-28.7 64.6-40.8 85.8-.1 0-.1.1-.2.1-27.1 13.9-73.6 44.5-54.5 68 5.6 6.9 16 10 21.5 10 17.9 0 35.7-18 61.1-61.8 25.8-8.5 54.1-19.1 79-23.2 21.7 11.8 47.1 19.5 64 19.5 29.2 0 31.2-32 19.7-43.4-13.9-13.6-54.3-9.7-73.6-7.2zM377 105L279 7c-4.5-4.5-10.6-7-17-7h-6v128h128v-6.1c0-6.3-2.5-12.4-7-16.9zm-74.1 255.3c4.1-2.7-2.5-11.9-42.8-9 37.1 15.8 42.8 9 42.8 9z">
+                                </path>
+                            </svg>
+                        </span>
+                        Paper
+                    </button></a>
+
+                <a href="" target="_blank" rel=noopener>
+                    <button id="paperLinkButton">
+                        <span class="icon">
+                            <svg class="svg-inline--fa fa-github fa-w-16" aria-hidden="true" focusable="false"
+                                data-prefix="fab" data-icon="github" role="img" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 496 512" data-fa-i2svg="">
+                                <path fill="currentColor"
+                                    d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z">
+                                </path>
+                            </svg>
+                        </span>
+                        Code
+                    </button></a>
+
+                <a href="" target="_blank" rel=noopener>
+                    <button id="paperLinkButton">
+                        Dataset
+                    </button></a>
+
+                <a href=#citation class="scroll-link">
+                    <button id="paperLinkButton">
+                        BibTeX
+                    </button>
+                </a>
+
+            </p> -->
+
+            <p class="authors">
+                <span class="author" id="author1">Anonymous</span>
+            </p>
+
+            <!-- <p>The dataset, code, and trained model weights will be publicly available after anonymous peer review.</p> -->
+        </div>
+
+        <div class="video-grid">
+            <div class="video-container">
+                <video id='demoVideo' src="static/videos/video.mp4" controls autoplay loop></video>
+            </div>
+        </div>
+        
+        <div class="section" , id="Abstract">
+            <h2>Abstract</h2>
+            <div class="subsection">
+                <p>Chest X-rays (CXRs) play an integral role in driving critical decisions in disease management and patient care. While recent innovations have led to specialized models for various CXR interpretation tasks, these solutions often operate in isolation, limiting their practical utility in clinical practice.</p>
+                <p>We present MedRAX, the first versatile AI agent that seamlessly integrates state-of-the-art CXR analysis tools and multimodal large language models into a unified framework. MedRAX dynamically leverages these models to address complex medical queries without requiring additional training.</p>
+                <p>To rigorously evaluate its capabilities, we introduce ChestAgentBench, a comprehensive benchmark containing 2,500 complex medical queries across 7 diverse categories. Our experiments demonstrate that MedRAX achieves state-of-the-art performance compared to both open-source and proprietary models, representing a significant step toward the practical deployment of automated CXR interpretation systems.</p>
+            </div>
+        </div>
+
+        <div class="section" , id="KeyContributions">
+            <h2>Key Contributions</h2>
+            <div class="subsection">
+                <ul style="list-style-type: disc; padding-left: 0; ">
+                    <li style="line-height: 1.6; margin-bottom: 10px;">MedRAX, a specialized AI agent framework that seamlessly integrates multiple CXR analysis tools without additional training, dynamically orchestrating specialized components for complex medical queries.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">ChestAgentBench, a comprehensive evaluation framework with 2,500 complex medical queries across 7 categories, built from 675 expert-curated clinical cases to assess multi-step reasoning in CXR interpretation.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">Experiments show that MedRAX outperforms both general-purpose and biomedical specialist models, demonstrating substantial improvements in complex reasoning tasks while maintaining transparent workflows.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">Development of a user-friendly interface, enabling flexible deployment options from local to cloud-based solutions that address healthcare privacy requirements.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section" , id="MedRAXFramework">
+            <h2>MedRAX Framework</h2>
+            <div class="subsection">
+                <p>We present MedRAX, an open-source agent-based framework that can dynamically reason, plan, and execute multi-step CXR workflows. MedRAX integrates multimodal reasoning abilities with structured tool-based decision-making, allowing real-time CXR interpretation without unnecessary computational overhead. Our framework integrates heterogeneous machine learning models—from lightweight classifiers to large LMMs—specialized for diverse downstream tasks, allowing it to decompose and solve complex medical queries by reasoning across multiple analytical skills. </p>
+                <figure>
+                    <img src="static\images\fig1.png" , class="image" alt="">
+                    <figcaption>Figure 1</figcaption>
+                </figure>
+                <figure>
+                    <img src="static\images\fig2.png" class="image" alt="">
+                    <!-- <figcaption>Figure 2</figcaption> -->
+                </figure>
+            </div>
+        </div>
+
+
+        <div class="section" , id="ChestAgentBench">
+            <h2>ChestAgentBench</h2>
+            <div class="subsection">
+                <p>ChestAgentBench is a medical VQA benchmark that offers several distinctive advantages:</p>
+                <ul style="list-style-type: disc; padding-left: 30px; ">
+                    <li style="line-height: 1.6; margin-bottom: 10px;">It represents one of the largest medical VQA benchmarks, with 2,500 questions derived from 675 expert-validated clinical cases, each with comprehensive radiological findings, detailed discussions, and multi-modal imaging data.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">The benchmark combines complex multi-step reasoning assessment with a structured six-choice format, enabling both rigorous evaluation of advanced reasoning capabilities and straightforward, reproducible evaluation.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">The benchmark features diverse questions across seven core competencies in CXR interpretation, requiring integration of multiple visual findings and reasoning to mirror the complexity of real-world clinical decision-making.</li>
+                </ul>
+                <p></p>
+                <p>We established seven core competencies alongside reasoning that are essential for CXR interpretation:</p>
+                <ul style="list-style-type: disc; padding-left: 30px; ">
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Detection:</strong> Identifying specific findings. (e.g., "Is there a nodule present in the right upper lobe?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Classification:</strong> Classifying specific findings. (e.g., "Is this mass benign or malignant in appearance?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Localization:</strong> Precise positioning of findings. (e.g., "In which bronchopulmonary segment is the mass located?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Comparison:</strong> Analyzing relative sizes and positions. (e.g., "How has the pleural effusion volume changed compared to prior imaging?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Relationship:</strong> Understanding relationship of findings. (e.g., "Does the mediastinal lymphadenopathy correlate with the lung mass?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Diagnosis:</strong> Interpreting findings for clinical decisions. (e.g., "Given the CXR, what is the likely diagnosis?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Characterization:</strong> Describing specific finding attributes. (e.g., "What are the margins of the nodule - smooth, spiculated, or irregular?")</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;"><strong>Reasoning:</strong> Explaining medical rationale and thought. (e.g., "Why do these findings suggest infectious rather than malignant etiology?")</li>
+                </ul>
+                <figure>
+                    <img src="static\images\fig3.png" , class="image" alt="">
+                    <!-- <figcaption>Figure 3</figcaption> -->
+                </figure>
+            </div>
+        </div>
+
+        <div class="section" , id="Experiments">
+            <h2>Experiments</h2>
+            <div class="subsection">
+                <p>We evaluate MedRAX against four models: LLaVA-Med, a finetuned LLaVA-13B model for biomedical visual question answering (Li et al. 2024), CheXagent, a Vicuna-13B VLM trained for CXR interpretation (CheXagent), along with GPT-4o and Llama-3.2-90B Vision as popular closed and open-source multimodal LLMs respectively.</p>
+                <p>We evaluate models on two complementary benchmarks:</p>
+                <ul style="list-style-type: none; padding-left: 15px; ">
+                    <li style="line-height: 1.6; margin-bottom: 10px;">(1) ChestAgentBench, our proposed benchmark, which assesses comprehensive CXR reasoning through 2,500 six-choice questions across seven categories: detection, classification, localization, comparison, relationship, characterization, and diagnosis. Model performance is measured by accuracy across all questions.</li>
+                    <li style="line-height: 1.6; margin-bottom: 10px;">(2) CheXbench, a popular benchmark that evaluates seven clinically-relevant CXR interpretation tasks. We specifically focus on the visual question answering (238 questions from Rad-Restruct and SLAKE datasets) and fine-grained image-text reasoning (380 questions from OpenI dataset) subsets, as they most closely mirror complex clinical workflows that require precise differentiation between similar findings.</li>
+                </ul>
+                <figure>
+                    <img src="static\images\fig4.png" , class="image" alt="">
+                    <!-- <figcaption>Figure 4</figcaption> -->
+                </figure>
+            </div>
+        </div>
+
+        <div class="section" , id="CaseStudy">
+            <h2>Case Study</h2>
+            <p>We present two representative cases that compare MedRAX to GPT-4o.</p>
+            <div class="subsection", id="6a">
+                <h2>Medical Device Identification (Eurorad Case 17576)</h2>
+                <p>This question asks the model to determine the type of tube present in the CXR. GPT-4o incorrectly suggests an endotracheal tube based on the central positiong of the tube alone. MedRAX, integrated findings from multiple tools like report generation and visual QA, and correctly identifies a chest tube despite one tool (LLaVA-Med) suggesting otherwise. This demonstrates MedRAX's ability to resolve conflicting tool outputs through systematic reasoning.</p>
+            </div>
+            <div class="subsection", id="6b">
+                <h2>Multi-step Disease Diagnosis (Eurorad Case 16703)</h2>
+                <p>This questions asks about diagnosing the predominant disease and comparing its severity across lungs. GPT-4o misinterprets the CXR as showing pneumonia with right lung predominance. MedRAX, through sequential tool application of report generation for disease identification and segmentation for lung opacity analysis, correctly determines left pneumothorax as the main finding. This demonstrates MedRAX's ability to break down complex queries into targeted analytical steps.</p>
+                <figure>
+                    <img src="static\images\fig5.png" , class="image" alt="">
+                    <!-- <figcaption>Figure 5</figcaption> -->
+                </figure>
+            </div>
+        </div>
+
+        <div class="section" , id="Conclusion">
+            <h2>Conclusion</h2>
+            <div class="subsection">
+                <p>MedRAX establishes a new benchmark in AI-driven CXR interpretation by integrating structured tool orchestration with large-scale reasoning. Our evaluation on ChestAgentBench demonstrates its superiority over both general-purpose and domain-specific models, reinforcing the advantages of explicit stepwise reasoning in medical AI. These findings highlight the potential of combining foundation models with specialized tools, a principle that could be applied to broader domains in healthcare and beyond. Future work should focus on optimizing tool selection, uncertainty-aware reasoning, and expanding MedRAX's capabilities to multimodal medical imaging for greater clinical impact.</p>
+            </div>
+        </div>
+
+        <div class="section" , id="Reference">
+            <h2>Reference</h2>
+            <div class="subsection">
+                <p>[TBD]</p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

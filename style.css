@@ -1,0 +1,672 @@
+:root {
+    --background-color: #ffffff;
+    --dark-buttons-color: #a396a8;
+    --buttons-color: #bdadc1;
+    --buttons-hover-color: #a393a7;
+    --text-color: #4e4e4e;
+    --labels-color: #4d464f;
+    --box-color: #ede6ef;
+    --headings-color: #4e4e4e;
+    --subheadings-color: #a57db2;
+    --subheadings2-color: #ece3ee;
+    --links-color: #ac97b0;
+    --table-bg-color: #f2f2f2;
+    --table-border-color: #333333;
+    --table-text-color: #333333;
+}
+
+:root.darkmode {
+    --background-color: #635060;
+    --light-buttons-color: #ccb9cc;
+    --dark-buttons-color: #5b485b;
+    --buttons-color: #9d889d;
+    --buttons-hover-color: #8e778e;
+    --text-color: #ece9f2;
+    --labels-color: #e5ddeb;
+    --headings-color: #ffffff;
+    --subheadings-color: #c1a8ca;
+    --subheadings2-color: #d7b2e3;
+    --links-color: #bca9c1;
+    --table-bg-color: #a396a8;
+    --table-border-color: #666666;
+    --table-text-color: #dddddd;
+}
+
+body {
+    justify-content: center;
+    font-family: 'Lato', Verdana, Helvetica, sans-serif;
+    font-size: 15px;
+    text-align: center;
+    background-color: var(--background-color);
+    width: 100%;
+}
+
+.outer-container {
+    left: 0px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 70px;
+}
+
+.toggle-container {
+    display: flex;
+    flex-direction: column;
+    float: left;
+    position: sticky;
+    top: 10px;
+    left: 20px;
+    z-index: 1000;
+    height: 0px;
+    width: 100%;
+    padding-bottom: 20px;
+}
+
+.header {
+    padding: 50px 50px;
+    text-align: center;
+    font-size: 20px;
+}
+
+.header h1 {
+    font-family: 'Google Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 40px;
+    margin: 0;
+    padding-bottom: 10px;
+    padding-top: 20px;
+    color: var(--headings-color);
+}
+
+.subheading {
+    font-size: 24px;
+    font-family: 'Google Sans', sans-serif;
+    color: var(--labels-color);
+    margin-top: 0;
+    padding: 0px 50px;
+}
+
+button {
+    font-family: 'Google Sans', sans-serif;
+    padding: 8px 14px;
+    margin-top: 5px;
+    margin-right: 5px;
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    color: white;
+    background-color: var(--buttons-color);
+    border: none;
+    border-radius: 12px;
+}
+
+button a {
+    text-decoration: none;
+}
+
+button:hover {
+    background-color: var(--buttons-hover-color);
+}
+
+.coming-soon-button {
+    position: relative;
+    /* Required for positioning pseudo-elements */
+}
+
+.coming-soon-button::after {
+    content: "Coming soon";
+    position: absolute;
+    top: 100%;
+    /* Position it just below the button */
+    left: 50%;
+    /* Center horizontally */
+    transform: translateX(-50%);
+    /* Center horizontally */
+    background-color: #333;
+    /* Background color for the tooltip */
+    color: #fff;
+    /* Text color for the tooltip */
+    padding: 5px 10px;
+    /* Adjust padding as needed */
+    border-radius: 4px;
+    /* Add rounded corners */
+    opacity: 0;
+    /* Initially hide the tooltip */
+    transition: opacity 0.2s ease-in-out;
+    /* Add a smooth transition effect */
+    font-size: 16px;
+}
+
+.coming-soon-button:hover::after {
+    opacity: 1;
+    /* Show the tooltip on hover */
+}
+
+/* Default style for the inactive state */
+button.inactive {
+    padding: 5px 5px;
+    width: 120px;
+    background-color: var(--dark-buttons-color);
+    color: var(--labels-color);
+    border-radius: 5px;
+}
+
+/* Style for the active state */
+button.active {
+    padding: 5px 5px;
+    width: 120px;
+    background-color: var(--light-buttons-color);
+    color: #ffffff;
+    border-radius: 5px;
+}
+
+#jumpTo {
+    padding: 5px 5px;
+    width: 120px;
+    background-color: var(--buttons-color);
+    border-radius: 5px;
+    position: absolute;
+    left: 0px;
+}
+
+#jumpTo:hover {
+    background-color: var(--buttons-hover-color);
+}
+
+#navigation-content {
+    max-width: 450px;
+}
+
+#navigation {
+    top: 30px;
+    left: 0px;
+    display: none;
+    position: relative;
+    flex-direction: column;
+    align-items: left;
+    justify-content: center;
+    width: 90%;
+    margin-top: 10px;
+    margin-left: 5px;
+    padding-bottom: 30px;
+    overflow: visible;
+    background-color: var(--buttons-color);
+    border-top-left-radius: 5px;
+    /* Top left corner */
+    border-top-right-radius: 5px;
+    /* Top right corner */
+    border-bottom-right-radius: 5px;
+    /* Bottom right corner */
+    border-bottom-left-radius: 5px;
+    /* Bottom left corner */
+}
+
+#navigation h2 {
+    font-family: 'Google Sans', sans-serif;
+    text-align: left;
+    font-size: 14px;
+    color: var(--headings-color);
+    text-decoration: bold;
+    margin-bottom: -5px;
+}
+
+#navigation p {
+    font-family: 'Google Sans', sans-serif;
+    color: var(--buttons-hover-color);
+    /* Slightly lighter color for the text */
+    line-height: 1.6;
+    /* Adjusts the line height for better readability */
+    text-align: left !important;
+    width: 100%;
+    margin-left: 60px;
+    font-size: 14px;
+    word-wrap: break-word;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+#navigation p a {
+    color: var(--labels-color);
+    /* Slightly lighter color for the text */
+    text-decoration: none;
+}
+
+#navigation p a:hover {
+    color: var(--dark-buttons-color);
+    /* Slightly lighter color for the text */
+}
+
+.inline-heading {
+    margin-left: 30px;
+    font-family: 'Google Sans', sans-serif;
+    text-align: left;
+    font-size: 16px;
+    color: var(--subheadings2-color);
+    margin-bottom: 5px;
+    margin-top: 5px;
+}
+
+.inline-heading a {
+    color: var(--subheadings2-color);
+    text-decoration: none;
+}
+
+.inline-heading a:hover {
+    color: var(--background-color);
+    /* Slightly lighter color for the text */
+}
+
+
+.inline-heading-2 {
+    margin-left: 0px;
+    font-family: 'Google Sans', sans-serif;
+    text-align: center;
+    font-size: 16px;
+    color: var(--subheadings2-color);
+    margin-bottom: 10px;
+    margin-top: 20px;
+}
+
+.inline-heading-2 a {
+    color: var(--subheadings2-color);
+    text-decoration: none;
+}
+
+.inline-heading-2 a:hover {
+    color: var(--background-color);
+    /* Slightly lighter color for the text */
+}
+
+.icon a {
+    text-decoration: none;
+}
+
+.icon {
+    display: inline-flex;
+    height: 1rem;
+    width: 1rem;
+}
+
+.authors {
+    font-family: 'Google Sans', sans-serif;
+    margin-top: 30px;
+    margin-bottom: -10px;
+    color: var(--headings-color);
+    font-size: 18px;
+}
+
+.authors img {
+    height: 20px;
+    /* Adjust the size as needed */
+    vertical-align: middle;
+    /* Aligns the icon with the text */
+    margin-right: 5px;
+}
+
+.associations {
+    color: var(--labels-color);
+    margin-right: 10px;
+    font-size: 17px;
+}
+
+.associations img {
+    height: 20px;
+    /* Adjust the size as needed */
+    vertical-align: left;
+    /* Aligns the icon with the text */
+    margin-right: 5px;
+    margin-left: 5px;
+}
+
+#menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 500px;
+    margin-top: 0px;
+    margin-bottom: 50px;
+}
+
+#menu h2 {
+    font-family: 'Google Sans', sans-serif;
+    text-align: left;
+    font-size: 20px;
+    color: var(--subheadings-color);
+    text-decoration: bold;
+    margin-bottom: -30px;
+}
+
+#menu p {
+    font-family: 'Google Sans', sans-serif;
+    color: var(--buttons-hover-color);
+    /* Slightly lighter color for the text */
+    line-height: 1.6;
+    /* Adjusts the line height for better readability */
+    text-align: left !important;
+    width: 100%;
+    margin-left: 60px;
+    font-size: 15px;
+    word-wrap: break-word;
+    /* margin-top: 0px;
+    margin-bottom: 0px; */
+}
+
+#menu p a {
+    color: var(--labels-color);
+    /* Slightly lighter color for the text */
+    text-decoration: none;
+}
+
+#menu p a:hover {
+    color: var(--dark-buttons-color);
+    /* Slightly lighter color for the text */
+}
+
+/* Section */
+.section {
+    margin-top: 10px;
+    padding: 15px;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    width: 90%;
+    max-width: 875px;
+}
+
+.section h2 {
+    font-size: 25px;
+    margin-bottom: -10px;
+    color: var(--headings-color);
+    font-family: 'Google Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.subsection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    overflow: visible;
+    width: 100%;
+}
+
+.subsection h2 {
+    font-family: 'Google Sans', sans-serif;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 22px;
+    color: var(--subheadings-color);
+    /* Darker color for the heading */
+}
+
+.subsection h3 {
+    font-family: 'Google Sans', sans-serif;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: var(--text-color);
+    /* Darker color for the heading */
+}
+
+.subsection h4 {
+    font-family: 'Google Sans', sans-serif;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: var(--text-color);
+    /* Darker color for the heading */
+}
+
+.subsection figcaption {
+    font-family: 'Google Sans', sans-serif;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: var(--text-color);
+    /* Darker color for the heading */
+}
+
+.subsection p {
+    color: var(--text-color);
+    /* Slightly lighter color for the text */
+    line-height: 1.6;
+    /* Adjusts the line height for better readability */
+    text-align: justify !important;
+    width: 100%;
+    margin-top: 0px;
+}
+.subsection ul {
+    list-style-type: disc; 
+    margin-left: 0px;
+    padding-left: 0px; 
+}
+
+.subsection li {
+    color: var(--text-color);
+    line-height: 1.6;
+    text-align: justify !important;
+    margin-left: 0px;
+    padding-left: 0px; 
+}
+
+.subsection a {
+    color: var(--links-color);
+    text-decoration: none;
+}
+
+.subsection a:hover {
+    color: var(--buttons-hover-color);
+    text-decoration: none;
+}
+
+.video-grid {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.video-container {
+    max-width: 80%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.video-container video {
+    width: 100%;
+    height: auto;
+}
+
+@media screen and (max-width: 600px) {
+    .video-grid {
+        flex-direction: column;
+        padding: 10px;
+    }
+    
+    .video-container {
+        max-width: 100%;
+    }
+}
+
+
+.image {
+    margin-top: 0;
+    font-size: 20px;
+    width: 100%;
+    color: var(--buttons-color);
+}
+
+#networkImage {
+    margin-bottom: 20px;
+}
+
+#networkImage {
+    background-color: var(--box-color);
+    /* Darker color for the heading */
+    border-top-left-radius: 10px;
+    /* Top left corner */
+    border-top-right-radius: 10px;
+    /* Top right corner */
+    border-bottom-right-radius: 10px;
+    /* Bottom right corner */
+    border-bottom-left-radius: 10px;
+    /* Bottom left corner */
+    width: 100%;
+    height: 100%;
+}
+
+#networkImage img {
+    margin-top: 15px;
+    max-width: 95%;
+    /* margin: 10px; */
+}
+
+#taskDescriptionImage {
+    margin-bottom: 20px;
+}
+
+#taskDescriptionImage {
+    background-color: var(--box-color);
+    /* Darker color for the heading */
+    border-top-left-radius: 10px;
+    /* Top left corner */
+    border-top-right-radius: 10px;
+    /* Top right corner */
+    border-bottom-right-radius: 10px;
+    /* Bottom right corner */
+    border-bottom-left-radius: 10px;
+    /* Bottom left corner */
+    width: 100%;
+    height: 100%;
+}
+
+#taskDescriptionImage img {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    max-width: 95%;
+    /* margin: 10px; */
+}
+
+/* Citation */
+#citation {
+    border-top: 3px solid var(--buttons-hover-color);
+    border-top-style: 10px;
+    margin-top: 70px;
+    /* margin-bottom: 70px; */
+    padding: 15px;
+    /* Adds padding inside the section */
+    align-items: center;
+    /* Center horizontally within the container */
+    justify-content: center;
+    max-width: 875px;
+    width: 90%;
+    /* Set width relative to the parent container */
+    overflow: hidden;
+
+}
+
+#citation h2 {
+    font-family: 'Google Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    margin-top: 40px;
+    font-size: 20px;
+    color: var(--headings-color);
+    /* Darker color for the heading */
+}
+
+#citation p {
+    font-family: 'Google Sans', sans-serif;
+    font-size: 18px;
+    color: var(--text-color);
+    /* Slightly lighter color for the text */
+    line-height: 1.6;
+    /* Adjusts the line height for better readability */
+}
+
+code {
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 400;
+    display: block;
+    /* Make the code element a block-level element */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    text-align: left;
+    /* Align text to the left */
+    background-color: var(--buttons-color);
+    /* Light background for the section */
+    /* border: 5px solid var(--dark-buttons-color); */
+    border-top-left-radius: 10px;
+    /* Top left corner */
+    border-top-right-radius: 10px;
+    /* Top right corner */
+    border-bottom-right-radius: 10px;
+    /* Bottom right corner */
+    border-bottom-left-radius: 10px;
+    /* Bottom left corner */
+    padding: 20px;
+    padding-bottom: 30px;
+    margin-bottom: 20px;
+    font-family: monospace;
+    -moz-osx-font-smoothing: auto;
+    -webkit-font-smoothing: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    padding: 8px;
+    text-align: center;
+    color: var(--table-text-color);
+    /* Center text for all cells */
+}
+
+th {
+    background-color: var(--table-bg-color);;
+}
+
+tr:first-child th {
+    border-top: 1px solid var(--table-border-color);
+    /* Top border for the first header row */
+}
+
+tr th,
+tr td {
+    border-bottom: none;
+    /* Remove bottom borders for all cells */
+}
+
+tr:last-child td {
+    border-bottom: 1px solid var(--table-border-color);
+    /* Bottom border for the last row */
+}
+
+tr:first-child th:last-child,
+tr:last-child td:last-child {
+    border-right: none;
+    /* Remove the right border of the last cell of the first and last row */
+}
+
+tr th:first-child,
+tr td:first-child {
+    text-align: left;
+    /* Align text to left for the first column */
+    border-left: none;
+    /* Remove the left border of the first cell of each row */
+}
+
+caption {
+    caption-side: top;
+    font-size: 1.5em;
+    /* font-weight: bold; */
+    margin: 20px 0;
+    color: var(--table-text-color);
+}
