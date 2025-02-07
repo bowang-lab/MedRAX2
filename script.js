@@ -71,4 +71,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const clonedContent = originalSection.cloneNode(true);
     
     clonedContent.style.display = "flex";
+    // Copy Button
+    const copyButton = document.getElementById('copyButton');
+
+    copyButton.addEventListener('click', () => {
+        const code = document.getElementById('myCode').textContent;
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(code)
+        } else {
+            // Fallback for browsers without clipboard API support
+            console.log('Clipboard API not available.');
+        }
+    });
 });
