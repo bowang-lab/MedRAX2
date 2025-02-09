@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="keywords" content="MedRAX, Chest X-ray AI, Medical AI, CXR interpretation, Medical reasoning, AI in radiology, ChestAgentBench, Medical VQA, AI healthcare, Automated diagnosis">
     <meta name="description" content="MedRAX is an advanced AI agent for Chest X-ray interpretation, seamlessly integrating multimodal reasoning and structured tool-based decision-making to improve complex medical query analysis. MedRAX outperforms existing models, setting a new benchmark in automated CXR diagnosis with ChestAgentBench.">    
+    <link rel="icon" type="image/x-icon" href="static/images/medrax.jpg">
     <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
     <!--Main Scripts-->
@@ -42,7 +43,6 @@
                     <p><a href="#6a" class="scroll-link">a. Medical Device Identification (Eurorad Case 17576)</a></p>
                     <p><a href="#6b" class="scroll-link">b. Multi-step Disease Diagnosis (Eurorad Case 16703)</a></p>
                     <span class="inline-heading"><a href=#Conclusion class="scroll-link">7. Conclusion</a></span>
-                    <span class="inline-heading"><a href=#Reference class="scroll-link">8. Reference</a></span>
                     <span class="inline-heading"><a href=#BibTeX class="scroll-link">9. BibTeX</a></span>
                 </div>
             </div>
@@ -52,16 +52,19 @@
     <div class="outer-container">
 
         <div class="header" , id="header">
-            <h1>MedRAX</h1>
-            <p class="subheading">MedRAX: Medical Reasoning Agent for Chest X-ray</p>
+            <div style="text-align:center; margin-bottom:20px;">
+                <img src="static/images/medrax.jpg" alt="CodonTransformer" style="vertical-align: middle; height: 100px; width: 100px; margin-right: 10px;">
+                <h1 style="display: inline; vertical-align: middle;">MedRAX</h1>
+            </div>
+            <p class="subheading">Medical Reasoning Agent for Chest X-ray</p>
 
             <p class="authors">
                 <span class="author" id="author1">
-                    <a href="mailto:adibvafa.fallahpour@mail.utoronto.ca">Adibvafa Fallahpour</a>
+                    <a href="mailto:adibvafa.fallahpour@mail.utoronto.ca">Adibvafa Fallahpour*</a>
                     <sup>1,2,3</sup>, 
                 </span>                       
-                <span class="author" id="author2">Jun Ma<sup>2,3</sup></span>, 
-                <span class="author" id="author3">Alif Munim<sup>3,4</sup></span>, 
+                <span class="author" id="author2">Jun Ma*<sup>2,3</sup></span>, 
+                <span class="author" id="author3">Alif Munim*<sup>3,4</sup></span>, 
                 <span class="author" id="author4">Hongwei Lyu<sup>3</sup></span>, 
                 <span class="author" id="author5">Bo Wang<sup>1,2,3,5</sup></span>, 
             </p>
@@ -74,13 +77,13 @@
             </p>
             <p class="paper-links">
                 <div class="center-text">
-                    <a href="https://arxiv.org/abs/2502.02673" target="_blank" rel="noopener">
+                    <a href="https://arxiv.org/abs/2502.02673" target="_blank" rel="noopener" style="text-decoration: none;">
                         <img src="https://img.shields.io/badge/arXiv-Paper-FF6B6B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv">
                     </a>
-                    <a href="https://github.com/bowang-lab/MedRAX" target="_blank" rel="noopener">
+                    <a href="https://github.com/bowang-lab/MedRAX" target="_blank" rel="noopener" style="text-decoration: none;">
                         <img src="https://img.shields.io/badge/GitHub-Code-4A90E2?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
                     </a>
-                    <a href="https://huggingface.co/datasets/wanglab/chest-agent-bench" target="_blank" rel="noopener">
+                    <a href="https://huggingface.co/datasets/wanglab/chest-agent-bench" target="_blank" rel="noopener" style="text-decoration: none;">
                         <img src="https://img.shields.io/badge/HuggingFace-Dataset-FFBF00?style=for-the-badge&logo=huggingface&logoColor=white" alt="HuggingFace Dataset">
                     </a>
                 </div>
@@ -124,7 +127,7 @@
                     <figcaption>Figure 1</figcaption>
                 </figure>
                 <figure>
-                    <img src="static\images\fig2.png" class="image" alt="">
+                    <img src="static\images\fig2.png" class="image" alt="" style="max-width: 60%; height: auto;">
                     <!-- <figcaption>Figure 2</figcaption> -->
                 </figure>
             </div>
@@ -196,13 +199,6 @@
             <h2>Conclusion</h2>
             <div class="subsection">
                 <p>MedRAX establishes a new benchmark in AI-driven CXR interpretation by integrating structured tool orchestration with large-scale reasoning. Our evaluation on ChestAgentBench demonstrates its superiority over both general-purpose and domain-specific models, reinforcing the advantages of explicit stepwise reasoning in medical AI. These findings highlight the potential of combining foundation models with specialized tools, a principle that could be applied to broader domains in healthcare and beyond. Future work should focus on optimizing tool selection, uncertainty-aware reasoning, and expanding MedRAX's capabilities to multimodal medical imaging for greater clinical impact.</p>
-            </div>
-        </div>
-
-        <div class="section" , id="Reference">
-            <h2>Reference</h2>
-            <div class="subsection">
-                <p>[TBD]</p>
             </div>
         </div>
 
