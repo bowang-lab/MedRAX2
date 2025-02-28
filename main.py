@@ -1,3 +1,4 @@
+import os
 import warnings
 from typing import *
 from dotenv import load_dotenv
@@ -27,6 +28,7 @@ def initialize_agent(
     model="chatgpt-4o-latest",
     temperature=0.7,
     top_p=0.95,
+    openai_kwargs={}
 ):
     """Initialize the MedRAX agent with specified tools and configuration.
 
@@ -39,6 +41,7 @@ def initialize_agent(
         model (str, optional): Model to use. Defaults to "chatgpt-4o-latest".
         temperature (float, optional): Temperature for the model. Defaults to 0.7.
         top_p (float, optional): Top P for the model. Defaults to 0.95.
+        openai_kwargs (dict, optional): Additional keyword arguments for OpenAI API, such as API key and base URL.
 
     Returns:
         Tuple[Agent, Dict[str, BaseTool]]: Initialized agent and dictionary of tool instances
@@ -72,7 +75,7 @@ def initialize_agent(
             tools_dict[tool_name] = all_tools[tool_name]()
 
     checkpointer = MemorySaver()
-    model = ChatOpenAI(model=model, temperature=temperature, top_p=top_p)
+    model = ChatOpenAI(model=model, temperature=temperature, top_p=top_p, **openai_kwargs)
     agent = Agent(
         model,
         tools=list(tools_dict.values()),
@@ -107,6 +110,14 @@ if __name__ == "__main__":
         # "ChestXRayGeneratorTool",
     ]
 
+    # Collect the ENV variables
+    openai_kwargs = {}
+    if api_key := os.getenv("OPENAI_API_KEY"):
+        openai_kwargs["api_key"] = api_key
+
+    if base_url := os.getenv("OPENAI_BASE_URL"):
+        openai_kwargs["base_url"] = base_url
+
     agent, tools_dict = initialize_agent(
         "medrax/docs/system_prompts.txt",
         tools_to_use=selected_tools,
@@ -116,6 +127,7 @@ if __name__ == "__main__":
         model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini
         temperature=0.7,
         top_p=0.95,
+        openai_kwargs=openai_kwargs
     )
     demo = create_demo(agent, tools_dict)
 
