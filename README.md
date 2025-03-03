@@ -214,6 +214,12 @@ ChestXRayGeneratorTool(
 - Some tools (LLaVA-Med, Grounding) are more resource-intensive
 <br>
 
+### Local LLMs
+If you are running a local LLM using frameworks like [Ollama](https://ollama.com/) or [LM Studio](https://lmstudio.ai/), you need to configure your environment variables accordingly. For example:
+```
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_API_KEY="ollama"
+```
 
 ## Star History
 <div align="center">

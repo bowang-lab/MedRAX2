@@ -230,10 +230,17 @@ def main():
     dataset = load_dataset("json", data_files="chestagentbench/metadata.jsonl")
     train_dataset = dataset["train"]
 
+    # Collecting ENV variables
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable is not set.")
-    client = openai.OpenAI(api_key=api_key)
+    
+    kwargs = {}
+    if base_url := os.getenv("OPENAI_BASE_URL"):
+        kwargs["base_url"] = base_url
+
+    # Initialize the OpenAI Client
+    client = openai.OpenAI(api_key=api_key, **kwargs)
 
     total_examples = len(train_dataset)
     processed = 0
