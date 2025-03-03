@@ -220,6 +220,7 @@ If you are running a local LLM using frameworks like [Ollama](https://ollama.com
 export OPENAI_BASE_URL="http://localhost:11434/v1"
 export OPENAI_API_KEY="ollama"
 ```
+<br>
 
 ## Star History
 <div align="center">
