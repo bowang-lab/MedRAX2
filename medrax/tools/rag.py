@@ -8,7 +8,9 @@ class RAGTool(BaseTool):
 
     Args:
         config (RAGConfig): Configuration for the RAG system
-        docs_dir (str): Directory containing medical documents. Defaults to "medrax/rag/docs"
+        use_medrag_textbooks (bool): Whether to use MedRAG textbooks dataset
+        use_local_docs (bool): Whether to use local documents from docs_dir
+        docs_dir (str, optional): Directory containing local medical documents
     """
 
     name: str = "medical_knowledge_rag"
@@ -23,7 +25,11 @@ class RAGTool(BaseTool):
         self,
         config: RAGConfig,
     ):
-        """Initialize RAG tool with config and documents."""
+        """Initialize RAG tool with config and documents.
+
+        Args:
+            config (RAGConfig): Configuration for the RAG system
+        """
         super().__init__()
         self.rag = CohereRAG(config)
         self.chain = self.rag.initialize_rag(with_memory=True)

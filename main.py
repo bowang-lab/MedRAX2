@@ -143,7 +143,8 @@ if __name__ == "__main__":
         chunk_size=1000,
         chunk_overlap=100,
         retriever_k=3,
-        docs_dir="medrax/rag/docs",  # Change this to the path of the documents for RAG
+        local_docs_dir="medrax/rag/docs",  # Change this to the path of the documents for RAG
+        use_medrag_textbooks=False,  # Set to True if you want to use the MedRAG textbooks dataset
     )
 
     # Prepare OpenAI API configuration from environment variables

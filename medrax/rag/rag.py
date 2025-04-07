@@ -13,6 +13,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import BaseRetriever
 from langchain.docstore.document import Document
 from typing import Callable
+from datasets import load_dataset
+from tqdm import tqdm
 
 
 class RAGConfig(BaseModel):
@@ -27,7 +29,8 @@ class RAGConfig(BaseModel):
         retriever_k (int): Number of documents to retrieve
         chunk_size (int): Size of text chunks for splitting
         chunk_overlap (int): Overlap between text chunks
-        docs_dir (str): Directory for text files
+        local_docs_dir (str): Directory for text files
+        use_medrag_textbooks (bool): Whether to use MedRAG textbooks dataset
     """
 
     model: str = Field(default="command-a-03-2025")
@@ -38,7 +41,8 @@ class RAGConfig(BaseModel):
     retriever_k: int = Field(default=2)
     chunk_size: int = Field(default=1000)
     chunk_overlap: int = Field(default=200)
-    docs_dir: str = Field(default="medrax/rag/docs")
+    local_docs_dir: str = Field(default="medrax/rag/docs")
+    use_medrag_textbooks: bool = Field(default=True)
 
 
 class RerankingRetriever(BaseRetriever):
@@ -81,7 +85,7 @@ class CohereRAG:
         persist_dir (str): Directory for vector database
         memory (ConversationBufferMemory): Conversation memory
         vectorstore (Optional[Chroma]): Vector database for document storage
-        docs_dir (str): Directory for text files
+        local_docs_dir (str): Directory for text files
     """
 
     def __init__(self, config: RAGConfig = RAGConfig()):
@@ -91,18 +95,39 @@ class CohereRAG:
         self.embeddings = CohereEmbeddings(model=config.embedding_model)
         self.reranker = CohereRerank(model=config.rerank_model)
         self.persist_dir = config.persist_dir
-        self.docs_dir = config.docs_dir
+        self.local_docs_dir = config.local_docs_dir
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             output_key="result",
             input_key="query",
         )
-        self.vectorstore = self._load_or_create_vectorstore()
+        self.vectorstore = self.load_or_create_vectorstore()
 
         # Initialize vectorstore if empty
         if self.vectorstore is None:
-            docs = self.load_directory(self.docs_dir)
-            self.create_or_update_vectorstore(docs)
+            # Collect documents from all enabled sources
+            all_documents = []
+
+            # Load MedRAG textbooks if enabled
+            if self.config.use_medrag_textbooks:
+                print("Loading documents from MedRAG textbooks...")
+                medrag_docs = self.load_medrag_textbooks()
+                all_documents.extend(medrag_docs)
+                print(f"Loaded {len(medrag_docs)} documents from MedRAG textbooks")
+
+            # Load local documents if enabled
+            if os.path.exists(self.local_docs_dir):
+                print(f"Loading documents from local directory: {self.local_docs_dir}")
+                local_docs = self.load_directory(self.local_docs_dir)
+                all_documents.extend(local_docs)
+                print(f"Loaded {len(local_docs)} documents from local directory")
+
+            # Create vectorstore with all documents
+            if all_documents:
+                print(f"Creating vectorstore with {len(all_documents)} total documents")
+                self.create_or_update_vectorstore(all_documents)
+            else:
+                print("Warning: No documents loaded. Please check your configuration.")
 
     def load_directory(self, directory_path: str) -> List[Document]:
         """Load and split all .txt files from a directory into documents.
@@ -164,7 +189,7 @@ class CohereRAG:
 
         return documents
 
-    def _load_or_create_vectorstore(self) -> Optional[Chroma]:
+    def load_or_create_vectorstore(self) -> Optional[Chroma]:
         """Load existing vectorstore or prepare for new one.
 
         Returns:
@@ -173,7 +198,6 @@ class CohereRAG:
         if os.path.exists(self.persist_dir):
             print("Loading existing vectorstore...")
             return Chroma(persist_directory=self.persist_dir, embedding_function=self.embeddings)
-        print("Creating new vectorstore...")
         return None
 
     def create_or_update_vectorstore(self, documents: List[Document]):
@@ -244,3 +268,38 @@ class CohereRAG:
             chain_kwargs["memory"] = self.memory
 
         return RetrievalQA.from_chain_type(**chain_kwargs)
+
+    def load_medrag_textbooks(self) -> List[Document]:
+        """Load MedRAG textbooks dataset from Hugging Face.
+
+        Returns:
+            List[Document]: List of processed documents from MedRAG textbooks
+
+        Raises:
+            ValueError: If unable to load the dataset
+        """
+        try:
+            print("Loading MedRAG textbooks dataset...")
+            dataset = load_dataset("MedRAG/textbooks", split="train")
+            documents = []
+
+            for item in tqdm(
+                dataset, desc="Processing MedRAG textbooks", total=len(dataset), unit="chunk"
+            ):
+                # Create a Document object for each textbook snippet
+                doc = Document(
+                    page_content=item["content"],
+                    metadata={
+                        "source": f"MedRAG/textbooks",
+                        "id": item["id"],
+                        "title": item["title"],
+                    },
+                )
+                documents.append(doc)
+
+            print(f"Loaded {len(documents)} document chunks from MedRAG textbooks")
+            return documents
+
+        except Exception as e:
+            print(f"Error loading MedRAG textbooks: {str(e)}")
+            raise ValueError(f"Failed to load MedRAG textbooks dataset: {str(e)}")
