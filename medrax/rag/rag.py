@@ -5,7 +5,7 @@ from pydantic import Field
 
 from pydantic import BaseModel, Field
 from langchain_cohere import ChatCohere, CohereEmbeddings, CohereRerank
-from langchain.document_loaders import TextLoader
+from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA
@@ -27,6 +27,7 @@ class RAGConfig(BaseModel):
         retriever_k (int): Number of documents to retrieve
         chunk_size (int): Size of text chunks for splitting
         chunk_overlap (int): Overlap between text chunks
+        docs_dir (str): Directory for text files
     """
 
     model: str = Field(default="command-a-03-2025")
@@ -37,6 +38,7 @@ class RAGConfig(BaseModel):
     retriever_k: int = Field(default=2)
     chunk_size: int = Field(default=1000)
     chunk_overlap: int = Field(default=200)
+    docs_dir: str = Field(default="medrax/rag/docs")
 
 
 class RerankingRetriever(BaseRetriever):
@@ -79,6 +81,7 @@ class CohereRAG:
         persist_dir (str): Directory for vector database
         memory (ConversationBufferMemory): Conversation memory
         vectorstore (Optional[Chroma]): Vector database for document storage
+        docs_dir (str): Directory for text files
     """
 
     def __init__(self, config: RAGConfig = RAGConfig()):
@@ -88,12 +91,18 @@ class CohereRAG:
         self.embeddings = CohereEmbeddings(model=config.embedding_model)
         self.reranker = CohereRerank(model=config.rerank_model)
         self.persist_dir = config.persist_dir
+        self.docs_dir = config.docs_dir
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             output_key="result",
             input_key="query",
         )
         self.vectorstore = self._load_or_create_vectorstore()
+
+        # Initialize vectorstore if empty
+        if self.vectorstore is None:
+            docs = self.load_directory(self.docs_dir)
+            self.create_or_update_vectorstore(docs)
 
     def load_directory(self, directory_path: str) -> List[Document]:
         """Load and split all .txt files from a directory into documents.
@@ -120,24 +129,38 @@ class CohereRAG:
             length_function=len,
         )
 
-        # Process each text file
-        for file_path in directory.glob("**/*.txt"):
-            try:
-                loader = TextLoader(str(file_path))
-                docs = loader.load()
-                # Split documents first
-                split_docs = text_splitter.split_documents(docs)
-                # Add metadata to each document
-                metadata = {
-                    "source": str(file_path),
-                    "created_at": os.path.getctime(file_path),
-                }
-                for doc in split_docs:
-                    doc.metadata.update(metadata)
-                documents.extend(split_docs)
-                print(f"Loaded and split: {file_path}")
-            except Exception as e:
-                print(f"Error loading {file_path}: {str(e)}")
+        # Process each document file (txt, pdf, docx)
+        for file_pattern in ["**/*.txt", "**/*.pdf", "**/*.docx"]:
+            for file_path in directory.glob(file_pattern):
+                try:
+                    # Select appropriate loader based on file extension
+                    if file_path.suffix.lower() == ".txt":
+                        loader = TextLoader(str(file_path))
+                    elif file_path.suffix.lower() == ".pdf":
+                        loader = PyPDFLoader(str(file_path))
+                    elif file_path.suffix.lower() == ".docx":
+                        loader = Docx2txtLoader(str(file_path))
+
+                    docs = loader.load()
+
+                    # Split documents first
+                    split_docs = text_splitter.split_documents(docs)
+
+                    # Add metadata to each document
+                    metadata = {
+                        "source": str(file_path),
+                        "created_at": os.path.getctime(file_path),
+                        "file_type": file_path.suffix.lower()[1:],
+                    }
+
+                    for doc in split_docs:
+                        doc.metadata.update(metadata)
+
+                    documents.extend(split_docs)
+                    print(f"Loaded and split: {file_path}")
+
+                except Exception as e:
+                    print(f"Error loading {file_path}: {str(e)}")
 
         return documents
 

@@ -27,6 +27,7 @@ def initialize_agent(
     model="chatgpt-4o-latest",
     temperature=0.7,
     top_p=0.95,
+    rag_config=None,
 ):
     """Initialize the MedRAX agent with specified tools and configuration.
 
@@ -39,6 +40,7 @@ def initialize_agent(
         model (str, optional): Model to use. Defaults to "chatgpt-4o-latest".
         temperature (float, optional): Temperature for the model. Defaults to 0.7.
         top_p (float, optional): Top P for the model. Defaults to 0.95.
+        rag_config (RAGConfig, optional): Configuration for the RAG tool. Defaults to None.
 
     Returns:
         Tuple[Agent, Dict[str, BaseTool]]: Initialized agent and dictionary of tool instances
@@ -62,6 +64,7 @@ def initialize_agent(
         ),
         "ImageVisualizerTool": lambda: ImageVisualizerTool(),
         "DicomProcessorTool": lambda: DicomProcessorTool(temp_dir=temp_dir),
+        "MedicalRAGTool": lambda: RAGTool(config=rag_config),
     }
 
     # Initialize only selected tools or all if none specified
@@ -102,21 +105,32 @@ if __name__ == "__main__":
         "ChestXRaySegmentationTool",
         "ChestXRayReportGeneratorTool",
         "XRayVQATool",
-        # "LlavaMedTool",
-        # "XRayPhraseGroundingTool",
-        # "ChestXRayGeneratorTool",
+        "LlavaMedTool",
+        "XRayPhraseGroundingTool",
+        "ChestXRayGeneratorTool",
+        "MedicalRAGTool",
     ]
+
+    rag_config = RAGConfig(
+        model="command-a-03-2025",
+        temperature=0.7,
+        persist_dir="medrax/rag/vectorDB",  # Change this to the target path of the vector database
+        chunk_size=1000,
+        chunk_overlap=100,
+        retriever_k=3,
+        docs_dir="medrax/rag/docs",  # Change this to the path of the documents for RAG
+    )
 
     agent, tools_dict = initialize_agent(
         "medrax/docs/system_prompts.txt",
         tools_to_use=selected_tools,
         model_dir="/model-weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
-        device="cuda",  # Change this to the device you want to use
+        device="cuda:2",  # Change this to the device you want to use
         model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini
         temperature=0.7,
         top_p=0.95,
     )
     demo = create_demo(agent, tools_dict)
 
-    demo.launch(server_name="0.0.0.0", server_port=8585, share=True)
+    demo.launch(server_name="0.0.0.0", server_port=8686, share=True)

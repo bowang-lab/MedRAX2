@@ -18,23 +18,14 @@ class RAGTool(BaseTool):
     """
     rag: CohereRAG = None
     chain: RetrievalQA = None
-    docs_dir: str = "medrax/rag/docs"
 
     def __init__(
         self,
         config: RAGConfig,
-        docs_dir: str = "medrax/rag/docs",
     ):
         """Initialize RAG tool with config and documents."""
         super().__init__()
         self.rag = CohereRAG(config)
-        self.docs_dir = docs_dir
-
-        # Initialize vectorstore if empty
-        if self.rag.vectorstore is None:
-            docs = self.rag.load_directory(self.docs_dir)
-            self.rag.create_or_update_vectorstore(docs)
-
         self.chain = self.rag.initialize_rag(with_memory=True)
 
     def _run(self, query: str) -> str:
@@ -61,4 +52,4 @@ class RAGTool(BaseTool):
         Raises:
             NotImplementedError: Async not implemented yet
         """
-        raise NotImplementedError("Async not implemented")
+        return self._run(query)
