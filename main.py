@@ -120,7 +120,8 @@ if __name__ == "__main__":
 
     # Define which tools to use in the application
     # Each tool provides specific medical imaging functionality
-    selected_tools = [
+    # You can uncomment the tools you dont want to use
+    tools_to_use = [
         "ImageVisualizerTool",  # For displaying images in the UI
         "DicomProcessorTool",  # For processing DICOM medical image files
         "ChestXRayClassifierTool",  # For classifying chest X-ray images
@@ -155,8 +156,8 @@ if __name__ == "__main__":
 
     # Initialize the agent with all configured components
     agent, tools_dict = initialize_agent(
-        "medrax/docs/system_prompts.txt",  # File containing system instructions
-        tools_to_use=selected_tools,
+        prompt_file="medrax/docs/system_prompts.txt",  # File containing system instructions
+        tools_to_use=tools_to_use,
         model_dir="/model-weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
         device="cuda",  # Change this to the device you want to use
