@@ -28,8 +28,6 @@ MedRAX is built on a robust technical foundation:
 - **Disease Classification**: Leverages DenseNet-121 from TorchXRayVision for detecting 18 pathology classes
 - **X-ray Generation**: Utilizes RoentGen for synthetic CXR generation
 - **Utilities**: Includes DICOM processing, visualization tools, and custom plotting capabilities
-
-Note the current version of MedRAX is experimentally released and does not support vision for GPT-4o and MedSAM. We will be integrating these shortly.
 <br><br>
 
 
