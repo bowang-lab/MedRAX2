@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 from transformers import logging
 
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
-from langchain_openai import ChatOpenAI
+from medrax.models import ModelFactory
 
 from interface import create_demo
 from medrax.agent import *
@@ -25,10 +23,10 @@ def initialize_agent(
     model_dir="/model-weights",
     temp_dir="temp",
     device="cuda",
-    model="chatgpt-4o-latest",
+    model="gpt-4o",
     temperature=0.7,
     top_p=0.95,
-    openai_kwargs={}
+    model_kwargs={}
 ):
     """Initialize the MedRAX agent with specified tools and configuration.
 
@@ -38,10 +36,10 @@ def initialize_agent(
         model_dir (str, optional): Directory containing model weights. Defaults to "/model-weights".
         temp_dir (str, optional): Directory for temporary files. Defaults to "temp".
         device (str, optional): Device to run models on. Defaults to "cuda".
-        model (str, optional): Model to use. Defaults to "chatgpt-4o-latest".
+        model (str, optional): Model to use. Defaults to "gpt-4o".
         temperature (float, optional): Temperature for the model. Defaults to 0.7.
         top_p (float, optional): Top P for the model. Defaults to 0.95.
-        openai_kwargs (dict, optional): Additional keyword arguments for OpenAI API, such as API key and base URL.
+        model_kwargs (dict, optional): Additional keyword arguments for model.
 
     Returns:
         Tuple[Agent, Dict[str, BaseTool]]: Initialized agent and dictionary of tool instances
@@ -65,6 +63,7 @@ def initialize_agent(
         ),
         "ImageVisualizerTool": lambda: ImageVisualizerTool(),
         "DicomProcessorTool": lambda: DicomProcessorTool(temp_dir=temp_dir),
+        "WebBrowserTool": lambda: WebBrowserTool(),
     }
 
     # Initialize only selected tools or all if none specified
@@ -75,9 +74,22 @@ def initialize_agent(
             tools_dict[tool_name] = all_tools[tool_name]()
 
     checkpointer = MemorySaver()
-    model = ChatOpenAI(model=model, temperature=temperature, top_p=top_p, **openai_kwargs)
+    
+    # Create the language model using the factory
+    try:
+        llm = ModelFactory.create_model(
+            model_name=model,
+            temperature=temperature,
+            top_p=top_p,
+            **model_kwargs
+        )
+    except ValueError as e:
+        print(f"Error creating language model: {e}")
+        print(f"Available model providers: {list(ModelFactory._model_providers.keys())}")
+        raise
+    
     agent = Agent(
-        model,
+        llm,
         tools=list(tools_dict.values()),
         log_tools=True,
         log_dir="logs",
@@ -105,18 +117,19 @@ if __name__ == "__main__":
         "ChestXRaySegmentationTool",
         "ChestXRayReportGeneratorTool",
         "XRayVQATool",
+        "WebBrowserTool",  # Add the web browser tool
         # "LlavaMedTool",
         # "XRayPhraseGroundingTool",
         # "ChestXRayGeneratorTool",
     ]
 
-    # Collect the ENV variables
-    openai_kwargs = {}
-    if api_key := os.getenv("OPENAI_API_KEY"):
-        openai_kwargs["api_key"] = api_key
-
-    if base_url := os.getenv("OPENAI_BASE_URL"):
-        openai_kwargs["base_url"] = base_url
+    # Prepare any additional model-specific kwargs
+    model_kwargs = {}
+    
+    # Set up API keys for the web browser tool
+    # You'll need to set these environment variables:
+    # - GOOGLE_SEARCH_API_KEY: Your Google Custom Search API key
+    # - GOOGLE_SEARCH_ENGINE_ID: Your Google Custom Search Engine ID
 
     agent, tools_dict = initialize_agent(
         "medrax/docs/system_prompts.txt",
@@ -124,10 +137,10 @@ if __name__ == "__main__":
         model_dir="/model-weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
         device="cuda",  # Change this to the device you want to use
-        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini
+        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
-        openai_kwargs=openai_kwargs
+        model_kwargs=model_kwargs
     )
     demo = create_demo(agent, tools_dict)
 
