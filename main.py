@@ -111,12 +111,12 @@ if __name__ == "__main__":
     # Example: initialize with only specific tools
     # Here three tools are commented out, you can uncomment them to use them
     selected_tools = [
-        "ImageVisualizerTool",
-        "DicomProcessorTool",
-        "ChestXRayClassifierTool",
-        "ChestXRaySegmentationTool",
-        "ChestXRayReportGeneratorTool",
-        "XRayVQATool",
+        # "ImageVisualizerTool",
+        # "DicomProcessorTool",
+        # "ChestXRayClassifierTool",
+        # "ChestXRaySegmentationTool",
+        # "ChestXRayReportGeneratorTool",
+        # "XRayVQATool",
         "WebBrowserTool",  # Add the web browser tool
         # "LlavaMedTool",
         # "XRayPhraseGroundingTool",
@@ -130,14 +130,14 @@ if __name__ == "__main__":
     # You'll need to set these environment variables:
     # - GOOGLE_SEARCH_API_KEY: Your Google Custom Search API key
     # - GOOGLE_SEARCH_ENGINE_ID: Your Google Custom Search Engine ID
-
+    
     agent, tools_dict = initialize_agent(
         "medrax/docs/system_prompts.txt",
         tools_to_use=selected_tools,
-        model_dir="/model-weights",  # Change this to the path of the model weights
+        model_dir="/m_weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
-        device="cuda",  # Change this to the device you want to use
-        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
+        device="cpu",  # Change this to the device you want to use
+        model="gemini-2.5-pro",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
         model_kwargs=model_kwargs

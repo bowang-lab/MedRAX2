@@ -7,13 +7,20 @@ to search the web, visit URLs, and extract information from web pages.
 import os
 import re
 import json
-from typing import Dict, Optional, Any
+import time
+from typing import Dict, Optional, Any, Type, Tuple
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+
+
+class WebBrowserSchema(BaseModel):
+    """Schema for web browser tool."""
+    query: str = Field("", description="The search query (leave empty if visiting a URL)")
+    url: str = Field("", description="The URL to visit (leave empty if performing a search)")
 
 
 class SearchQuerySchema(BaseModel):
@@ -40,6 +47,7 @@ class WebBrowserTool(BaseTool):
     search_engine_id: Optional[str] = None
     user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     max_results: int = 5
+    args_schema: Type[BaseModel] = WebBrowserSchema
     
     def __init__(self, search_api_key: Optional[str] = None, search_engine_id: Optional[str] = None, **kwargs):
         """Initialize the web browser tool.
@@ -179,27 +187,29 @@ class WebBrowserTool(BaseTool):
         """Run the tool asynchronously."""
         return json.dumps(self._run(query=query, url=url))
     
-    def _run(self, query: str = "", url: str = "") -> Dict[str, Any]:
+    def _run(self, query: str = "", url: str = "") -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Run the web browser tool.
-        
+    
         Args:
             query: Search query (if searching)
             url: URL to visit (if visiting a specific page)
-            
+        
         Returns:
-            Dict containing the results
+            Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing the results and metadata
         """
+        metadata = {
+            "query": query if query else "",
+            "url": url if url else "",
+            "timestamp": time.time(),
+            "tool": "WebBrowserTool"
+        }
+        
         if url:
-            return self.visit_url(url)
+            result = self.visit_url(url)
+            return result, metadata
         elif query:
-            return self.search_web(query)
+            result = self.search_web(query)
+            return result, metadata
         else:
-            return {"error": "Please provide either a search query or a URL to visit"}
+            return {"error": "Please provide either a search query or a URL to visit"}, metadata
 
-    def args_schema(self) -> type[BaseModel]:
-        """Return the schema for the tool arguments."""
-        class WebBrowserSchema(BaseModel):
-            """Combined schema for web browser tool."""
-            query: str = Field("", description="The search query (leave empty if visiting a URL)")
-            url: str = Field("", description="The URL to visit (leave empty if performing a search)")
-        return WebBrowserSchema
