@@ -31,6 +31,12 @@ class ModelFactory:
             "class": ChatGoogleGenerativeAI,
             "env_key": "GOOGLE_API_KEY"
         },
+        "openrouter": {
+            "class": ChatOpenAI,  # OpenRouter uses OpenAI-compatible interface
+            "env_key": "OPENROUTER_API_KEY",
+            "base_url_key": "OPENROUTER_BASE_URL",
+            "default_base_url": "https://openrouter.ai/api/v1"
+        },
         # Add more providers with default configurations here
     }
     
@@ -96,17 +102,26 @@ class ModelFactory:
             print(f"Warning: Environment variable {env_key} not found. Authentication may fail.")
         
         # Check for base_url if applicable
-        if "base_url_key" in provider and provider["base_url_key"] in os.environ:
-            provider_kwargs["base_url"] = os.environ[provider["base_url_key"]]
+        if "base_url_key" in provider:
+            if provider["base_url_key"] in os.environ:
+                provider_kwargs["base_url"] = os.environ[provider["base_url_key"]]
+            elif "default_base_url" in provider:
+                provider_kwargs["base_url"] = provider["default_base_url"]
         
         # Merge with any additional provider-specific settings from the registry
         for k, v in provider.items():
-            if k not in ["class", "env_key", "base_url_key"]:
+            if k not in ["class", "env_key", "base_url_key", "default_base_url"]:
                 provider_kwargs[k] = v
         
+        # Strip the provider prefix from the model name
+        # For example, 'openrouter-anthropic/claude-sonnet-4' becomes 'anthropic/claude-sonnet-4'
+        actual_model_name = model_name
+        if model_name.startswith(f"{provider_prefix}-"):
+            actual_model_name = model_name[len(provider_prefix)+1:]
+            
         # Create and return the model instance
         return model_class(
-            model=model_name,
+            model=actual_model_name,
             temperature=temperature,
             top_p=top_p,
             **provider_kwargs,

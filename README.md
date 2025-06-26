@@ -230,6 +230,21 @@ Supported prefix: `gemini-`
 export GOOGLE_API_KEY="your-google-api-key"
 ```
 
+#### OpenRouter Models (Open Source & Proprietary)
+Supported prefix: `openrouter-`
+
+Access many open source and proprietary models via [OpenRouter](https://openrouter.ai/):
+```
+export OPENROUTER_API_KEY="your-openrouter-api-key"
+```
+
+Example model names:
+- `openrouter-mistralai/mistral-small-3.2-24b-instruct:free` (Free tier)
+- `openrouter-anthropic/claude-3-opus` (Paid tier)
+- `openrouter-meta-llama/llama-3-8b-instruct` (Open source model)
+
+**Note:** Tool compatibility may vary with open-source models. For best results with tools like WebBrowserTool, we recommend using OpenAI or Google Gemini models.
+
 #### Local LLMs
 If you are running a local LLM using frameworks like [Ollama](https://ollama.com/) or [LM Studio](https://lmstudio.ai/), you need to configure your environment variables accordingly. For example:
 ```

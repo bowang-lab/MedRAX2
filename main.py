@@ -137,7 +137,7 @@ if __name__ == "__main__":
         model_dir="/m_weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
         device="cpu",  # Change this to the device you want to use
-        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
+        model="gpt-4o-mini",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
         model_kwargs=model_kwargs
