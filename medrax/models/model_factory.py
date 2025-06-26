@@ -22,6 +22,11 @@ class ModelFactory:
             "env_key": "OPENAI_API_KEY",
             "base_url_key": "OPENAI_BASE_URL"
         },
+        "chatgpt": {
+            "class": ChatOpenAI,
+            "env_key": "OPENAI_API_KEY",
+            "base_url_key": "OPENAI_BASE_URL"
+        },
         "gemini": {
             "class": ChatGoogleGenerativeAI,
             "env_key": "GOOGLE_API_KEY"

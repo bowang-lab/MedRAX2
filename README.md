@@ -15,7 +15,7 @@ Chest X-rays (CXRs) play an integral role in driving critical decisions in disea
 ## MedRAX
 MedRAX is built on a robust technical foundation:
 - **Core Architecture**: Built on LangChain and LangGraph frameworks
-- **Language Model**: Uses GPT-4o with vision capabilities as the backbone LLM
+- **Language Models**: Supports multiple LLM providers including OpenAI (GPT-4o) and Google (Gemini) models
 - **Deployment**: Supports both local and cloud-based deployments
 - **Interface**: Production-ready interface built with Gradio
 - **Modular Design**: Tool-agnostic architecture allowing easy integration of new capabilities
@@ -27,6 +27,7 @@ MedRAX is built on a robust technical foundation:
 - **Report Generation**: Implements SwinV2 Transformer trained on CheXpert Plus for detailed medical reporting
 - **Disease Classification**: Leverages DenseNet-121 from TorchXRayVision for detecting 18 pathology classes
 - **X-ray Generation**: Utilizes RoentGen for synthetic CXR generation
+- **Web Browser**: Provides web search capabilities and URL content retrieval using Google Custom Search API
 - **Utilities**: Includes DICOM processing, visualization tools, and custom plotting capabilities
 <br><br>
 
@@ -180,6 +181,7 @@ No additional model weights required:
 ```python
 ImageVisualizerTool()
 DicomProcessorTool(temp_dir=temp_dir)
+WebBrowserTool()  # Requires Google Search API credentials
 ```
 <br>
 
@@ -212,11 +214,34 @@ ChestXRayGeneratorTool(
 - Some tools (LLaVA-Med, Grounding) are more resource-intensive
 <br>
 
-### Local LLMs
+### Language Model Options
+MedRAX supports multiple language model providers:
+
+#### OpenAI Models
+Supported prefixes: `gpt-` and `chatgpt-`
+```
+export OPENAI_API_KEY="your-openai-api-key"
+export OPENAI_BASE_URL="https://api.openai.com/v1"  # Optional for custom endpoints
+```
+
+#### Google Gemini Models
+Supported prefix: `gemini-`
+```
+export GOOGLE_API_KEY="your-google-api-key"
+```
+
+#### Local LLMs
 If you are running a local LLM using frameworks like [Ollama](https://ollama.com/) or [LM Studio](https://lmstudio.ai/), you need to configure your environment variables accordingly. For example:
 ```
 export OPENAI_BASE_URL="http://localhost:11434/v1"
 export OPENAI_API_KEY="ollama"
+```
+
+#### WebBrowserTool Configuration
+If you're using the WebBrowserTool, you'll need to set these environment variables:
+```
+export GOOGLE_SEARCH_API_KEY="your-google-search-api-key"
+export GOOGLE_SEARCH_ENGINE_ID="your-google-search-engine-id"
 ```
 <br>
 
