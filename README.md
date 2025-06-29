@@ -104,7 +104,8 @@ MedRAX supports selective tool initialization, allowing you to use only the tool
 ```python
 selected_tools = [
     "ImageVisualizerTool",
-    "ChestXRayClassifierTool",
+    "TorchXRayVisionClassifierTool",  # Renamed from ChestXRayClassifierTool
+    "ArcPlusClassifierTool",          # New ArcPlus classifier
     "ChestXRaySegmentationTool",
     # Add or remove tools as needed
 ]
@@ -121,9 +122,17 @@ agent, tools_dict = initialize_agent(
 
 The following tools will automatically download their model weights when initialized:
 
-### Classification Tool
+### Classification Tools
 ```python
-ChestXRayClassifierTool(device=device)
+# TorchXRayVision-based classifier (original)
+TorchXRayVisionClassifierTool(device=device)
+
+# ArcPlus SwinTransformer-based classifier (new)
+ArcPlusClassifierTool(
+    model_path="/path/to/Ark6_swinLarge768_ep50.pth.tar",  # Optional
+    num_classes=18,  # Default
+    device=device
+)
 ```
 
 ### Segmentation Tool

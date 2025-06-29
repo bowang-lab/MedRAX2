@@ -23,7 +23,7 @@ def initialize_agent(
     model_dir="/model-weights",
     temp_dir="temp",
     device="cuda",
-    model="chatgpt-4o-latest",
+    model="gpt-4.1-2025-04-14",
     temperature=0.7,
     top_p=0.95,
     model_kwargs={}
@@ -48,7 +48,11 @@ def initialize_agent(
     prompt = prompts["MEDICAL_ASSISTANT"]
 
     all_tools = {
-        "ChestXRayClassifierTool": lambda: ChestXRayClassifierTool(device=device),
+        "TorchXRayVisionClassifierTool": lambda: TorchXRayVisionClassifierTool(device=device),
+        "ArcPlusClassifierTool": lambda: ArcPlusClassifierTool(
+            model_path=f"{model_dir}/Ark6_swinLarge768_ep50.pth.tar" if model_dir else None,
+            device=device
+        ),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
         "XRayVQATool": lambda: XRayVQATool(cache_dir=model_dir, device=device),
@@ -113,7 +117,8 @@ if __name__ == "__main__":
     selected_tools = [
         # "ImageVisualizerTool",
         # "DicomProcessorTool",
-        # "ChestXRayClassifierTool",
+        # "TorchXRayVisionClassifierTool",  # Renamed from ChestXRayClassifierTool
+        # "ArcPlusClassifierTool",          # New ArcPlus classifier
         # "ChestXRaySegmentationTool",
         # "ChestXRayReportGeneratorTool",
         # "XRayVQATool",
