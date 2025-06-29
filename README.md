@@ -1,7 +1,7 @@
 <h1 align="center">
 🤖 MedRAX: Medical Reasoning Agent for Chest X-ray
 </h1>
-<p align="center"> <a href="https://arxiv.org/abs/2502.02673" target="_blank"><img src="https://img.shields.io/badge/arXiv-Paper-FF6B6B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a> <a href="https://github.com/bowang-lab/MedRAX"><img src="https://img.shields.io/badge/GitHub-Code-4A90E2?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a> <a href="https://huggingface.co/datasets/wanglab/chest-agent-bench"><img src="https://img.shields.io/badge/HuggingFace-Dataset-FFBF00?style=for-the-badge&logo=huggingface&logoColor=white" alt="HuggingFace Dataset"></a> </p>
+<p align="center"> <a href="https://arxiv.org/abs/2502.02673" target="_blank"><img src="https://img.shields.io/badge/arXiv-ICML 2025-FF6B6B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a> <a href="https://github.com/bowang-lab/MedRAX"><img src="https://img.shields.io/badge/GitHub-Code-4A90E2?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a> <a href="https://huggingface.co/datasets/wanglab/chest-agent-bench"><img src="https://img.shields.io/badge/HuggingFace-Dataset-FFBF00?style=for-the-badge&logo=huggingface&logoColor=white" alt="HuggingFace Dataset"></a> </p>
 
 ![](assets/demo_fast.gif?autoplay=1)
 
@@ -28,8 +28,6 @@ MedRAX is built on a robust technical foundation:
 - **Disease Classification**: Leverages DenseNet-121 from TorchXRayVision for detecting 18 pathology classes
 - **X-ray Generation**: Utilizes RoentGen for synthetic CXR generation
 - **Utilities**: Includes DICOM processing, visualization tools, and custom plotting capabilities
-
-Note the current version of MedRAX is experimentally released and does not support vision for GPT-4o and MedSAM. We will be integrating these shortly.
 <br><br>
 
 
@@ -220,6 +218,7 @@ If you are running a local LLM using frameworks like [Ollama](https://ollama.com
 export OPENAI_BASE_URL="http://localhost:11434/v1"
 export OPENAI_API_KEY="ollama"
 ```
+<br>
 
 ## Star History
 <div align="center">
@@ -231,18 +230,21 @@ export OPENAI_API_KEY="ollama"
 
 
 ## Authors
-- **Adibvafa Fallahpour**¹²³ * (adibvafa.fallahpour@mail.utoronto.ca)
-- **Jun Ma**²³ * 
-- **Alif Munim**³⁴ *
-- **Hongwei Lyu**³
-- **Bo Wang**¹²³⁵
+- **Adibvafa Fallahpour**¹²³⁴ * (adibvafa.fallahpour@mail.utoronto.ca)
+- ****Jun Ma****²³ *
+- **Alif Munim**³⁵ *
+- ****Hongwei Lyu****³
+- ****Bo Wang****¹²³⁶
 
-¹ Department of Computer Science, University of Toronto, Toronto, Canada  
-² Vector Institute, Toronto, Canada  
-³ University Health Network, Toronto, Canada  
-⁴ Cohere For AI, Toronto, Canada  
-⁵ Department of Laboratory Medicine and Pathobiology, University of Toronto, Toronto, Canada <br>
-\* Equal contribution
+¹ Department of Computer Science, University of Toronto, Toronto, Canada <br>
+² Vector Institute, Toronto, Canada <br>
+³ University Health Network, Toronto, Canada <br>
+⁴ Cohere, Toronto, Canada <br>
+⁵ Cohere Labs, Toronto, Canada <br>
+⁶ Department of Laboratory Medicine and Pathobiology, University of Toronto, Toronto, Canada
+
+<br>
+* Equal contribution
 <br><br>
 
 
