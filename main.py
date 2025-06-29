@@ -50,7 +50,7 @@ def initialize_agent(
     all_tools = {
         "TorchXRayVisionClassifierTool": lambda: TorchXRayVisionClassifierTool(device=device),
         "ArcPlusClassifierTool": lambda: ArcPlusClassifierTool(
-            model_path=f"{model_dir}/Ark6_swinLarge768_ep50.pth.tar" if model_dir else None,
+            cache_dir=model_dir,
             device=device
         ),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
