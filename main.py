@@ -117,8 +117,8 @@ if __name__ == "__main__":
     selected_tools = [
         # "ImageVisualizerTool",
         # "DicomProcessorTool",
-        # "TorchXRayVisionClassifierTool",  # Renamed from ChestXRayClassifierTool
-        # "ArcPlusClassifierTool",          # New ArcPlus classifier
+        # "TorchXRayVisionClassifierTool",
+        # "ArcPlusClassifierTool",
         # "ChestXRaySegmentationTool",
         # "ChestXRayReportGeneratorTool",
         # "XRayVQATool",
@@ -139,10 +139,10 @@ if __name__ == "__main__":
     agent, tools_dict = initialize_agent(
         "medrax/docs/system_prompts.txt",
         tools_to_use=selected_tools,
-        model_dir="/m_weights",  # Change this to the path of the model weights
+        model_dir="/model-weights",
         temp_dir="temp",  # Change this to the path of the temporary directory
-        device="cpu",  # Change this to the device you want to use
-        model="gpt-4o-mini",  # Change this to the model you want to use, e.g. gpt-4o-mini, gemini-2.5-pro
+        device="cuda",
+        model="gpt-4.1-2025-04-14",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
         model_kwargs=model_kwargs
