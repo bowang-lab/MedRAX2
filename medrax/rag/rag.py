@@ -36,7 +36,7 @@ class RAGConfig(BaseModel):
     model: str = Field(default="command-a-03-2025")
     temperature: float = Field(default=0.7, ge=0.0, le=1.0)
     persist_dir: str = Field(default="vector_database")
-    embedding_model: str = Field(default="embed-english-v3.0")
+    embedding_model: str = Field(default="embed-v4.0")
     rerank_model: str = Field(default="rerank-v3.5")
     retriever_k: int = Field(default=2)
     chunk_size: int = Field(default=1000)

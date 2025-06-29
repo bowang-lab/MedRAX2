@@ -36,7 +36,7 @@ def initialize_agent(
     tools_to_use: Optional[List[str]] = None,
     model_dir: str = "/model-weights",
     temp_dir: str = "temp",
-    device: str = "cuda",
+    device: str = "cpu",
     model: str = "gpt-4o",
     temperature: float = 0.7,
     top_p: float = 0.95,
@@ -122,29 +122,29 @@ if __name__ == "__main__":
     # Each tool provides specific medical imaging functionality
     # You can uncomment the tools you dont want to use
     tools_to_use = [
-        "ImageVisualizerTool",  # For displaying images in the UI
-        "DicomProcessorTool",  # For processing DICOM medical image files
-        "ChestXRayClassifierTool",  # For classifying chest X-ray images
-        "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
-        "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
-        "XRayVQATool",  # For visual question answering on X-rays
-        "LlavaMedTool",  # For multimodal medical image understanding
-        "XRayPhraseGroundingTool",  # For locating described features in X-rays
-        "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
+        # "ImageVisualizerTool",  # For displaying images in the UI
+        # "DicomProcessorTool",  # For processing DICOM medical image files
+        # "ChestXRayClassifierTool",  # For classifying chest X-ray images
+        # "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
+        # "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
+        # "XRayVQATool",  # For visual question answering on X-rays
+        # "LlavaMedTool",  # For multimodal medical image understanding
+        # "XRayPhraseGroundingTool",  # For locating described features in X-rays
+        # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
         "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
     ]
 
     # Configure the Retrieval Augmented Generation (RAG) system
     # This allows the agent to access and use medical knowledge documents
     rag_config = RAGConfig(
-        model="command-a-03-2025",  # Set COHERE_API_KEY in .env
+        model="embed-v4.0",  # Set COHERE_API_KEY in .env
         temperature=0.7,
         persist_dir="medrax/rag/vectorDB",  # Change this to the target path of the vector database
         chunk_size=1000,
         chunk_overlap=100,
         retriever_k=3,
         local_docs_dir="medrax/rag/docs",  # Change this to the path of the documents for RAG
-        use_medrag_textbooks=False,  # Set to True if you want to use the MedRAG textbooks dataset
+        use_medrag_textbooks=True,  # Set to True if you want to use the MedRAG textbooks dataset
     )
 
     # Prepare OpenAI API configuration from environment variables
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         tools_to_use=tools_to_use,
         model_dir="/model-weights",  # Change this to the path of the model weights
         temp_dir="temp",  # Change this to the path of the temporary directory
-        device="cuda",  # Change this to the device you want to use
+        device="cpu",  # Change this to the device you want to use
         model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini
         temperature=0.7,
         top_p=0.95,
