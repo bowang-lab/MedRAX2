@@ -1,11 +1,12 @@
-from typing import Dict, Optional, Tuple, Type, ClassVar, List
-from pydantic import BaseModel, Field
+import os
+from typing import ClassVar, Dict, List, Optional, Tuple, Type
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from PIL import Image
 import torchvision.transforms as transforms
+from PIL import Image
+from pydantic import BaseModel, Field
 from timm.models.swin_transformer import SwinTransformer
 
 from langchain_core.callbacks import (
@@ -172,12 +173,12 @@ class ArcPlusClassifierTool(BaseTool):
     ]
     shenzhen_diseases: ClassVar[List[str]] = ["TB"]
 
-    def __init__(self, model_path: str = None, device: Optional[str] = "cuda"):
+    def __init__(self, cache_dir: str = None, device: Optional[str] = "cuda"):
         """Initialize the ArcPlus Classifier Tool.
 
         Args:
-            model_path (str, optional): Path to the pre-trained ArcPlus model checkpoint file.
-                Expected file: 'Ark6_swinLarge768_ep50.pth.tar' or similar ArcPlus checkpoint.
+            cache_dir (str, optional): Directory containing the pre-trained ArcPlus model checkpoint.
+                The tool will automatically look for 'Ark6_swinLarge768_ep50.pth.tar' in this directory.
                 If None, model will be initialized with random weights (not recommended for inference).
                 Default: None.
             device (str, optional): Device to run the model on ('cuda' for GPU, 'cpu' for CPU).
@@ -192,7 +193,7 @@ class ArcPlusClassifierTool(BaseTool):
             - Preprocessing: ImageNet normalization (mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
         Raises:
-            FileNotFoundError: If model_path is provided but file doesn't exist.
+            FileNotFoundError: If cache_dir is provided but model file doesn't exist.
             RuntimeError: If model loading fails or device is unavailable.
         """
         super().__init__()
@@ -224,7 +225,8 @@ class ArcPlusClassifierTool(BaseTool):
         )
 
         # Load pre-trained weights if provided
-        if model_path:
+        if cache_dir:
+            model_path = os.path.join(cache_dir, "Ark6_swinLarge768_ep50.pth.tar")
             self._load_checkpoint(model_path)
 
         self.model.eval()
