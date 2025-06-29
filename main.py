@@ -55,7 +55,8 @@ def initialize_agent(
         ),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
-        "XRayVQATool": lambda: XRayVQATool(cache_dir=model_dir, device=device),
+        "CheXagentXRayVQATool": lambda: CheXagentXRayVQATool(cache_dir=model_dir, device=device),
+        "MedGemmaVQATool": lambda: MedGemmaVQATool(cache_dir=model_dir, device=device, load_in_4bit=True),
         "ChestXRayReportGeneratorTool": lambda: ChestXRayReportGeneratorTool(
             cache_dir=model_dir, device=device
         ),
@@ -121,7 +122,8 @@ if __name__ == "__main__":
         # "ArcPlusClassifierTool",          # New ArcPlus classifier
         # "ChestXRaySegmentationTool",
         # "ChestXRayReportGeneratorTool",
-        # "XRayVQATool",
+        # "CheXagentXRayVQATool",        # CheXagent-based VQA tool
+        # "MedGemmaVQATool",             # Google MedGemma 4B VQA tool
         "WebBrowserTool",  # Add the web browser tool
         # "LlavaMedTool",
         # "XRayPhraseGroundingTool",
