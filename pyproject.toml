@@ -57,11 +57,15 @@ dependencies = [
     "matplotlib>=3.8.0",
     "diffusers>=0.20.0",
     "pydicom>=2.3.0",
+    "gdcm>=1.0.0",
     "pylibjpeg>=1.0.0",
     "jupyter>=1.0.0",
     "albumentations>=1.0.0",
     "pyarrow>=10.0.0",
+    "faiss-gpu>=1.0.0",
     "chromadb>=0.0.10",
+    "pinecone-client>=3.2.2",
+    "langchain-pinecone>=0.0.1",
 ]
 
 [project.optional-dependencies]
