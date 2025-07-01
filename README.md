@@ -208,11 +208,11 @@ The `MedicalRAGTool` uses a Pinecone vector database to store and retrieve medic
 2.  **Create a Pinecone Index**:
     *   In your Pinecone project, create a new index with the following settings:
         *   **Index Name**: `medrax` (or match the `pinecone_index_name` in `main.py`)
-        *   **Dimensions**: `1024` (for Cohere's `embed-english-v3.0` model)
+        *   **Dimensions**: `1536` (for Cohere's `embed-english-v3.0` model)
         *   **Metric**: `cosine`
 
 3.  **Get API Credentials**:
-    *   From the Pinecone dashboard, find your **API Key** and **Environment** name.
+    *   From the Pinecone dashboard, find your **API Key**.
     *   Sign up for a free Cohere account at [cohere.com](https://cohere.com/) and get your **Trial API Key**.
 
 4.  **Set Environment Variables**:
@@ -221,7 +221,6 @@ The `MedicalRAGTool` uses a Pinecone vector database to store and retrieve medic
 
     ```env
     PINECONE_API_KEY="YOUR_PINECONE_API_KEY"
-    PINECONE_ENVIRONMENT="YOUR_PINECONE_ENVIRONMENT"
     COHERE_API_KEY="YOUR_COHERE_API_KEY"
     ```
 
