@@ -139,7 +139,7 @@ if __name__ == "__main__":
     rag_config = RAGConfig(
         model="embed-v4.0",  # Set COHERE_API_KEY in .env
         temperature=0.7,
-        persist_dir="medrax/rag/vectorDB",  # Change this to the target path of the vector database
+        pinecone_index_name="medrax",  # Name for the Pinecone index
         chunk_size=1000,
         chunk_overlap=100,
         retriever_k=3,

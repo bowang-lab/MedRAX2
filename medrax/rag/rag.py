@@ -1,13 +1,15 @@
 import os
+import time
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from pydantic import Field
 
 from pydantic import BaseModel, Field
 from langchain_cohere import ChatCohere, CohereEmbeddings, CohereRerank
-from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone
 from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import BaseRetriever
@@ -35,7 +37,7 @@ class RAGConfig(BaseModel):
 
     model: str = Field(default="command-a-03-2025")
     temperature: float = Field(default=0.7, ge=0.0, le=1.0)
-    persist_dir: str = Field(default="vector_database")
+    pinecone_index_name: str = Field(default="medrax")
     embedding_model: str = Field(default="embed-v4.0")
     rerank_model: str = Field(default="rerank-v3.5")
     retriever_k: int = Field(default=2)
@@ -94,40 +96,22 @@ class CohereRAG:
         self.chat_model = ChatCohere(model=config.model, temperature=config.temperature)
         self.embeddings = CohereEmbeddings(model=config.embedding_model)
         self.reranker = CohereRerank(model=config.rerank_model)
-        self.persist_dir = config.persist_dir
         self.local_docs_dir = config.local_docs_dir
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             output_key="result",
             input_key="query",
         )
-        self.vectorstore = self.load_or_create_vectorstore()
 
-        # Initialize vectorstore if empty
-        if self.vectorstore is None:
-            # Collect documents from all enabled sources
-            all_documents = []
+        # Initialize Pinecone
+        self.pinecone_api_key = os.getenv("PINECONE_API_KEY")
+        if not self.pinecone_api_key:
+            raise ValueError("PINECONE_API_KEY environment variable not set. Please get a key from app.pinecone.io")
+        self.pinecone = Pinecone(api_key=self.pinecone_api_key)
+        self.index_name = self.config.pinecone_index_name
 
-            # Load MedRAG textbooks if enabled
-            if self.config.use_medrag_textbooks:
-                print("Loading documents from MedRAG textbooks...")
-                medrag_docs = self.load_medrag_textbooks()
-                all_documents.extend(medrag_docs)
-                print(f"Loaded {len(medrag_docs)} documents from MedRAG textbooks")
-
-            # Load local documents if enabled
-            if os.path.exists(self.local_docs_dir):
-                print(f"Loading documents from local directory: {self.local_docs_dir}")
-                local_docs = self.load_directory(self.local_docs_dir)
-                all_documents.extend(local_docs)
-                print(f"Loaded {len(local_docs)} documents from local directory")
-
-            # Create vectorstore with all documents
-            if all_documents:
-                print(f"Creating vectorstore with {len(all_documents)} total documents")
-                self.create_or_update_vectorstore(all_documents)
-            else:
-                print("Warning: No documents loaded. Please check your configuration.")
+        # Create or update Pinecone index and get the vectorstore
+        self.vectorstore = self.get_or_create_vectorstore()
 
     def load_directory(self, directory_path: str) -> List[Document]:
         """Load and split all .txt files from a directory into documents.
@@ -189,35 +173,77 @@ class CohereRAG:
 
         return documents
 
-    def load_or_create_vectorstore(self) -> Optional[Chroma]:
-        """Load existing vectorstore or prepare for new one.
-
-        Returns:
-            Optional[Chroma]: Loaded vectorstore or None if not exists
+    def get_or_create_vectorstore(self) -> PineconeVectorStore:
         """
-        if os.path.exists(self.persist_dir):
-            print("Loading existing vectorstore...")
-            return Chroma(persist_directory=self.persist_dir, embedding_function=self.embeddings)
-        return None
-
-    def create_or_update_vectorstore(self, documents: List[Document]):
-        """Create new vectorstore or add documents to existing one.
-
-        Args:
-            documents (List[Document]): Documents to add to vectorstore
+        Connects to an existing Pinecone index. If the index is empty, it populates it with documents.
+        The index must be created manually in the Pinecone console beforehand.
         """
-        if self.vectorstore is None:
-            print("Creating new vectorstore...")
-            self.vectorstore = Chroma.from_documents(
-                documents=documents,
-                embedding=self.embeddings,
-                persist_directory=self.persist_dir,
+        if self.index_name not in self.pinecone.list_indexes().names():
+            raise ValueError(
+                f"Index '{self.index_name}' not found in your Pinecone project. "
+                f"Please create it manually in the Pinecone console. "
+                f"For the free tier, use the 'aws-us-east-1' environment."
             )
-        else:
-            print("Adding documents to existing vectorstore...")
-            self.vectorstore.add_documents(documents)
 
-        print(f"Vectorstore saved to {self.persist_dir}")
+        print(f"Connecting to existing Pinecone index: {self.index_name}")
+        vectorstore = PineconeVectorStore.from_existing_index(
+            index_name=self.index_name, embedding=self.embeddings
+        )
+
+        # Check if the index is empty and needs to be populated
+        index_description = self.pinecone.describe_index(self.index_name)
+        stats = index_description.stats
+        
+        if not stats or stats.get('total_vector_count', 0) == 0:
+            print("Index is empty. Populating with documents...")
+            documents = self._load_all_documents()
+            if documents:
+                total_docs = len(documents)
+                print(
+                    f"Adding {total_docs} documents to the index. This may take a while..."
+                )
+
+                # Batching mechanism to handle rate limits
+                batch_size = 50  # Process 50 documents per batch
+                for i in tqdm(
+                    range(0, total_docs, batch_size),
+                    desc="Adding documents to Pinecone",
+                ):
+                    batch = documents[i : i + batch_size]
+                    vectorstore.add_documents(batch)
+                    if (i + batch_size) < total_docs:
+                        print(
+                            f"Batch {i // batch_size + 1} added. Waiting 60 seconds to avoid rate limiting..."
+                        )
+                        time.sleep(60)
+
+                print("Documents added successfully.")
+            else:
+                print("Warning: No documents found to add to the new index.")
+        else:
+            print("Index already populated.")
+
+        return vectorstore
+
+    def _load_all_documents(self) -> List[Document]:
+        """Collect documents from all enabled sources."""
+        all_documents = []
+        if self.config.use_medrag_textbooks:
+            print("Loading documents from MedRAG textbooks...")
+            medrag_docs = self.load_medrag_textbooks()
+            all_documents.extend(medrag_docs)
+            print(f"Loaded {len(medrag_docs)} documents from MedRAG textbooks")
+
+        if os.path.exists(self.local_docs_dir):
+            print(f"Loading documents from local directory: {self.local_docs_dir}")
+            local_docs = self.load_directory(self.local_docs_dir)
+            all_documents.extend(local_docs)
+            print(f"Loaded {len(local_docs)} documents from local directory")
+        
+        if not all_documents:
+            print("Warning: No documents loaded. Please check your configuration.")
+            
+        return all_documents
 
     def get_relevant_documents(self, query: str) -> List[Document]:
         """Get relevant documents using vector similarity and reranking.
