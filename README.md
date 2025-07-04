@@ -208,6 +208,33 @@ ChestXRayGeneratorTool(
   1. Contact authors: https://github.com/StanfordMIMI/RoentGen
   2. Place weights in `{model_dir}/roentgen`
   3. Optional tool, can be excluded if not needed
+
+### Knowledge Base Setup (MedicalRAGTool)
+
+The `MedicalRAGTool` uses a Pinecone vector database to store and retrieve medical knowledge. To use this tool, you need to set up a Pinecone account and a Cohere account.
+
+1.  **Create a Pinecone Account**:
+    *   Sign up for a free account at [pinecone.io](https://www.pinecone.io/).
+
+2.  **Create a Pinecone Index**:
+    *   In your Pinecone project, create a new index with the following settings:
+        *   **Index Name**: `medrax` (or match the `pinecone_index_name` in `main.py`)
+        *   **Dimensions**: `1536` (for Cohere's `embed-english-v3.0` model)
+        *   **Metric**: `cosine`
+
+3.  **Get API Credentials**:
+    *   From the Pinecone dashboard, find your **API Key**.
+    *   Sign up for a free Cohere account at [cohere.com](https://cohere.com/) and get your **Trial API Key**.
+
+4.  **Set Environment Variables**:
+    *   Create a `.env` file in the root of the project if it doesn't exist.
+    *   Add your API keys and environment name to the `.env` file:
+
+    ```env
+    PINECONE_API_KEY="YOUR_PINECONE_API_KEY"
+    COHERE_API_KEY="YOUR_COHERE_API_KEY"
+    ```
+
 <br>
 
 ## Configuration Notes
