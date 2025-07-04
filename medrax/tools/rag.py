@@ -1,6 +1,7 @@
 from langchain.tools import BaseTool
 from medrax.rag.rag import RAGConfig, CohereRAG
 from langchain.chains import RetrievalQA
+from typing import Dict, Tuple, Any
 
 
 class RAGTool(BaseTool):
@@ -34,26 +35,56 @@ class RAGTool(BaseTool):
         self.rag = CohereRAG(config)
         self.chain = self.rag.initialize_rag(with_memory=True)
 
-    def _run(self, query: str) -> str:
+    def _run(self, query: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Execute the RAG tool with the given query.
 
         Args:
             query (str): Medical question to answer
 
         Returns:
-            str: Generated answer from the RAG system
+            Tuple[Dict[str, Any], Dict[str, Any]]: Output dictionary and metadata dictionary
         """
-        result = self.chain.invoke({"query": query})
-        return result["result"]
+        try:
+            result = self.chain.invoke({"query": query})
+            
+            output = {
+                "answer": result["result"],
+                "source_documents": [
+                    {
+                        "content": doc.page_content,
+                        "metadata": doc.metadata
+                    }
+                    for doc in result.get("source_documents", [])
+                ]
+            }
+            
+            metadata = {
+                "query": query,
+                "analysis_status": "completed",
+                "num_sources": len(result.get("source_documents", [])),
+                "model": self.rag.config.model,
+                "embedding_model": self.rag.config.embedding_model,
+            }
+            
+            return output, metadata
+            
+        except Exception as e:
+            output = {"error": str(e)}
+            metadata = {
+                "query": query,
+                "analysis_status": "failed",
+                "error_details": str(e),
+            }
+            return output, metadata
 
-    async def _arun(self, query: str) -> str:
+    async def _arun(self, query: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Async version of _run.
 
         Args:
             query (str): Medical question to answer
 
         Returns:
-            str: Generated answer from the RAG system
+            Tuple[Dict[str, Any], Dict[str, Any]]: Output dictionary and metadata dictionary
 
         Raises:
             NotImplementedError: Async not implemented yet

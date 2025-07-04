@@ -129,8 +129,7 @@ if __name__ == "__main__":
     # Example: initialize with only specific tools
     # Here three tools are commented out, you can uncomment them to use them
     selected_tools = [
-        "ImageVisualizerTool",  # For displaying images in the UI
-        "WebBrowserTool",  # For web browsing and search capabilities
+        # "ImageVisualizerTool",  # For displaying images in the UI
         # "DicomProcessorTool",  # For processing DICOM medical image files
         # "TorchXRayVisionClassifierTool",  # For classifying chest X-ray images using TorchXRayVision
         # "ArcPlusClassifierTool",  # For advanced chest X-ray classification using ArcPlus
@@ -140,20 +139,23 @@ if __name__ == "__main__":
         # "LlavaMedTool",  # For multimodal medical image understanding
         # "XRayPhraseGroundingTool",  # For locating described features in X-rays
         # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
-        # "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
+        "WebBrowserTool",  # For web browsing and search capabilities
+        "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
     ]
 
     # Configure the Retrieval Augmented Generation (RAG) system
     # This allows the agent to access and use medical knowledge documents
     rag_config = RAGConfig(
-        model="embed-v4.0",  # Set COHERE_API_KEY in .env
-        temperature=0.7,
+        model="command-r-plus",  # ✅ Chat model for generating responses
+        embedding_model="embed-v4.0",  # Set COHERE_API_KEY in .env
+        temperature=0.3,
         pinecone_index_name="medrax",  # Name for the Pinecone index
-        chunk_size=1000,
-        chunk_overlap=100,
-        retriever_k=3,
+        chunk_size=1500,
+        chunk_overlap=300,
+        retriever_k=7,
         local_docs_dir="medrax/rag/docs",  # Change this to the path of the documents for RAG
-        use_medrag_textbooks=True,  # Set to True if you want to use the MedRAG textbooks dataset
+        huggingface_datasets=["VictorLJZ/medrax"],  # List of HuggingFace datasets to load
+        dataset_split="train",  # Which split of the datasets to use
     )
 
     # Prepare any additional model-specific kwargs
@@ -173,7 +175,7 @@ if __name__ == "__main__":
         model_dir="/model-weights",
         temp_dir="temp",  # Change this to the path of the temporary directory
         device="cuda",
-        model="gpt-4.1-2025-04-14",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
+        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
         model_kwargs=model_kwargs,

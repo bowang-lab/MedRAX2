@@ -115,9 +115,16 @@ class ModelFactory:
         
         # Strip the provider prefix from the model name
         # For example, 'openrouter-anthropic/claude-sonnet-4' becomes 'anthropic/claude-sonnet-4'
+        # But for OpenAI models like 'gpt-4o', we keep the full name since 'gpt-' is part of the model name
         actual_model_name = model_name
-        if model_name.startswith(f"{provider_prefix}-"):
+        if provider_prefix in ["openrouter"] and model_name.startswith(f"{provider_prefix}-"):
             actual_model_name = model_name[len(provider_prefix)+1:]
+        elif provider_prefix in ["gpt", "chatgpt"]:
+            # For OpenAI models, use the full model name (gpt-4o, gpt-3.5-turbo, etc.)
+            actual_model_name = model_name
+        elif provider_prefix == "gemini" and model_name.startswith("gemini-"):
+            # For Gemini models, use the full model name (gemini-1.5-pro, etc.)
+            actual_model_name = model_name
             
         # Create and return the model instance
         return model_class(
