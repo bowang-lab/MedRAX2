@@ -66,6 +66,7 @@ dependencies = [
     "chromadb>=0.0.10",
     "pinecone-client>=3.2.2",
     "langchain-pinecone>=0.0.1",
+    "langchain-google-genai>=0.1.0",
 ]
 
 [project.optional-dependencies]

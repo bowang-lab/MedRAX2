@@ -17,6 +17,7 @@ from transformers import logging
 
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
+from medrax.models import ModelFactory
 
 from interface import create_demo
 from medrax.agent import *
@@ -37,12 +38,12 @@ def initialize_agent(
     model_dir: str = "/model-weights",
     temp_dir: str = "temp",
     device: str = "cpu",
-    model: str = "gpt-4o",
+    model: str = "gpt-4.1-2025-04-14",
     temperature: float = 0.7,
     top_p: float = 0.95,
     rag_config: Optional[RAGConfig] = None,
-    openai_kwargs: Dict[str, Any] = {},
-) -> Tuple[Agent, Dict[str, BaseTool]]:
+    model_kwargs: Dict[str, Any] = {},
+):
     """Initialize the MedRAX agent with specified tools and configuration.
 
     Args:
@@ -51,11 +52,11 @@ def initialize_agent(
         model_dir (str, optional): Directory containing model weights. Defaults to "/model-weights".
         temp_dir (str, optional): Directory for temporary files. Defaults to "temp".
         device (str, optional): Device to run models on. Defaults to "cuda".
-        model (str, optional): Model to use. Defaults to "chatgpt-4o-latest".
+        model (str, optional): Model to use. Defaults to "gpt-4o".
         temperature (float, optional): Temperature for the model. Defaults to 0.7.
         top_p (float, optional): Top P for the model. Defaults to 0.95.
         rag_config (RAGConfig, optional): Configuration for the RAG tool. Defaults to None.
-        openai_kwargs (dict, optional): Additional keyword arguments for OpenAI API, such as API key and base URL.
+        model_kwargs (dict, optional): Additional keyword arguments for model.
 
     Returns:
         Tuple[Agent, Dict[str, BaseTool]]: Initialized agent and dictionary of tool instances
@@ -64,9 +65,9 @@ def initialize_agent(
     prompts = load_prompts_from_file(prompt_file)
     prompt = prompts["MEDICAL_ASSISTANT"]
 
-    # Define all available tools with their initialization functions
-    all_tools: Dict[str, callable] = {
-        "ChestXRayClassifierTool": lambda: ChestXRayClassifierTool(device=device),
+    all_tools = {
+        "TorchXRayVisionClassifierTool": lambda: TorchXRayVisionClassifierTool(device=device),
+        "ArcPlusClassifierTool": lambda: ArcPlusClassifierTool(cache_dir=model_dir, device=device),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
         "XRayVQATool": lambda: XRayVQATool(cache_dir=model_dir, device=device),
@@ -82,6 +83,7 @@ def initialize_agent(
         "ImageVisualizerTool": lambda: ImageVisualizerTool(),
         "DicomProcessorTool": lambda: DicomProcessorTool(temp_dir=temp_dir),
         "MedicalRAGTool": lambda: RAGTool(config=rag_config),
+        "WebBrowserTool": lambda: WebBrowserTool(),
     }
 
     # Initialize only selected tools or all if none specified
@@ -94,12 +96,18 @@ def initialize_agent(
     # Set up checkpointing for conversation state
     checkpointer = MemorySaver()
 
-    # Initialize the language model
-    model = ChatOpenAI(model=model, temperature=temperature, top_p=top_p, **openai_kwargs)
+    # Create the language model using the factory
+    try:
+        llm = ModelFactory.create_model(
+            model_name=model, temperature=temperature, top_p=top_p, **model_kwargs
+        )
+    except ValueError as e:
+        print(f"Error creating language model: {e}")
+        print(f"Available model providers: {list(ModelFactory._model_providers.keys())}")
+        raise
 
-    # Create the agent with the specified model, tools, and configuration
     agent = Agent(
-        model,
+        llm,
         tools=list(tools_dict.values()),
         log_tools=True,
         log_dir="logs",
@@ -118,20 +126,21 @@ if __name__ == "__main__":
     """
     print("Starting server...")
 
-    # Define which tools to use in the application
-    # Each tool provides specific medical imaging functionality
-    # You can uncomment the tools you dont want to use
-    tools_to_use = [
-        # "ImageVisualizerTool",  # For displaying images in the UI
+    # Example: initialize with only specific tools
+    # Here three tools are commented out, you can uncomment them to use them
+    selected_tools = [
+        "ImageVisualizerTool",  # For displaying images in the UI
+        "WebBrowserTool",  # For web browsing and search capabilities
         # "DicomProcessorTool",  # For processing DICOM medical image files
-        # "ChestXRayClassifierTool",  # For classifying chest X-ray images
+        # "TorchXRayVisionClassifierTool",  # For classifying chest X-ray images using TorchXRayVision
+        # "ArcPlusClassifierTool",  # For advanced chest X-ray classification using ArcPlus
         # "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
         # "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
         # "XRayVQATool",  # For visual question answering on X-rays
         # "LlavaMedTool",  # For multimodal medical image understanding
         # "XRayPhraseGroundingTool",  # For locating described features in X-rays
         # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
-        "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
+        # "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
     ]
 
     # Configure the Retrieval Augmented Generation (RAG) system
@@ -147,26 +156,28 @@ if __name__ == "__main__":
         use_medrag_textbooks=True,  # Set to True if you want to use the MedRAG textbooks dataset
     )
 
-    # Prepare OpenAI API configuration from environment variables
-    openai_kwargs: Dict[str, str] = {}
-    if api_key := os.getenv("OPENAI_API_KEY"):
-        openai_kwargs["api_key"] = api_key
+    # Prepare any additional model-specific kwargs
+    model_kwargs = {}
 
-    if base_url := os.getenv("OPENAI_BASE_URL"):
-        openai_kwargs["base_url"] = base_url
+    # Set up API keys for the web browser tool
+    # You'll need to set these environment variables:
+    # - GOOGLE_SEARCH_API_KEY: Your Google Custom Search API key
+    # - GOOGLE_SEARCH_ENGINE_ID: Your Google Custom Search Engine ID
+    # - COHERE_API_KEY: Your Cohere API key
+    # - OPENAI_API_KEY: Your OpenAI API key
+    # - PINECONE_API_KEY: Your Pinecone API key
 
-    # Initialize the agent with all configured components
     agent, tools_dict = initialize_agent(
-        prompt_file="medrax/docs/system_prompts.txt",  # File containing system instructions
-        tools_to_use=tools_to_use,
-        model_dir="/model-weights",  # Change this to the path of the model weights
+        prompt_file="medrax/docs/system_prompts.txt",
+        tools_to_use=selected_tools,
+        model_dir="/model-weights",
         temp_dir="temp",  # Change this to the path of the temporary directory
-        device="cpu",  # Change this to the device you want to use
-        model="gpt-4o",  # Change this to the model you want to use, e.g. gpt-4o-mini
+        device="cuda",
+        model="gpt-4.1-2025-04-14",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
         temperature=0.7,
         top_p=0.95,
+        model_kwargs=model_kwargs,
         rag_config=rag_config,
-        openai_kwargs=openai_kwargs,
     )
 
     # Create and launch the web interface
