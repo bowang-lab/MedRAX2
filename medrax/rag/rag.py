@@ -40,7 +40,7 @@ class RAGConfig(BaseModel):
     pinecone_index_name: str = Field(default="medrax")
     embedding_model: str = Field(default="embed-v4.0")
     rerank_model: str = Field(default="rerank-v3.5")
-    retriever_k: int = Field(default=2)
+    retriever_k: int = Field(default=5)
     chunk_size: int = Field(default=1000)
     chunk_overlap: int = Field(default=200)
     local_docs_dir: str = Field(default="medrax/rag/docs")
