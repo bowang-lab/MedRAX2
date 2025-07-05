@@ -182,7 +182,7 @@ XRayVQATool(
 
 ### MedSAM Tool
 ```
-Support for MedSAM segmentation will be added in a future update.
+MedSamChestXRaySegmentationTool(device=device)
 ```
 
 ### Utility Tools

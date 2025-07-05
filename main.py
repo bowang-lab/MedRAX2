@@ -54,6 +54,7 @@ def initialize_agent(
             device=device
         ),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
+        "MedSAM2SegmentationTool": lambda: MedSamChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
         "XRayVQATool": lambda: XRayVQATool(cache_dir=model_dir, device=device),
         "ChestXRayReportGeneratorTool": lambda: ChestXRayReportGeneratorTool(
