@@ -74,7 +74,7 @@ class OrganMetrics(BaseModel):
     confidence_score: float = Field(..., description="Model confidence score for this organ")
 
 
-class ChestXRaySegmentationTool(BaseTool):
+class MedSamChestXRaySegmentationTool(BaseTool):
     """Tool for performing detailed segmentation analysis of chest X-ray images using MedSAM2."""
 
     name: str = "chest_xray_segmentation"
