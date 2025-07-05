@@ -68,6 +68,7 @@ def initialize_agent(
         "ImageVisualizerTool": lambda: ImageVisualizerTool(),
         "DicomProcessorTool": lambda: DicomProcessorTool(temp_dir=temp_dir),
         "WebBrowserTool": lambda: WebBrowserTool(),
+        "PythonSandboxTool": lambda: create_python_sandbox(),
     }
 
     # Initialize only selected tools or all if none specified
@@ -123,6 +124,7 @@ if __name__ == "__main__":
         # "ChestXRayReportGeneratorTool",
         # "XRayVQATool",
         "WebBrowserTool",  # Add the web browser tool
+        "PythonSandboxTool",  # Add the Python sandbox tool
         # "LlavaMedTool",
         # "XRayPhraseGroundingTool",
         # "ChestXRayGeneratorTool",
