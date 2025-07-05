@@ -127,10 +127,8 @@ class MedSamChestXRaySegmentationTool(BaseTool):
             
             # Download MedSAM2 checkpoint from Hugging Face
             checkpoint_path = hf_hub_download(repo_id="wanglab/MedSAM2", filename="MedSAM2_latest.pt")
-            
-            # Use a default SAM2 config - you may need to adjust this path
-            # For now, we'll use a relative path that should work with typical SAM2 installations
-            config_path = "sam2/configs/sam2_hiera_l.yaml"
+
+            config_path = ""
             
             # Build SAM2 model with MedSAM2 checkpoint
             sam2_model = build_sam2(config_path, checkpoint_path, device=self.device)
