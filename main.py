@@ -72,7 +72,9 @@ def initialize_agent(
         "ArcPlusClassifierTool": lambda: ArcPlusClassifierTool(cache_dir=model_dir, device=device),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
-        "XRayVQATool": lambda: XRayVQATool(cache_dir=model_dir, device=device),
+        "CheXagentXRayVQATool": lambda: CheXagentXRayVQATool(cache_dir=model_dir, device=device),
+        "MedGemmaVQATool": lambda: MedGemmaVQATool(mcp_server_url="http://localhost:8000"), 
+        #"MedGemmaVQATool": lambda: MedGemmaVQATool(cache_dir=model_dir, device=device, load_in_4bit=True),
         "ChestXRayReportGeneratorTool": lambda: ChestXRayReportGeneratorTool(
             cache_dir=model_dir, device=device
         ),
@@ -144,7 +146,8 @@ if __name__ == "__main__":
         # "ArcPlusClassifierTool",  # For advanced chest X-ray classification using ArcPlus
         # "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
         # "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
-        # "XRayVQATool",  # For visual question answering on X-rays
+        # "CheXagentXRayVQATool",        # CheXagent-based VQA tool
+        # "MedGemmaVQATool",             # Google MedGemma 4B VQA tool
         # "LlavaMedTool",  # For multimodal medical image understanding
         # "XRayPhraseGroundingTool",  # For locating described features in X-rays
         # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
