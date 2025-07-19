@@ -5,8 +5,9 @@ from typing import Dict, Any, Type
 
 from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import ChatOpenAI
-from langchain_xai import ChatXAI   
+from langchain_xai import ChatXAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_xai import ChatXAI
 
 
 class ModelFactory:
@@ -38,7 +39,7 @@ class ModelFactory:
         "grok": {
             "class": ChatXAI,
             "env_key": "XAI_API_KEY",
-        }
+        },
         # Add more providers with default configurations here
     }
 
