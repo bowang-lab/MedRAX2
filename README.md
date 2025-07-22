@@ -21,7 +21,7 @@ MedRAX is built on a robust technical foundation:
 - **Modular Design**: Tool-agnostic architecture allowing easy integration of new capabilities
 
 ### Integrated Tools
-- **Visual QA**: Utilizes CheXagent and LLaVA-Med for complex visual understanding and medical reasoning
+- **Visual QA**: Utilizes CheXagent, LLaVA-Med, and MedGemma for complex visual understanding and medical reasoning
 - **Segmentation**: Employs MedSAM and PSPNet model trained on ChestX-Det for precise anatomical structure identification
 - **Grounding**: Uses Maira-2 for localizing specific findings in medical images
 - **Report Generation**: Implements SwinV2 Transformer trained on CheXpert Plus for detailed medical reporting
@@ -129,6 +129,10 @@ GOOGLE_SEARCH_ENGINE_ID=
 
 ### Getting Started
 ```bash
+# Start the MCP server
+python medrax/tools/vqa/medgemma_mcp.py
+```
+```bash
 # Start the Gradio interface
 python main.py
 ```
@@ -217,6 +221,11 @@ ChestXRayReportGeneratorTool(
     device=device
 )
 ```
+### MedGemma Tool
+```python
+MedGemmaVQATool(mcp_server_url="http://localhost:8000")
+```
+- MedGemma requires you to start the MCP server using medgemma_mcp.py
 
 ### Visual QA Tool
 ```python
