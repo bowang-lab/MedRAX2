@@ -1,7 +1,9 @@
 """
 medgemma_mcp.py
 
-This module provides an MCP (Modular Command Protocol) tool for Visual Question Answering (VQA) using the MedGemma model. It initializes a pipeline compatible with Apple Silicon (MPS) or CPU, exposes a VQA tool via FastMCP, and can be run as a standalone server.
+This module provides an MCP server for VQA using the MedGemma model. 
+It initializes a pipeline compatible with Apple Silicon (MPS) or CPU, 
+exposes a VQA tool via FastMCP, and can be run as a standalone server.
 
 Functions:
     - initialize_medgemma_pipeline: Initializes the MedGemma pipeline for inference.
@@ -40,7 +42,7 @@ def initialize_medgemma_pipeline():
     global pipe
     if pipe is None:
         try:
-            # --- CHANGE 1: Correctly detect MPS for Apple Silicon ---
+            # Detect MPS for Apple Silicon
             if torch.backends.mps.is_available():
                 device = "mps"
             else:
@@ -53,10 +55,7 @@ def initialize_medgemma_pipeline():
                 "torch_dtype": dtype,
             }
 
-            # --- CHANGE 2: The quantization_config line is REMOVED ---
-            # No longer trying to use 4-bit quantization
-
-            # --- CHANGE 3: Set device_map to the detected device ---
+            # Set device_map to the detected device
             model_kwargs["device_map"] = device
 
             # Get token for gated model access
@@ -139,4 +138,4 @@ if __name__ == "__main__":
     Initializes the MedGemma pipeline and starts the FastMCP server to expose the VQA tool.
     """
     initialize_medgemma_pipeline()
-    mcp.run()
+    mcp.run(transport="http", host="0.0.0.0", port=8000)

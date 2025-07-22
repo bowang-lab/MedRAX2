@@ -40,7 +40,6 @@ class ModelFactory:
         "base_url_key": "XAI_BASE_URL", 
         "default_base_url": "https://api.x.ai/v1"
         }
-        # Add more providers with default configurations here
     }
 
     @classmethod

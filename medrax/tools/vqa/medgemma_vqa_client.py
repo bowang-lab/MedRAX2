@@ -1,16 +1,15 @@
 """
 medgemma_vqa_client.py
 
-Client interface for performing medical visual question answering (VQA) using the MedGemma model via a remote MCP server.
+Client interface for performing medical VQA using the MedGemma model via a remote MCP server.
 
-This module provides a LangChain-compatible tool that connects to a MedGemma MCP server, sending images and prompts for advanced medical VQA. It supports both synchronous and asynchronous operation, error handling, and metadata reporting.
+This module provides a LangChain-compatible tool that connects to a MedGemma MCP server, sending 
+images and prompts for advanced medical VQA. It supports both synchronous and asynchronous 
+operation, error handling, and metadata reporting.
 
 Classes:
     - MedGemmaVQAInput: Pydantic schema for tool input arguments.
     - MedGemmaVQATool: LangChain tool for interacting with the MedGemma MCP server.
-
-Usage:
-    Instantiate MedGemmaVQATool and use it within a LangChain agent or directly for VQA tasks.
 """
 import asyncio
 from typing import Dict, List, Optional, Any, Tuple
@@ -66,7 +65,7 @@ class MedGemmaVQATool(BaseTool):
         "Connects to a remote MCP server to perform analysis."
     )
     args_schema: type[BaseModel] = MedGemmaVQAInput
-    return_direct: bool = True
+    return_direct: bool = False
 
     mcp_server_url: str
 
@@ -78,9 +77,7 @@ class MedGemmaVQATool(BaseTool):
             mcp_server_url (str): URL of the MedGemma MCP server.
             **kwargs: Additional keyword arguments for BaseTool.
         """
-        super().__init__(**kwargs)
-        self.mcp_server_url = mcp_server_url
-        # We don't initialize the client here, we do it within the run methods.
+        super().__init__(mcp_server_url=mcp_server_url, **kwargs)
     
     def _create_error_response(
         self,
@@ -89,9 +86,9 @@ class MedGemmaVQATool(BaseTool):
         error_message: str,
         error_type: str,
         error_details: str,
-    ) -> Tuple[Dict[str, Any], Dict]:
+    ) -> Dict[str, Any]:
         """
-        Helper method to create a standardized error response and metadata.
+        Helper method to create a standardized error response dictionary.
 
         Args:
             image_paths (List[str]): List of image file paths involved in the request.
@@ -101,17 +98,16 @@ class MedGemmaVQATool(BaseTool):
             error_details (str): Detailed error information.
 
         Returns:
-            Tuple[Dict[str, Any], Dict]: Output dictionary and metadata dictionary.
+            Dict[str, Any]: A dictionary containing the error details.
         """
-        output = {"error": error_message}
-        metadata = {
+        return {
+            "error": error_message,
             "image_paths": image_paths,
             "prompt": prompt,
             "analysis_status": "failed",
             "error_type": error_type,
             "error_details": error_details,
         }
-        return output, metadata
 
     def _run(
         self,
@@ -120,7 +116,7 @@ class MedGemmaVQATool(BaseTool):
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
         run_manager: Optional[CallbackManagerForToolRun] = None,
-    ) -> Tuple[Dict[str, Any], Dict]:
+    ) -> Dict[str, Any]:
         """
         Synchronous wrapper for the asynchronous tool call.
 
@@ -134,7 +130,7 @@ class MedGemmaVQATool(BaseTool):
             run_manager (Optional[CallbackManagerForToolRun]): Optional callback manager.
 
         Returns:
-            Tuple[Dict[str, Any], Dict]: Output dictionary and metadata dictionary.
+            Dict[str, Any]: The output dictionary from the tool.
         """
         try:
             # asyncio.run() starts an async event loop, runs our async code, and closes it.
@@ -157,11 +153,11 @@ class MedGemmaVQATool(BaseTool):
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
-    ) -> Tuple[Dict[str, Any], Dict]:
+    ) -> Dict[str, Any]:
         """
         Asynchronous method to perform VQA by calling the MedGemma MCP server.
 
-        Encodes images, sends them with the prompt to the remote server, and returns the result and metadata.
+        Encodes images, sends them with the prompt to the remote server, and returns the result.
 
         Args:
             image_paths (List[str]): List of image file paths.
@@ -171,7 +167,7 @@ class MedGemmaVQATool(BaseTool):
             run_manager (Optional[AsyncCallbackManagerForToolRun]): Optional async callback manager.
 
         Returns:
-            Tuple[Dict[str, Any], Dict]: Output dictionary and metadata dictionary.
+            Dict[str, Any]: The output dictionary from the tool.
         """
         try:
             async with Client(self.mcp_server_url) as client:
@@ -191,17 +187,19 @@ class MedGemmaVQATool(BaseTool):
                     }
                 )
 
-            if "error" in result:
-                return self._create_error_response(image_paths, prompt, result["error"], "server_error", result["error"])
+            if result.is_error:
+                # If there's an error, the details are in structured_content
+                error_details = result.structured_content or {"error": "Unknown server error"}
+                return self._create_error_response(
+                    image_paths,
+                    prompt,
+                    error_details.get("error", "Unknown server error"),
+                    "server_error",
+                    str(error_details),
+                )
 
-            metadata = {
-                "image_paths": image_paths,
-                "prompt": prompt,
-                "system_prompt": system_prompt,
-                "max_new_tokens": max_new_tokens,
-                "analysis_status": "completed",
-            }
-            return result, metadata
+            # If successful, return the structured_content directly
+            return result.structured_content
 
         except Exception as e:
             return self._create_error_response(
