@@ -1,16 +1,14 @@
 """
 medgemma_mcp.py
 
-This module provides an MCP server for VQA using the MedGemma model. 
-It initializes a pipeline compatible with Apple Silicon (MPS) or CPU, 
+This module provides an MCP server for VQA using the MedGemma model.
+It initializes a pipeline compatible with Apple Silicon (MPS) or CPU,
 exposes a VQA tool via FastMCP, and can be run as a standalone server.
 
 Functions:
     - initialize_medgemma_pipeline: Initializes the MedGemma pipeline for inference.
     - medgemma_vqa: Performs VQA using the MedGemma model via MCP.
-
-Usage:
-    Run this script directly to start the MCP server for MedGemma VQA.
+    - start_server: Initializes the pipeline and runs the MCP server.
 """
 import torch
 from PIL import Image
@@ -30,14 +28,7 @@ pipe = None
 def initialize_medgemma_pipeline():
     """
     Initializes the MedGemma pipeline for Apple Silicon (MPS) or CPU.
-
-    This function sets up the Hugging Face transformers pipeline for the MedGemma model,
-    automatically detecting and using the best available device (MPS for Apple Silicon or CPU).
-    It configures the model with appropriate dtype and device mapping, and attempts to use a
-    Hugging Face token from the environment for gated model access.
-
-    Raises:
-        Exception: If the pipeline fails to initialize for any reason.
+    ... (rest of the function docstring) ...
     """
     global pipe
     if pipe is None:
@@ -80,15 +71,7 @@ def initialize_medgemma_pipeline():
 def medgemma_vqa(image_strs: List[str], prompt: str, system_prompt: str, max_new_tokens: int) -> Dict[str, Any]:
     """
     Performs Visual Question Answering using the MedGemma model.
-
-    Args:
-        image_strs (List[str]): List of base64 encoded image strings to be processed.
-        prompt (str): The user's question or instruction for the model.
-        system_prompt (str): The system prompt to guide the model's behavior.
-        max_new_tokens (int): The maximum number of new tokens to generate in the response.
-
-    Returns:
-        Dict[str, Any]: A dictionary containing either the generated response or an error message.
+    ... (rest of the function docstring) ...
     """
     global pipe
     if pipe is None:
@@ -131,11 +114,18 @@ def medgemma_vqa(image_strs: List[str], prompt: str, system_prompt: str, max_new
     except Exception as e:
         return {"error": f"An error occurred during VQA: {str(e)}"}
 
-if __name__ == "__main__":
+# Encapsulated server startup logic into a function
+def start_server(host="0.0.0.0", port=8000):
     """
-    Entry point for running the MedGemma MCP server.
-
-    Initializes the MedGemma pipeline and starts the FastMCP server to expose the VQA tool.
+    Initializes the MedGemma pipeline and starts the FastMCP server.
     """
     initialize_medgemma_pipeline()
-    mcp.run(transport="http", host="0.0.0.0", port=8000)
+    print(f"Starting MedGemma MCP server at http://{host}:{port}")
+    mcp.run(transport="http", host=host, port=port)
+
+if __name__ == "__main__":
+    """
+    Entry point for running the MedGemma MCP server directly.
+    """
+    # Call the new server-starting function
+    start_server()
