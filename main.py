@@ -15,6 +15,9 @@ from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 from transformers import logging
 
+import multiprocessing
+import time
+
 from langgraph.checkpoint.memory import MemorySaver
 from medrax.models import ModelFactory
 
@@ -22,6 +25,7 @@ from interface import create_demo
 from medrax.agent import *
 from medrax.tools import *
 from medrax.utils import *
+from medrax.tools.vqa.medgemma_mcp import start_server as start_medgemma_mcp_server
 
 # Suppress unnecessary warnings and logging
 warnings.filterwarnings("ignore")
@@ -29,7 +33,6 @@ logging.set_verbosity_error()
 
 # Load environment variables from .env file
 _ = load_dotenv()
-
 
 def initialize_agent(
     prompt_file: str,
@@ -174,6 +177,24 @@ if __name__ == "__main__":
     #     huggingface_datasets=["VictorLJZ/medrax2"],  # List of HuggingFace datasets to load
     #     dataset_split="train",  # Which split of the datasets to use
     # )
+
+    # If MedGemmaVQATool is being used, start its server in a background process.
+    if "MedGemmaVQATool" in selected_tools:
+        print("Attempting to start MedGemma MCP server in the background...")
+        
+        # Create a new process that will run the MCP server function.
+        mcp_server_process = multiprocessing.Process(
+            target=start_medgemma_mcp_server,
+            kwargs={"host": "0.0.0.0", "port": 8000},
+            daemon=True # ensures this process will be terminated when the main app exits.
+        )
+        
+        mcp_server_process.start()
+        
+        # Wait for a few seconds to give the server time to initialize.
+        print("Waiting for the MCP server to initialize...")
+        time.sleep(30)
+        print("MCP server process started. Continuing with main application.")
 
     # Prepare any additional model-specific kwargs
     model_kwargs = {}
