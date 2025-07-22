@@ -41,7 +41,7 @@ def initialize_agent(
     model: str = "gpt-4.1-2025-04-14",
     temperature: float = 0.7,
     top_p: float = 0.95,
-    rag_config: Optional[RAGConfig] = None,
+    # rag_config: Optional[RAGConfig] = None,
     model_kwargs: Dict[str, Any] = {},
     debug: bool = False,
 ):
@@ -73,7 +73,7 @@ def initialize_agent(
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
         "CheXagentXRayVQATool": lambda: CheXagentXRayVQATool(cache_dir=model_dir, device=device),
-        "MedGemmaVQATool": lambda: MedGemmaVQATool(mcp_server_url="http://localhost:8000"), 
+        "MedGemmaVQATool": lambda: MedGemmaVQATool(mcp_server_url="http://localhost:8000/mcp/"), 
         #"MedGemmaVQATool": lambda: MedGemmaVQATool(cache_dir=model_dir, device=device, load_in_4bit=True),
         "ChestXRayReportGeneratorTool": lambda: ChestXRayReportGeneratorTool(
             cache_dir=model_dir, device=device
@@ -86,15 +86,15 @@ def initialize_agent(
         ),
         "ImageVisualizerTool": lambda: ImageVisualizerTool(),
         "DicomProcessorTool": lambda: DicomProcessorTool(temp_dir=temp_dir),
-        "MedicalRAGTool": lambda: RAGTool(config=rag_config),
+        # "MedicalRAGTool": lambda: RAGTool(config=rag_config),
         "WebBrowserTool": lambda: WebBrowserTool(),
     }
 
-    try:
-        tools_dict["PythonSandboxTool"] = create_python_sandbox()
-    except Exception as e:
-        print(f"Error creating PythonSandboxTool: {e}")
-        print("Skipping PythonSandboxTool")
+    # try:
+    #     tools_dict["MedGemmaVQATool"] = create_python_sandbox()
+    # except Exception as e:
+    #     print(f"Error creating PythonSandboxTool: {e}")
+    #     print("Skipping PythonSandboxTool")
 
     # Initialize only selected tools or all if none specified
     tools_dict: Dict[str, BaseTool] = {}
@@ -147,30 +147,30 @@ if __name__ == "__main__":
         # "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
         # "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
         # "CheXagentXRayVQATool",        # CheXagent-based VQA tool
-        # "MedGemmaVQATool",             # Google MedGemma 4B VQA tool
+        "MedGemmaVQATool",             # Google MedGemma 4B VQA tool
         # "LlavaMedTool",  # For multimodal medical image understanding
         # "XRayPhraseGroundingTool",  # For locating described features in X-rays
         # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
-        "WebBrowserTool",  # For web browsing and search capabilities
-        "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
-        "PythonSandboxTool",  # Add the Python sandbox tool
+        #"WebBrowserTool",  # For web browsing and search capabilities
+        # "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
+        #"PythonSandboxTool",  # Add the Python sandbox tool
     ]
 
     # Configure the Retrieval Augmented Generation (RAG) system
     # This allows the agent to access and use medical knowledge documents
-    rag_config = RAGConfig(
-        model="command-a-03-2025",  # Chat model for generating responses
-        embedding_model="embed-v4.0",  # Embedding model for the RAG system
-        rerank_model="rerank-v3.5",  # Reranking model for the RAG system
-        temperature=0.3,
-        pinecone_index_name="medrax2",  # Name for the Pinecone index
-        chunk_size=1500,
-        chunk_overlap=300,
-        retriever_k=7,
-        local_docs_dir="rag_docs",  # Change this to the path of the documents for RAG
-        huggingface_datasets=["VictorLJZ/medrax2"],  # List of HuggingFace datasets to load
-        dataset_split="train",  # Which split of the datasets to use
-    )
+    # rag_config = RAGConfig(
+    #     model="command-a-03-2025",  # Chat model for generating responses
+    #     embedding_model="embed-v4.0",  # Embedding model for the RAG system
+    #     rerank_model="rerank-v3.5",  # Reranking model for the RAG system
+    #     temperature=0.3,
+    #     pinecone_index_name="medrax2",  # Name for the Pinecone index
+    #     chunk_size=1500,
+    #     chunk_overlap=300,
+    #     retriever_k=7,
+    #     local_docs_dir="rag_docs",  # Change this to the path of the documents for RAG
+    #     huggingface_datasets=["VictorLJZ/medrax2"],  # List of HuggingFace datasets to load
+    #     dataset_split="train",  # Which split of the datasets to use
+    # )
 
     # Prepare any additional model-specific kwargs
     model_kwargs = {}
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         temperature=0.7,
         top_p=0.95,
         model_kwargs=model_kwargs,
-        rag_config=rag_config,
+        # rag_config=rag_config,
         debug=True,
     )
 
