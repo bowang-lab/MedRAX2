@@ -134,10 +134,6 @@ GOOGLE_SEARCH_ENGINE_ID=
 
 ### Getting Started
 ```bash
-# Start the MCP server
-python medrax/tools/vqa/medgemma_mcp.py
-```
-```bash
 # Start the Gradio interface
 python main.py
 ```
@@ -230,7 +226,6 @@ ChestXRayReportGeneratorTool(
 ```python
 MedGemmaVQATool(mcp_server_url="http://localhost:8000")
 ```
-- MedGemma requires you to start the MCP server using medgemma_mcp.py
 
 ### Visual QA Tool
 ```python
