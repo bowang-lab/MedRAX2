@@ -15,14 +15,14 @@ Chest X-rays (CXRs) play an integral role in driving critical decisions in disea
 ## MedRAX
 MedRAX is built on a robust technical foundation:
 - **Core Architecture**: Built on LangChain and LangGraph frameworks
-- **Language Models**: Supports multiple LLM providers including OpenAI (GPT-4o) and Google (Gemini) models
+- **Language Models**: Supports multiple LLM providers including OpenAI (GPT-4o), Google (Gemini), and xAI (Grok) models
 - **Deployment**: Supports both local and cloud-based deployments
 - **Interface**: Production-ready interface built with Gradio
 - **Modular Design**: Tool-agnostic architecture allowing easy integration of new capabilities
 
 ### Integrated Tools
-- **Visual QA**: Utilizes CheXagent, LLaVA-Med, and MedGemma for complex visual understanding and medical reasoning
-- **Segmentation**: Employs MedSAM and PSPNet model trained on ChestX-Det for precise anatomical structure identification
+- **Visual QA**: Utilizes CheXagent, LLaVA-Med, and MedGemme for complex visual understanding and medical reasoning
+- **Segmentation**: Employs MedSAM2 (advanced medical image segmentation) and PSPNet model trained on ChestX-Det for precise anatomical structure identification
 - **Grounding**: Uses Maira-2 for localizing specific findings in medical images
 - **Report Generation**: Implements SwinV2 Transformer trained on CheXpert Plus for detailed medical reporting
 - **Disease Classification**: Leverages DenseNet-121 from TorchXRayVision for detecting 18 pathology classes
@@ -54,7 +54,9 @@ Unzip the Eurorad figures to your local `MedMAX` directory.
 unzip chestagentbench/figures.zip
 ```
 
-To evaluate with GPT-4o, set your OpenAI API key in your `.env` file (see the "Environment Variable Setup" section for details) and run the quickstart script.
+To evaluate with different models, set the appropriate API key in your `.env` file (see the "Environment Variable Setup" section for details) and run the quickstart script.
+
+**Example with GPT-4o:**
 ```
 python quickstart.py \
     --model gpt-4o \
@@ -111,6 +113,9 @@ GOOGLE_API_KEY=
 # OpenRouter
 OPENROUTER_API_KEY=
 OPENROUTER_BASE_URL= # Optional: Defaults to https://openrouter.ai/api/v1
+
+# xAI
+XAI_API_KEY=
 
 # -------------------------
 # Tool-specific API Keys
@@ -236,10 +241,17 @@ XRayVQATool(
 ```
 - CheXagent weights download automatically
 
-### MedSAM Tool
+### MedSAM2 Tool
+```python
+MedSAM2Tool(
+    device=device, 
+    cache_dir=model_dir, 
+    temp_dir=temp_dir
+)
 ```
-Support for MedSAM segmentation will be added in a future update.
-```
+- Advanced medical image segmentation using MedSAM2 (adapted from Meta's SAM2)
+- Supports interactive prompting with box coordinates, point clicks, or automatic segmentation
+- Model weights automatically downloaded from HuggingFace (wanglab/MedSAM2)
 
 ### Python Sandbox Tool
 ```python
@@ -368,7 +380,10 @@ Supported prefix: `openrouter-`
 
 Access many open source and proprietary models via [OpenRouter](https://openrouter.ai/).
 
-**Note:** Tool compatibility may vary with open-source models. For best results with tools, we recommend using OpenAI or Google Gemini models.
+#### xAI Grok Models
+Supported prefix: `grok-`
+
+**Note:** Tool compatibility may vary with open-source models. For best results with tools, we recommend using OpenAI, Google Gemini, or xAI Grok models.
 
 #### Local LLMs
 If you are running a local LLM using frameworks like [Ollama](https://ollama.com/) or [LM Studio](https://lmstudio.ai/), you can configure the `OPENAI_BASE_URL` in your `.env` file to point to your local endpoint (e.g., `http://localhost:11434/v1`).
