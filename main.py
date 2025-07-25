@@ -141,15 +141,15 @@ if __name__ == "__main__":
     selected_tools = [
         "ImageVisualizerTool",  # For displaying images in the UI
         # "DicomProcessorTool",  # For processing DICOM medical image files
-        # "TorchXRayVisionClassifierTool",  # For classifying chest X-ray images using TorchXRayVision
+        "TorchXRayVisionClassifierTool",  # For classifying chest X-ray images using TorchXRayVision
         # "ArcPlusClassifierTool",  # For advanced chest X-ray classification using ArcPlus
-        # "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
-        # "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
-        # "XRayVQATool",  # For visual question answering on X-rays
+        "ChestXRaySegmentationTool",  # For segmenting anatomical regions in chest X-rays
+        "ChestXRayReportGeneratorTool",  # For generating medical reports from X-rays
+        "XRayVQATool",  # For visual question answering on X-rays
         # "LlavaMedTool",  # For multimodal medical image understanding
-        # "XRayPhraseGroundingTool",  # For locating described features in X-rays
+        "XRayPhraseGroundingTool",  # For locating described features in X-rays
         # "ChestXRayGeneratorTool",  # For generating synthetic chest X-rays
-        "MedSAM2Tool",  # For advanced medical image segmentation using MedSAM2
+        # "MedSAM2Tool",  # For advanced medical image segmentation using MedSAM2
         "WebBrowserTool",  # For web browsing and search capabilities
         "MedicalRAGTool",  # For retrieval-augmented generation with medical knowledge
         # "PythonSandboxTool",  # Add the Python sandbox tool
@@ -177,12 +177,12 @@ if __name__ == "__main__":
     agent, tools_dict = initialize_agent(
         prompt_file="medrax/docs/system_prompts.txt",
         tools_to_use=selected_tools,
-        model_dir="model-weights",
+        model_dir="/model-weights",
         temp_dir="temp",  # Change this to the path of the temporary directory
         device="cuda",
-        model="grok-4",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
+        model="gpt-4.1-2025-04-14",  # Change this to the model you want to use, e.g. gpt-4.1-2025-04-14, gemini-2.5-pro
         temperature=0.7,
-        top_p=0.95,
+        top_p=1,
         model_kwargs=model_kwargs,
         rag_config=rag_config,
         debug=True,
