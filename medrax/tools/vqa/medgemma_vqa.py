@@ -1,11 +1,9 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
 from pydantic import BaseModel, Field
-import warnings
 
 import torch
 from PIL import Image
-from transformers import pipeline, BitsAndBytesConfig
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -65,7 +63,7 @@ class MedGemmaVQATool(BaseTool):
     return_direct: bool = True
 
     # Model components
-    pipe: Optional[Any] = None  # transformers pipeline
+    pipeline: Optional[Any] = None  # transformers pipeline
     device: Optional[str] = "cuda"
     cache_dir: Optional[str] = None
     dtype: torch.dtype = torch.bfloat16
@@ -116,7 +114,7 @@ class MedGemmaVQATool(BaseTool):
         model_kwargs["device_map"] = {"": self.device}
 
         try:
-            self.pipe = pipeline("image-text-to-text", **pipeline_kwargs)
+            self.pipeline = pipeline("image-text-to-text", **pipeline_kwargs)
         except Exception as e:
             raise RuntimeError(f"Failed to initialize MedGemma pipeline: {str(e)}")
 
@@ -166,7 +164,7 @@ class MedGemmaVQATool(BaseTool):
             Generated response text
         """
         # Generate using pipeline
-        output = self.pipe(
+        output = self.pipeline(
             text=messages,
             max_new_tokens=max_new_tokens,
             do_sample=False,
