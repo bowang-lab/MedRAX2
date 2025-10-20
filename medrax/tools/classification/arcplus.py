@@ -170,7 +170,7 @@ class ArcPlusClassifierTool(BaseTool):
     ]
     shenzhen_diseases: ClassVar[List[str]] = ["TB"]
 
-    def __init__(self, cache_dir: str = None, device: Optional[str] = "cuda"):
+    def __init__(self, cache_dir: str = None, device: Optional[str] = None):
         """Initialize the ArcPlus Classifier Tool.
 
         Args:
@@ -178,8 +178,8 @@ class ArcPlusClassifierTool(BaseTool):
                 The tool will automatically look for 'Ark6_swinLarge768_ep50.pth.tar' in this directory.
                 If None, model will be initialized with random weights (not recommended for inference).
                 Default: None.
-            device (str, optional): Device to run the model on ('cuda' for GPU, 'cpu' for CPU).
-                GPU is recommended for better performance. Default: "cuda".
+            device (str, optional): Device to run the model on ('cuda', 'mps', or 'cpu').
+                Auto-detects best available device if None. Default: None (auto-detect).
 
         Model Architecture Details:
             - OmniSwinTransformer with 6 classification heads

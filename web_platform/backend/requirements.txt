@@ -82,6 +82,7 @@ duckduckgo-search==5.1.0
 torchxrayvision==1.2.1
 timm==0.9.16
 scikit-image==0.22.0
+albumentations==1.4.0
 
 # ============================================================================
 # Medical Imaging - General Processing

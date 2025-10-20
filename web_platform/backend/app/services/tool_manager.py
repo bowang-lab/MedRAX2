@@ -22,6 +22,7 @@ class ToolStatus:
     """Tool status constants."""
     AVAILABLE = "available"  # Tool can be loaded
     LOADED = "loaded"        # Tool is currently loaded
+    LOADING = "loading"      # Tool is currently loading (async)
     UNLOADED = "unloaded"    # Tool is unloaded
     UNAVAILABLE = "unavailable"  # Tool dependencies not installed
     ERROR = "error"          # Tool had loading error
@@ -327,7 +328,7 @@ class ToolManager:
     
     def load_tool(self, tool_id: str) -> Dict[str, Any]:
         """
-        Load a specific tool.
+        Initiate loading of a tool (returns immediately for async loading).
         
         Returns:
             Status information about the tool
@@ -349,11 +350,38 @@ class ToolManager:
                 "tool": self._tool_to_dict(tool)
             }
         
-        # Try to load the tool
+        if tool.status == ToolStatus.LOADING:
+            return {
+                "success": True,
+                "message": f"Tool '{tool.name}' is already loading",
+                "tool": self._tool_to_dict(tool)
+            }
+        
+        # Mark as loading and return immediately
+        tool.status = ToolStatus.LOADING
+        tool.error_message = None
+        
+        logger.info(f"Tool '{tool.name}' marked as loading (will load in background)")
+        
+        return {
+            "success": True,
+            "message": f"Tool '{tool.name}' is loading (may take several minutes for first-time model download)",
+            "tool": self._tool_to_dict(tool)
+        }
+    
+    def load_tool_in_background(self, tool_id: str):
+        """
+        Actually load the tool in background (can take a long time for large models).
+        This is called as a background task after load_tool() returns.
+        """
+        tool = self.tools.get(tool_id)
+        if not tool or tool.status != ToolStatus.LOADING:
+            return
+        
         try:
-            logger.info(f"Loading tool: {tool.name}")
+            logger.info(f"Background loading tool: {tool.name}")
             
-            # Import and instantiate the tool
+            # Import and instantiate the tool (this may take 10-30 minutes for large models)
             tool_instance = self._load_tool_instance(tool)
             
             if tool_instance:
@@ -362,22 +390,16 @@ class ToolManager:
                 tool.loaded_at = datetime.utcnow()
                 tool.error_message = None
                 
-                logger.info(f"[OK] Tool loaded: {tool.name}")
-                return {
-                    "success": True,
-                    "message": f"Tool '{tool.name}' loaded successfully",
-                    "tool": self._tool_to_dict(tool)
-                }
+                logger.info(f"[OK] Tool loaded in background: {tool.name}")
             else:
                 tool.status = ToolStatus.ERROR
                 tool.error_message = "Failed to instantiate tool"
-                return {"success": False, "error": tool.error_message}
+                logger.error(f"Failed to load tool {tool.name}: Failed to instantiate")
                 
         except Exception as e:
-            logger.error(f"Failed to load tool {tool.name}: {e}")
+            logger.error(f"Failed to load tool {tool.name} in background: {e}")
             tool.status = ToolStatus.ERROR
             tool.error_message = str(e)
-            return {"success": False, "error": str(e)}
     
     def _load_tool_instance(self, tool: ToolInfo):
         """Load the actual tool instance with model caching."""

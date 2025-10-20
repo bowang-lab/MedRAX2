@@ -4,7 +4,7 @@ Tool API Routes
 Endpoints for tool management and execution details.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -35,13 +35,15 @@ def list_tools(current_doctor: Doctor = Depends(get_current_doctor)):
 
 
 @router.post("/{tool_id}/load")
-def load_tool(
+async def load_tool(
     tool_id: str,
+    background_tasks: BackgroundTasks,
     current_doctor: Doctor = Depends(get_current_doctor)
 ):
-    """Load/activate a tool."""
+    """Load/activate a tool (starts loading in background for large models)."""
     logger.info(f"Doctor {current_doctor.id} loading tool: {tool_id}")
     
+    # Initiate loading (returns immediately)
     result = tool_manager.load_tool(tool_id)
     
     if not result["success"]:
@@ -51,7 +53,12 @@ def load_tool(
             detail=result.get("error", "Failed to load tool")
         )
     
+    # Add background task to actually load the tool
     tool_info = tool_manager.get_tool(tool_id)
+    if tool_info.status == "loading":
+        background_tasks.add_task(tool_manager.load_tool_in_background, tool_id)
+        logger.info(f"Added background task to load {tool_id}")
+    
     return {
         "message": result["message"],
         "tool": {
