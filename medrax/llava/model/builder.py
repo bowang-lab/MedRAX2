@@ -1,3 +1,4 @@
+from typing import Optional
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from medrax.llava.model import LlavaMistralForCausalLM
@@ -15,7 +16,7 @@ def load_pretrained_model(
     load_in_8bit=False,
     load_in_4bit=True,
     device="cuda",
-    cache_dir: str = "/model-weights",
+    cache_dir: Optional[str] = None,
     low_cpu_mem_usage=True,
     torch_dtype=torch.bfloat16,
 ):

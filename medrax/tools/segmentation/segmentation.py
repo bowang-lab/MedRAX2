@@ -13,7 +13,7 @@ import skimage.measure
 import skimage.transform
 import traceback
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -72,10 +72,11 @@ class ChestXRaySegmentationTool(BaseTool):
         "Let the user know the area is not accurate unless input has been DICOM."
     )
     args_schema: Type[BaseModel] = ChestXRaySegmentationInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: Any = None
     device: Optional[str] = "cuda"
-    transform: Any = None
+    image_transform: Any = None
     pixel_spacing_mm: float = 0.2
     temp_dir: Path = Path("temp")
     organ_map: Dict[str, int] = None
@@ -84,11 +85,19 @@ class ChestXRaySegmentationTool(BaseTool):
         """Initialize the segmentation tool with model and temporary directory."""
         super().__init__()
         self.model = xrv.baseline_models.chestx_det.PSPNet()
-        self.device = torch.device(device) if device else "cuda"
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.model = self.model.to(self.device)
         self.model.eval()
 
-        self.transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
+        self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
 
         self.temp_dir = temp_dir if isinstance(temp_dir, Path) else Path(temp_dir)
         self.temp_dir.mkdir(exist_ok=True)
@@ -233,7 +242,7 @@ class ChestXRaySegmentationTool(BaseTool):
             # Use robust normalization that handles both 8-bit and 16-bit images
             img = preprocess_medical_image(original_img)
             img = img[None, ...]
-            img = self.transform(img)
+            img = self.image_transform(img)
             img = torch.from_numpy(img)
             img = img.to(self.device)
 

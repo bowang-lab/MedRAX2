@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import sys
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -64,6 +64,7 @@ class MedSAM2Tool(BaseTool):
         "Example: {'image_path': '/path/to/image.png', 'prompt_type': 'box', 'prompt_coords': [100,100,200,200]}"
     )
     args_schema: Type[BaseModel] = MedSAM2Input
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     device: Optional[str] = "cuda"
     cache_dir: Path = None
@@ -72,8 +73,8 @@ class MedSAM2Tool(BaseTool):
 
     def __init__(
         self,
-        device: Optional[str] = "cuda",
-        cache_dir: str = "/model-weights",
+        device: Optional[str] = None,
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
         model_path: str = "wanglab/MedSAM2",
         model_file: str = "MedSAM2_latest.pt",

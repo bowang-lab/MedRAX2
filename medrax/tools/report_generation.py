@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 import torch
 
@@ -47,6 +47,7 @@ class ChestXRayReportGeneratorTool(BaseTool):
     )
     device: Optional[str] = "cuda"
     args_schema: Type[BaseModel] = ChestXRayInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     findings_model: VisionEncoderDecoderModel = None
     impression_model: VisionEncoderDecoderModel = None
     findings_tokenizer: BertTokenizer = None
@@ -55,10 +56,18 @@ class ChestXRayReportGeneratorTool(BaseTool):
     impression_processor: ViTImageProcessor = None
     generation_args: Dict[str, Any] = None
 
-    def __init__(self, cache_dir: str = "/model-weights", device: Optional[str] = "cuda"):
+    def __init__(self, cache_dir: Optional[str] = None, device: Optional[str] = None):
         """Initialize the ChestXRayReportGeneratorTool with both findings and impression models."""
         super().__init__()
-        self.device = torch.device(device) if device else "cuda"
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
 
         # Initialize findings model
         self.findings_model = VisionEncoderDecoderModel.from_pretrained(

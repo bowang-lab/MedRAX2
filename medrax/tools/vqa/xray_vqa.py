@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 import torch
 import transformers
@@ -32,6 +32,7 @@ class CheXagentXRayVQATool(BaseTool):
         "and a natural language prompt describing the analysis needed."
     )
     args_schema: Type[BaseModel] = XRayVQAToolInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     return_direct: bool = True
     cache_dir: Optional[str] = None
     device: Optional[str] = None

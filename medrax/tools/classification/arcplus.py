@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from timm.models.swin_transformer import SwinTransformer
 
 from langchain_core.callbacks import (
@@ -103,6 +103,7 @@ class ArcPlusClassifierTool(BaseTool):
         "RSNA, VinDr, and Shenzhen datasets. Higher probabilities indicate higher likelihood of condition presence."
     )
     args_schema: Type[BaseModel] = ArcPlusInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     model: OmniSwinTransformer = None
     device: Optional[str] = "cuda"
     normalize: transforms.Normalize = None
@@ -226,7 +227,17 @@ class ArcPlusClassifierTool(BaseTool):
             self._load_checkpoint(model_path)
 
         self.model.eval()
-        self.device = torch.device(device) if device else "cuda"
+        
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+            
         self.model = self.model.to(self.device)
 
         # ImageNet normalization parameters for optimal performance

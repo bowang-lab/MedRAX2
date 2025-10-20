@@ -7,7 +7,7 @@ from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class MedGemmaVQAInput(BaseModel):
     """Input schema for the MedGemma VQA Tool. Only supports JPG or PNG images."""
@@ -55,6 +55,7 @@ class MedGemmaAPIClientTool(BaseTool):
         "Model handles images up to 896x896 resolution and supports context up to 128K tokens."
     )
     args_schema: Type[BaseModel] = MedGemmaVQAInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     return_direct: bool = True
 
     # API configuration
@@ -62,11 +63,11 @@ class MedGemmaAPIClientTool(BaseTool):
     cache_dir: Optional[str] = None # Not used by the client directly, but accepted to keep a uniform constructor
     device: Optional[str] = None
 
-    def __init__(self, api_url: str, cache_dir: Optional[str] = None, device: Optional[str] = None, timeout_seconds: Optional[float] = None, **kwargs: Any):
+    def __init__(self, api_url: str = "https://api.google.dev/medgemma/v1", cache_dir: Optional[str] = None, device: Optional[str] = None, timeout_seconds: Optional[float] = None, **kwargs: Any):
         """Initialize the MedGemmaAPIClientTool.
 
         Args:
-            api_url: The URL of the running MedGemma FastAPI service
+            api_url: The URL of the running MedGemma FastAPI service (default: Google's API)
             cache_dir: Optional local cache directory for model weights (accepted for interface consistency)
             device: Optional device spec (accepted for interface consistency)
             timeout_seconds: Optional request timeout override (seconds)

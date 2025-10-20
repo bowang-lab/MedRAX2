@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 import pydicom
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 
@@ -30,6 +30,7 @@ class DicomProcessorTool(BaseTool):
         "Output: Path to processed image file and DICOM metadata."
     )
     args_schema: Type[BaseModel] = DicomProcessorInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     temp_dir: Path = None
 
     def __init__(self, temp_dir: Optional[str] = None):

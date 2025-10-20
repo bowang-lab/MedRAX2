@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 import torch
 
@@ -48,6 +48,7 @@ class LlavaMedTool(BaseTool):
         "Input should be a question and optionally a path to a medical image file."
     )
     args_schema: Type[BaseModel] = LlavaMedInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     tokenizer: Any = None
     model: Any = None
     image_processor: Any = None
@@ -56,10 +57,10 @@ class LlavaMedTool(BaseTool):
     def __init__(
         self,
         model_path: str = "microsoft/llava-med-v1.5-mistral-7b",
-        cache_dir: str = "/model-weights",
+        cache_dir: Optional[str] = None,
         low_cpu_mem_usage: bool = True,
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: str = "cuda",
+        device: Optional[str] = None,
         load_in_4bit: bool = False,
         load_in_8bit: bool = False,
         **kwargs,

@@ -3,7 +3,7 @@ from pathlib import Path
 import uuid
 import tempfile
 import torch
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from diffusers import StableDiffusionPipeline
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
@@ -35,6 +35,7 @@ class ChestXRayGeneratorTool(BaseTool):
         "Output: Path to the generated X-ray image and generation metadata."
     )
     args_schema: Type[BaseModel] = ChestXRayGeneratorInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: StableDiffusionPipeline = None
     device: torch.device = None
@@ -42,15 +43,23 @@ class ChestXRayGeneratorTool(BaseTool):
 
     def __init__(
         self,
-        model_path: str = "/model-weights/roentgen",
-        cache_dir: str = "/model-weights",
+        model_path: str = "StanfordAIMI/RoentGen",
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
-        device: Optional[str] = "cuda",
+        device: Optional[str] = None,
     ):
         """Initialize the chest X-ray generator tool."""
         super().__init__()
 
-        self.device = torch.device(device) if device else "cuda"
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)
         self.model = self.model.to(torch.float32).to(self.device)
 

@@ -1,0 +1,278 @@
+/**
+ * ChatInterface Component
+ * 
+ * Main chat area with:
+ * - Chat header (patient/chat name, actions)
+ * - Message list (scrollable)
+ * - Suggested questions (floating above input)
+ * - Chat input
+ */
+
+'use client';
+
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { MoreHorizontal, FileImage } from 'lucide-react';
+import { Menu } from '@headlessui/react';
+import { useAppStore } from '../../lib/store/appStore';
+import { getMessages, streamChatResponse } from '../../lib/api/messages';
+import { getChat } from '../../lib/api/chats';
+import type { MessageWithDetails } from '../../lib/types/message';
+import { Message } from './Message';
+import { ChatInput } from './ChatInput';
+import { SuggestedQuestions } from './SuggestedQuestions';
+import { Spinner } from '../ui/Spinner';
+import { classNames } from '../../lib/utils';
+import type { Chat } from '../../lib/types/chat';
+import type { SuggestedQuestion } from '../../lib/types/question';
+
+export function ChatInterface() {
+    const {
+        selectedChatId,
+        messages,
+        setMessages,
+        addMessage,
+        openToolPanel,
+        isSendingMessage,
+        setSendingMessage,
+    } = useAppStore();
+
+    const [currentChat, setCurrentChat] = useState<Chat | null>(null);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Suggested questions (for now, hardcoded defaults)
+    const [suggestedQuestions] = useState<SuggestedQuestion[]>([
+        { id: '1', doctorId: '', question: 'Is there pneumonia?', isDefault: true, displayOrder: 1, createdAt: '' },
+        { id: '2', doctorId: '', question: 'Measure heart size', isDefault: true, displayOrder: 2, createdAt: '' },
+        { id: '3', doctorId: '', question: 'What abnormalities do you see?', isDefault: true, displayOrder: 3, createdAt: '' },
+        { id: '4', doctorId: '', question: 'Generate a report', isDefault: true, displayOrder: 4, createdAt: '' },
+    ]);
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatMessages = useMemo(() => {
+        return selectedChatId ? messages[selectedChatId] || [] : [];
+    }, [selectedChatId, messages]);
+
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+    // Load chat and messages when chat is selected
+    const loadChatData = async (chatId: string) => {
+        setIsLoadingMessages(true);
+        setError(null);
+        try {
+            const [chat, msgs] = await Promise.all([
+                getChat(chatId),
+                getMessages(chatId),
+            ]);
+            setCurrentChat(chat);
+            setMessages(chatId, msgs);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load chat');
+        } finally {
+            setIsLoadingMessages(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedChatId) {
+            loadChatData(selectedChatId);
+        } else {
+            setCurrentChat(null);
+        }
+        // Only re-run when chatId changes, not when data changes (prevents infinite loop)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedChatId]);
+
+    const handleSendMessage = async (content: string, scanIds?: string[]) => {
+        if (!selectedChatId) return;
+
+        setSendingMessage(true);
+        setError(null);
+
+        // Add user message optimistically
+        const tempUserMessage: MessageWithDetails = {
+            id: `temp-${Date.now()}`,
+            chatId: selectedChatId,
+            role: 'user',
+            content,
+            createdAt: new Date().toISOString(),
+            attachedScans: [],
+            toolExecutions: [],
+        };
+        addMessage(selectedChatId, tempUserMessage);
+
+        // Stream response
+        streamChatResponse(
+            selectedChatId,
+            content,
+            (event) => {
+                // Handle streaming events
+                if (event.type === 'message_start') {
+                    // Message started
+                    console.log('Message started:', event.data.messageId);
+                } else if (event.type === 'tool_start') {
+                    // Tool execution started
+                    console.log('Tool started:', event.data);
+                } else if (event.type === 'tool_done') {
+                    // Tool execution completed
+                    console.log('Tool completed:', event.data);
+                }
+            },
+            () => {
+                // On complete
+                setSendingMessage(false);
+                // Reload messages to get final state
+                loadChatData(selectedChatId);
+            },
+            (err) => {
+                // On error
+                setError(err.message || 'Failed to send message');
+                setSendingMessage(false);
+            },
+            scanIds
+        );
+    };
+
+    const handleQuestionClick = (question: string) => {
+        if (!isSendingMessage) {
+            handleSendMessage(question);
+        }
+    };
+
+    const handleShowToolDetails = (executionId: string) => {
+        openToolPanel(executionId);
+    };
+
+    // No chat selected
+    if (!selectedChatId) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-8 text-center">
+                <div className="max-w-md">
+                    <h2 className="text-2xl font-semibold text-white mb-3">
+                        Welcome to MedRAX
+                    </h2>
+                    <p className="text-zinc-400 mb-6">
+                        Select a patient and chat from the sidebar to begin medical image analysis.
+                    </p>
+                    <div className="flex items-center justify-center space-x-6 text-sm text-zinc-500">
+                        <div className="flex items-center space-x-2">
+                            <FileImage className="h-5 w-5" />
+                            <span>Upload Scans</span>
+                        </div>
+                        <div>
+                            <span>Ask Questions</span>
+                        </div>
+                        <div>
+                            <span>Get AI Analysis</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex-1 flex flex-col bg-zinc-950">
+            {/* Chat Header */}
+            {currentChat && (
+                <div className="h-16 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-6 flex-shrink-0">
+                    <div>
+                        <h2 className="text-lg font-semibold text-white">{currentChat.name}</h2>
+                        <p className="text-xs text-zinc-500">
+                            {currentChat.messageCount} messages · {currentChat.scanCount} scans
+                        </p>
+                    </div>
+
+                    <Menu as="div" className="relative">
+                        <Menu.Button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md">
+                            <MoreHorizontal className="h-5 w-5" />
+                        </Menu.Button>
+                        <Menu.Items className="absolute right-0 mt-1 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-10">
+                            <div className="py-1">
+                                <Menu.Item>
+                                    {({ active }) => (
+                                        <button
+                                            className={classNames(
+                                                'w-full text-left px-4 py-2 text-sm',
+                                                active ? 'bg-zinc-800 text-white' : 'text-zinc-300'
+                                            )}
+                                        >
+                                            Rename Chat
+                                        </button>
+                                    )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                    {({ active }) => (
+                                        <button
+                                            className={classNames(
+                                                'w-full text-left px-4 py-2 text-sm',
+                                                active ? 'bg-zinc-800 text-white' : 'text-zinc-300'
+                                            )}
+                                        >
+                                            View All Scans
+                                        </button>
+                                    )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                    {({ active }) => (
+                                        <button
+                                            className={classNames(
+                                                'w-full text-left px-4 py-2 text-sm',
+                                                active ? 'bg-zinc-800 text-red-400' : 'text-red-500'
+                                            )}
+                                        >
+                                            Delete Chat
+                                        </button>
+                                    )}
+                                </Menu.Item>
+                            </div>
+                        </Menu.Items>
+                    </Menu>
+                </div>
+            )}
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {isLoadingMessages ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Spinner size="lg" />
+                    </div>
+                ) : error ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-red-400 text-sm">{error}</div>
+                    </div>
+                ) : chatMessages.length > 0 ? (
+                    <>
+                        {chatMessages.map((message) => (
+                            <Message
+                                key={message.id}
+                                message={message}
+                                onShowToolDetails={handleShowToolDetails}
+                            />
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </>
+                ) : (
+                    <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
+                        No messages yet. Start the conversation below.
+                    </div>
+                )}
+            </div>
+
+            {/* Suggested Questions */}
+            <SuggestedQuestions
+                questions={suggestedQuestions}
+                onSelect={handleQuestionClick}
+            />
+
+            {/* Input Area */}
+            <ChatInput
+                onSend={handleSendMessage}
+                disabled={isSendingMessage || isLoadingMessages}
+            />
+        </div>
+    );
+}

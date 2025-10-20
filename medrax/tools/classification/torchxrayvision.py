@@ -1,9 +1,15 @@
 from typing import Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 import skimage.io
 import torch
 import torchvision
+
+# Fix PyTorch 2.6+ weights_only issue BEFORE importing torchxrayvision
+# The torchxrayvision library uses torch.load internally
+_original_torch_load = torch.load
+torch.load = lambda *args, **kwargs: _original_torch_load(*args, **{**kwargs, 'weights_only': kwargs.get('weights_only', False)})
+
 import torchxrayvision as xrv
 
 from langchain_core.callbacks import (
@@ -46,17 +52,28 @@ class TorchXRayVisionClassifierTool(BaseTool):
         "Higher values indicate a higher likelihood of the condition being present."
     )
     args_schema: Type[BaseModel] = TorchXRayVisionInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     model: xrv.models.DenseNet = None
     device: Optional[str] = "cuda"
-    transform: torchvision.transforms.Compose = None
+    image_transform: torchvision.transforms.Compose = None
 
-    def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = "cuda"):
+    def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = None):
         super().__init__()
         self.model = xrv.models.DenseNet(weights=model_name)
         self.model.eval()
-        self.device = torch.device(device) if device else "cuda"
+        
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+            
         self.model = self.model.to(self.device)
-        self.transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
+        self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
 
     def _process_image(self, image_path: str) -> torch.Tensor:
         """
@@ -84,7 +101,7 @@ class TorchXRayVisionClassifierTool(BaseTool):
             img = img[:, :, 0]
 
         img = img[None, :, :]
-        img = self.transform(img)
+        img = self.image_transform(img)
         img = torch.from_numpy(img).unsqueeze(0)
 
         img = img.to(self.device)

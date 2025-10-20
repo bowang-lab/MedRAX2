@@ -5,7 +5,7 @@ import tempfile
 import matplotlib.pyplot as plt
 import torch
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from transformers import AutoModelForCausalLM, AutoProcessor, BitsAndBytesConfig
 from langchain_core.callbacks import (
@@ -47,6 +47,7 @@ class XRayPhraseGroundingTool(BaseTool):
         "Example input: {'image_path': '/path/to/xray.png', 'phrase': 'Pleural effusion', 'max_new_tokens': 300}"
     )
     args_schema: Type[BaseModel] = XRayPhraseGroundingInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: Any = None
     processor: Any = None
@@ -64,7 +65,15 @@ class XRayPhraseGroundingTool(BaseTool):
     ):
         """Initialize the XRay Phrase Grounding Tool."""
         super().__init__()
-        self.device = torch.device(device) if device else "cuda"
+        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
+        if device:
+            self.device = torch.device(device)
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
 
         # Setup quantization config
         if load_in_4bit:

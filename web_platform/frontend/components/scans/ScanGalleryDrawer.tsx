@@ -1,0 +1,210 @@
+/**
+ * ScanGalleryDrawer Component
+ * 
+ * Drawer/modal showing all scans for a patient across all chats.
+ * Allows viewing and managing scans.
+ */
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { X, Trash2, Download, ZoomIn } from 'lucide-react';
+import { Drawer } from '../ui/Drawer';
+import { Spinner } from '../ui/Spinner';
+import { getPatientScans, deleteScan } from '../../lib/api/scans';
+import { formatDateTime, classNames } from '../../lib/utils';
+import type { Scan } from '../../lib/types/scan';
+
+/**
+ * ScanGalleryDrawer Component Props
+ * @property isOpen - Controls drawer visibility (required)
+ * @property patientId - Patient ID to load scans for (null = no patient selected)
+ * @property onClose - Callback when drawer should close (required)
+ */
+interface ScanGalleryDrawerProps {
+    /** Controls drawer visibility */
+    isOpen: boolean;
+    /** Patient ID to load scans for (null = no patient selected) */
+    patientId: string | null;
+    /** Callback when drawer should close */
+    onClose: () => void;
+}
+
+export function ScanGalleryDrawer({
+    isOpen,
+    patientId,
+    onClose,
+}: ScanGalleryDrawerProps) {
+    const [scans, setScans] = useState<Scan[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadScans = async () => {
+        if (!patientId) return;
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const fetchedScans = await getPatientScans(patientId);
+            setScans(fetchedScans);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load scans');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && patientId) {
+            loadScans();
+        }
+        // Only fetch when drawer opens or patient changes (prevents infinite loop)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, patientId]);
+
+    const handleDeleteScan = async (scanId: string) => {
+        if (!confirm('Are you sure you want to delete this scan?')) return;
+
+        try {
+            await deleteScan(scanId);
+            setScans((prev) => prev.filter((s) => s.id !== scanId));
+            if (selectedScan?.id === scanId) {
+                setSelectedScan(null);
+            }
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to delete scan');
+        }
+    };
+
+    return (
+        <Drawer isOpen={isOpen} onClose={onClose} title="Patient Scans" size="lg">
+            {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                    <Spinner size="lg" />
+                </div>
+            ) : error ? (
+                <div className="text-red-400 text-sm text-center py-12">{error}</div>
+            ) : scans.length > 0 ? (
+                <div className="space-y-4">
+                    {/* Scan Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {scans.map((scan) => (
+                            <div
+                                key={scan.id}
+                                className={classNames(
+                                    'relative group rounded-lg overflow-hidden border-2 transition-colors cursor-pointer',
+                                    selectedScan?.id === scan.id
+                                        ? 'border-blue-500'
+                                        : 'border-zinc-800 hover:border-zinc-700'
+                                )}
+                                onClick={() => setSelectedScan(scan)}
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
+                                <img
+                                    src={scan.displayPath}
+                                    alt="Scan"
+                                    className="w-full h-48 object-cover"
+                                />
+
+                                {/* Overlay on hover */}
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedScan(scan);
+                                        }}
+                                        className="p-2 bg-zinc-800 rounded-md hover:bg-zinc-700"
+                                        title="View"
+                                    >
+                                        <ZoomIn className="h-5 w-5 text-white" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteScan(scan.id);
+                                        }}
+                                        className="p-2 bg-red-600 rounded-md hover:bg-red-700"
+                                        title="Delete"
+                                    >
+                                        <Trash2 className="h-5 w-5 text-white" />
+                                    </button>
+                                </div>
+
+                                {/* Scan Info */}
+                                <div className="p-2 bg-zinc-900">
+                                    <p className="text-xs text-zinc-400 truncate">
+                                        {formatDateTime(scan.uploadedAt)}
+                                    </p>
+                                    <p className="text-xs text-zinc-500">{scan.fileType.toUpperCase()}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Selected Scan Detail */}
+                    {selectedScan && (
+                        <div className="mt-6 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-white">Scan Details</h3>
+                                <button
+                                    onClick={() => setSelectedScan(null)}
+                                    className="text-zinc-400 hover:text-white"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
+                            <img
+                                src={selectedScan.displayPath}
+                                alt="Selected Scan"
+                                className="w-full rounded-lg mb-3"
+                            />
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-zinc-400">Uploaded:</span>
+                                    <span className="text-zinc-300">{formatDateTime(selectedScan.uploadedAt)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-zinc-400">Format:</span>
+                                    <span className="text-zinc-300">{selectedScan.fileType.toUpperCase()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-zinc-400">Chat:</span>
+                                    <span className="text-zinc-300">
+                                        {selectedScan.messageId ? 'Attached to message' : 'General upload'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex items-center space-x-2">
+                                <a
+                                    href={selectedScan.displayPath}
+                                    download
+                                    className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium text-center transition-colors"
+                                >
+                                    <Download className="inline h-4 w-4 mr-2" />
+                                    Download
+                                </a>
+                                <button
+                                    onClick={() => handleDeleteScan(selectedScan.id)}
+                                    className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition-colors"
+                                >
+                                    <Trash2 className="inline h-4 w-4 mr-2" />
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <p className="text-zinc-500 text-sm">No scans uploaded yet</p>
+                </div>
+            )}
+        </Drawer>
+    );
+}
+
