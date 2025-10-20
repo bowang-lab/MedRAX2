@@ -69,6 +69,23 @@ export function ToolsSettings() {
         setExpandedCategories(new Set(Object.keys(CATEGORY_DISPLAY_NAMES)));
     }, []);
 
+    // Auto-poll for tool status updates when tools are loading
+    useEffect(() => {
+        const hasLoadingTools = tools.some(tool => tool.status === 'loading');
+
+        if (!hasLoadingTools) {
+            return; // No polling needed
+        }
+
+        // Poll every 3 seconds while tools are loading
+        const pollInterval = setInterval(() => {
+            loadTools();
+        }, 3000);
+
+        // Cleanup interval on unmount or when no tools are loading
+        return () => clearInterval(pollInterval);
+    }, [tools]);
+
     const loadTools = async () => {
         setIsLoading(true);
         setError(null);
@@ -341,7 +358,8 @@ export function ToolsSettings() {
                                                 <div className="flex items-center gap-2">
                                                     {tool.status === 'loading' ? (
                                                         <Button variant="secondary" size="sm" disabled>
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                            Loading...
                                                         </Button>
                                                     ) : tool.status === 'loaded' ? (
                                                         <Button

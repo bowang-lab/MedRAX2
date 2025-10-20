@@ -67,6 +67,9 @@ langchain-experimental==0.3.4
 langchain-cohere==0.4.6
 langchain-pinecone==0.2.12
 langchain-openai==0.3.35
+langchain-google-genai==2.0.6
+langgraph==0.2.62
+langgraph-checkpoint==2.0.14
 langsmith==0.4.37
 
 # ============================================================================

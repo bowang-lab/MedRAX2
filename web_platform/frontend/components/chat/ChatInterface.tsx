@@ -55,8 +55,13 @@ export function ChatInterface() {
 
     // Scroll to bottom when messages change
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [chatMessages]);
+        if (messagesEndRef.current) {
+            // Use requestAnimationFrame to ensure DOM is updated
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            });
+        }
+    }, [chatMessages, chatMessages.length]);
 
     // Load chat and messages when chat is selected
     const loadChatData = async (chatId: string) => {

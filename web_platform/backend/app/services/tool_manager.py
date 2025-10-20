@@ -494,7 +494,7 @@ class ToolManager:
     
     def create_agent(self, model=None, system_prompt: str = ""):
         """
-        Create MedRAX agent with loaded tools.
+        Create MedRAX agent with loaded tools and memory persistence.
         
         Args:
             model: Language model to use (if None, will use default)
@@ -509,23 +509,33 @@ class ToolManager:
         
         try:
             from medrax.agent import Agent
-            from langchain_openai import ChatOpenAI
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langgraph.checkpoint.memory import MemorySaver
+            from ..config import settings
             
-            # Use provided model or create default
+            # Use provided model or create default (Gemini 2.5 Pro)
             if model is None:
-                model = ChatOpenAI(model="gpt-4o", temperature=0)
+                model = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-pro",
+                    api_key=settings.GOOGLE_API_KEY,
+                    temperature=0
+                )
             
-            # Get loaded tools
-            loaded_tools = self.get_loaded_tools()
+            # Get loaded tool instances directly
+            tool_instances = self.get_loaded_tools()
             
-            # Create agent
+            # Create in-memory checkpointer for conversation persistence
+            checkpointer = MemorySaver()
+            
+            # Create agent with memory
             self.agent_instance = Agent(
                 model=model,
-                tools=loaded_tools,
+                tools=tool_instances,
+                checkpointer=checkpointer,
                 system_prompt=system_prompt or self._get_default_system_prompt()
             )
             
-            logger.info(f"[OK] Agent created with {len(loaded_tools)} tools")
+            logger.info(f"[OK] Agent created with {len(tool_instances)} tools and memory")
             return self.agent_instance
             
         except Exception as e:

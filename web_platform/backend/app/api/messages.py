@@ -18,6 +18,9 @@ from ..schemas.scan import ScanResponse
 from ..schemas.tool import ToolExecutionResponse
 from ..dependencies import get_current_doctor
 from ..utils.sse import create_sse_event
+from ..utils.logging_config import logger
+from ..services.tool_manager import tool_manager
+from ..services.chat_processor import ChatProcessor
 
 router = APIRouter()
 
@@ -129,7 +132,7 @@ async def stream_chat_response(
         )
     
     async def event_generator():
-        """Generate SSE events for the streaming response."""
+        """Generate SSE events for the streaming response using MedRAX Agent."""
         try:
             # 1. Create user message
             user_message = Message(
@@ -163,28 +166,50 @@ async def stream_chat_response(
             db.commit()
             db.refresh(assistant_message)
             
-            # 4. Simulate tool execution (replace with actual MedRAX integration)
-            # For now, just send a simple response
-            response_text = f"Received your message: '{stream_data.content}'. "
-            response_text += "MedRAX analysis would happen here with real tool execution."
+            # 4. Create MedRAX agent if tools are loaded
+            agent = tool_manager.create_agent()
             
-            # Simulate streaming content chunks
-            for i, char in enumerate(response_text):
-                assistant_message.content += char
-                if i % 10 == 0:  # Send chunk every 10 characters
-                    yield create_sse_event("content_chunk", content=char * 10 if i + 10 < len(response_text) else response_text[i:])
-                    await asyncio.sleep(0.05)  # Simulate processing delay
+            if agent is None:
+                # No tools loaded - send error
+                error_msg = "No MedRAX tools are currently loaded. Please load at least one tool in Settings → Tools Management."
+                yield create_sse_event("error", error=error_msg)
+                assistant_message.content = error_msg
+                db.commit()
+                yield create_sse_event("message_done", messageId=assistant_message.id)
+                return
             
-            # Update final content
-            assistant_message.content = response_text
-            chat.updated_at = datetime.utcnow()
-            chat.patient.last_activity_at = datetime.utcnow()
+            # 5. Create chat processor and process message
+            processor = ChatProcessor(agent, db, chat_id)
+            
+            async for event in processor.process_message(
+                user_message,
+                scan_ids=stream_data.scan_ids
+            ):
+                # Forward events from processor
+                if event["type"] == "content_chunk":
+                    assistant_message.content += event["data"].get("content", "")
+                    yield create_sse_event("content_chunk", content=event["data"].get("content", ""))
+                elif event["type"] == "tool_start":
+                    yield create_sse_event("tool_start", **event["data"])
+                elif event["type"] == "tool_result":
+                    yield create_sse_event("tool_result", **event["data"])
+                elif event["type"] == "tool_error":
+                    yield create_sse_event("tool_error", **event["data"])
+            
+            # Update final content and timestamps
+            # Get fresh chat reference from DB to ensure session binding
+            fresh_chat = db.query(Chat).filter(Chat.id == chat.id).first()
+            if fresh_chat:
+                fresh_chat.updated_at = datetime.utcnow()
+                if fresh_chat.patient:
+                    fresh_chat.patient.last_activity_at = datetime.utcnow()
             db.commit()
             
-            # 5. Send message_done event
+            # 6. Send message_done event
             yield create_sse_event("message_done", messageId=assistant_message.id)
             
         except Exception as e:
+            logger.error(f"Error in stream_chat_response: {e}")
             # Send error event
             yield create_sse_event("error", error=str(e))
             db.rollback()

@@ -7,8 +7,18 @@
 /**
  * Format ISO date string to readable format
  */
-export function formatDate(isoString: string): string {
+export function formatDate(isoString: string | undefined | null): string {
+    if (!isoString) {
+        return 'Today';
+    }
+
     const date = new Date(isoString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return 'Today';
+    }
+
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         month: 'short',
@@ -19,8 +29,18 @@ export function formatDate(isoString: string): string {
 /**
  * Format ISO date string to time only
  */
-export function formatTime(isoString: string): string {
+export function formatTime(isoString: string | undefined | null): string {
+    if (!isoString) {
+        return 'Now';
+    }
+
     const date = new Date(isoString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return 'Now';
+    }
+
     return new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -31,8 +51,18 @@ export function formatTime(isoString: string): string {
 /**
  * Format ISO date string to date and time
  */
-export function formatDateTime(isoString: string): string {
+export function formatDateTime(isoString: string | undefined | null): string {
+    if (!isoString) {
+        return 'Just now';
+    }
+
     const date = new Date(isoString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return 'Just now';
+    }
+
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         month: 'short',

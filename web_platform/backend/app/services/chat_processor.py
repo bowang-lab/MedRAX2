@@ -65,10 +65,7 @@ class ChatProcessor:
         message.request_id = self.request_id
         self.db.flush()
         
-        logger.info("processing_message",
-                   message_id=message.id[:8],
-                   request_id=self.request_id[:8],
-                   chat_id=self.chat_id[:8])
+        logger.info(f"processing_message message_id={message.id[:8]} request_id={self.request_id[:8]} chat_id={self.chat_id[:8]}")
         
         # Get attached scans
         scans = []
@@ -102,7 +99,7 @@ class ChatProcessor:
                         }]
                     })
                 except Exception as e:
-                    logger.error("image_encoding_error", scan_id=scan.id, error=str(e))
+                    logger.error(f"image_encoding_error scan_id={scan.id} error={str(e)}")
         
         # Add user message
         agent_messages.append({
@@ -126,18 +123,18 @@ class ChatProcessor:
                 config
             ):
                 if isinstance(event, dict):
-                    # Handle process events (AI response)
-                    if "process" in event:
-                        content = event["process"]["messages"][-1].content
+                    # Handle agent events (AI response)
+                    if "agent" in event:
+                        content = event["agent"]["messages"][-1].content
                         if content:
                             yield {
-                                "type": "content",
-                                "content": content
+                                "type": "content_chunk",
+                                "data": {"content": content}
                             }
                     
-                    # Handle execute events (tool execution)
-                    elif "execute" in event:
-                        for tool_message in event["execute"]["messages"]:
+                    # Handle tools events (tool execution)
+                    elif "tools" in event:
+                        for tool_message in event["tools"]["messages"]:
                             async for tool_event in self._process_tool_execution(
                                 tool_message,
                                 message,
@@ -152,10 +149,7 @@ class ChatProcessor:
             }
             
         except Exception as e:
-            logger.error("message_processing_error",
-                        message_id=message.id[:8],
-                        error=str(e),
-                        exc_info=True)
+            logger.error(f"message_processing_error message_id={message.id[:8]} error={str(e)}", exc_info=True)
             yield {
                 "type": "error",
                 "message": f"❌ Error: {str(e)}"
@@ -238,10 +232,7 @@ class ChatProcessor:
                 "execution_id": execution.id
             }
             
-            logger.info("tool_execution_tracked",
-                       execution_id=execution.id[:8],
-                       tool_name=tool_name,
-                       request_id=self.request_id[:8])
+            logger.info(f"tool_execution_tracked execution_id={execution.id[:8]} tool_name={tool_name} request_id={self.request_id[:8]}")
             
         except Exception as e:
             # Mark as failed
@@ -264,10 +255,7 @@ class ChatProcessor:
                 "error": str(e)
             }
             
-            logger.error("tool_execution_error",
-                        execution_id=execution.id[:8],
-                        tool_name=tool_name,
-                        error=str(e))
+            logger.error(f"tool_execution_error execution_id={execution.id[:8]} tool_name={tool_name} error={str(e)}")
     
     def get_tool_history(
         self,
