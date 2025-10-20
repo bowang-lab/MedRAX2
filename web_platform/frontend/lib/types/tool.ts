@@ -12,12 +12,14 @@ export type ToolLogLevel = 'info' | 'warning' | 'error';
 export interface ToolExecution {
     id: string;
     messageId: string;
+    requestId: string | null;
     toolName: string;
     toolDisplayName: string;
     status: ToolStatus;
     startedAt: string;
     completedAt: string | null;
     executionTimeMs: number | null;
+    imagePaths: string[] | null;
 }
 
 export interface ToolExecutionWithDetails extends ToolExecution {

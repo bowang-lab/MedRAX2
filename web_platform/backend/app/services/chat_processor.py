@@ -188,28 +188,40 @@ class ChatProcessor:
         # Yield tool start event
         yield {
             "type": "tool_start",
-            "tool_name": tool_name,
-            "execution_id": execution.id
+            "data": {
+                "tool_name": tool_name,
+                "execution_id": execution.id
+            }
         }
         
         try:
-            # Parse tool result
+            # Parse tool result - tools return (output_dict, metadata_dict)
             result_data = None
             metadata = {}
             
             if tool_message.content:
-                # Try to parse the result
+                # All MedRAX tools return Tuple[Dict, Dict]
+                # LangChain converts this to string, we need to parse it back
                 try:
-                    import ast
-                    parsed = ast.literal_eval(tool_message.content)
-                    if isinstance(parsed, tuple) and len(parsed) >= 2:
-                        result_data, metadata = parsed[0], parsed[1]
-                    elif isinstance(parsed, dict):
+                    import json
+                    # Try JSON first (cleaner)
+                    parsed = json.loads(tool_message.content)
+                    if isinstance(parsed, dict):
                         result_data = parsed
-                    else:
-                        result_data = parsed
-                except:
-                    result_data = tool_message.content
+                except (json.JSONDecodeError, TypeError):
+                    # Fallback to ast.literal_eval for tuples
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(str(tool_message.content))
+                        if isinstance(parsed, tuple) and len(parsed) >= 2:
+                            result_data, metadata = parsed[0], parsed[1]
+                        elif isinstance(parsed, dict):
+                            result_data = parsed
+                        else:
+                            result_data = {"raw": str(parsed)}
+                    except (ValueError, SyntaxError):
+                        # Last resort: treat as raw string
+                        result_data = {"raw": str(tool_message.content)}
             
             # Create result record
             if result_data is not None:
@@ -219,6 +231,18 @@ class ChatProcessor:
                     result_metadata=metadata if isinstance(metadata, dict) else {}
                 )
                 self.db.add(exec_result)
+                
+                # Extract generated image paths from tool result
+                # Tools may return: image_path, segmentation_image_path, visualization_path, etc.
+                generated_images = []
+                for key, value in (result_data.items() if isinstance(result_data, dict) else []):
+                    if 'image_path' in key.lower() or 'visualization' in key.lower():
+                        if isinstance(value, str) and value:
+                            generated_images.append(value)
+                
+                # Update execution with generated images
+                if generated_images:
+                    execution.image_paths = image_paths + generated_images
             
             # Update execution status
             execution.status = "completed"
@@ -228,8 +252,10 @@ class ChatProcessor:
             # Yield tool completion
             yield {
                 "type": "tool_complete",
-                "tool_name": tool_name,
-                "execution_id": execution.id
+                "data": {
+                    "tool_name": tool_name,
+                    "execution_id": execution.id
+                }
             }
             
             logger.info(f"tool_execution_tracked execution_id={execution.id[:8]} tool_name={tool_name} request_id={self.request_id[:8]}")
@@ -251,8 +277,11 @@ class ChatProcessor:
             # Yield error event
             yield {
                 "type": "tool_error",
-                "tool_name": tool_name,
-                "error": str(e)
+                "data": {
+                    "tool_name": tool_name,
+                    "execution_id": execution.id,
+                    "error": str(e)
+                }
             }
             
             logger.error(f"tool_execution_error execution_id={execution.id[:8]} tool_name={tool_name} error={str(e)}")

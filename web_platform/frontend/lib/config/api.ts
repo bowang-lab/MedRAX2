@@ -39,9 +39,9 @@ export const API_ENDPOINTS = {
     SCAN_DETAIL: (id: string) => `/api/scans/${id}`,
 
     // Tool Executions
-    EXECUTION_DETAIL: (id: string) => `/api/executions/${id}`,
-    EXECUTION_LOGS: (id: string) => `/api/executions/${id}/logs`,
-    EXECUTION_RESULT: (id: string) => `/api/executions/${id}/result`,
+    EXECUTION_DETAIL: (id: string) => `/api/tools/executions/${id}`,
+    EXECUTION_LOGS: (id: string) => `/api/tools/executions/${id}/logs`,
+    EXECUTION_RESULT: (id: string) => `/api/tools/executions/${id}/result`,
 
     // Questions
     QUESTIONS: '/api/questions',

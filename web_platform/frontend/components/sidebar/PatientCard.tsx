@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import {
     ChevronDown,
     ChevronRight,
@@ -65,7 +65,7 @@ export function PatientCard({
     const { chats, setChats, addChat, isLoadingChats, setLoadingChats, setChatsError } =
         useAppStore();
 
-    const patientChats = chats[patient.id] || [];
+    const patientChats = useMemo(() => chats[patient.id] || [], [chats, patient.id]);
     const isLoading = isLoadingChats[patient.id] || false;
 
     // Load chats when expanded
@@ -121,9 +121,14 @@ export function PatientCard({
                         <div className="text-sm font-medium text-white truncate">
                             {displayName}
                         </div>
-                        <div className="text-xs text-zinc-500">
-                            {patient.chatCount || 0} chats
-                            {patient.scanCount ? ` · ${patient.scanCount} scans` : ''}
+                        <div className="text-xs text-zinc-500 flex items-center gap-2">
+                            <span>{patient.chatCount || 0} {(patient.chatCount || 0) === 1 ? 'chat' : 'chats'}</span>
+                            {(patient.scanCount || 0) > 0 && (
+                                <>
+                                    <span>·</span>
+                                    <span>{patient.scanCount} {patient.scanCount === 1 ? 'scan' : 'scans'}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </button>

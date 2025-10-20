@@ -100,16 +100,16 @@ export function Sidebar() {
         <aside className="w-80 bg-zinc-900 border-r border-zinc-800 flex flex-col">
             {/* Header with Search and New Patient Button */}
             <div className="p-4 space-y-3 border-b border-zinc-800">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-white">Patients</h2>
                     <Button
                         size="sm"
                         variant="primary"
                         onClick={() => setIsNewPatientModalOpen(true)}
-                        className="flex items-center space-x-1"
+                        className="flex items-center space-x-1.5 px-3 py-1.5"
                     >
                         <Plus className="h-4 w-4" />
-                        <span>New</span>
+                        <span className="text-sm font-medium">New Patient</span>
                     </Button>
                 </div>
 

@@ -67,16 +67,21 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
 
                         {/* Attached Scans */}
                         {message.attachedScans && message.attachedScans.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {message.attachedScans.map((scan) => (
-                                    // eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend
-                                    <img
-                                        key={scan.id}
-                                        src={scan.displayPath}
-                                        alt="Scan"
-                                        className="h-24 w-24 object-cover rounded border border-zinc-700"
-                                    />
-                                ))}
+                            <div className="mt-3">
+                                <p className="text-xs text-zinc-500 mb-2">Attached Scans:</p>
+                                <div className="flex flex-wrap gap-3">
+                                    {message.attachedScans.map((scan) => (
+                                        <div key={scan.id} className="relative group">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={scan.displayPath}
+                                                alt="Medical Scan"
+                                                className="h-32 w-auto object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-pointer"
+                                            />
+                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
