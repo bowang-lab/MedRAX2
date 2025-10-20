@@ -8,7 +8,7 @@
 
 export interface SuggestedQuestion {
     id: string;
-    doctorId: string;
+    doctorId: string | null;  // null for default system questions
     question: string;
     isDefault: boolean;  // System default vs user-added
     displayOrder: number;

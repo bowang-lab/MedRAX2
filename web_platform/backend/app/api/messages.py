@@ -25,6 +25,37 @@ from ..services.chat_processor import ChatProcessor
 router = APIRouter()
 
 
+def enrich_tool_execution(execution: ToolExecution) -> dict:
+    """Enrich tool execution with computed fields."""
+    # Calculate execution time if completed
+    execution_time_ms = None
+    if execution.completed_at and execution.started_at:
+        delta = execution.completed_at - execution.started_at
+        execution_time_ms = int(delta.total_seconds() * 1000)
+    
+    # Get display name from tool registry
+    tool_display_name = execution.tool_name
+    try:
+        tool_info = tool_manager.get_tool(execution.tool_name)
+        if tool_info:
+            tool_display_name = tool_info.display_name
+    except:
+        pass
+    
+    return {
+        "id": execution.id,
+        "message_id": execution.message_id,
+        "request_id": execution.request_id,
+        "tool_name": execution.tool_name,
+        "tool_display_name": tool_display_name,
+        "status": execution.status,
+        "started_at": execution.started_at,
+        "completed_at": execution.completed_at,
+        "execution_time_ms": execution_time_ms,
+        "image_paths": execution.image_paths,
+    }
+
+
 @router.get("/chats/{chat_id}/messages", response_model=List[MessageWithDetails])
 def list_messages(
     chat_id: str,
@@ -52,7 +83,7 @@ def list_messages(
     for msg in messages:
         msg_dict = MessageResponse.model_validate(msg).model_dump()
         msg_dict['attached_scans'] = [ScanResponse.model_validate(scan) for scan in msg.attached_scans]
-        msg_dict['tool_executions'] = [ToolExecutionResponse.model_validate(ex) for ex in msg.tool_executions]
+        msg_dict['tool_executions'] = [ToolExecutionResponse(**enrich_tool_execution(ex)) for ex in msg.tool_executions]
         messages_with_details.append(MessageWithDetails(**msg_dict))
     
     return messages_with_details

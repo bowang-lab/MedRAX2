@@ -22,6 +22,38 @@ from ..utils.logging_config import logger
 router = APIRouter()
 
 
+def enrich_tool_execution(execution: ToolExecution) -> dict:
+    """Enrich tool execution with computed fields."""
+    # Calculate execution time if completed
+    execution_time_ms = None
+    if execution.completed_at and execution.started_at:
+        delta = execution.completed_at - execution.started_at
+        execution_time_ms = int(delta.total_seconds() * 1000)
+    
+    # Get display name from tool registry
+    tool_display_name = execution.tool_name
+    try:
+        from ..services.tool_manager import tool_manager
+        tool_info = tool_manager.get_tool(execution.tool_name)
+        if tool_info:
+            tool_display_name = tool_info.display_name
+    except:
+        pass
+    
+    return {
+        "id": execution.id,
+        "message_id": execution.message_id,
+        "request_id": execution.request_id,
+        "tool_name": execution.tool_name,
+        "tool_display_name": tool_display_name,
+        "status": execution.status,
+        "started_at": execution.started_at,
+        "completed_at": execution.completed_at,
+        "execution_time_ms": execution_time_ms,
+        "image_paths": execution.image_paths,
+    }
+
+
 @router.get("/chats/{chat_id}/tool-history", response_model=List[ToolExecutionResponse])
 async def get_tool_history(
     chat_id: str,
@@ -82,8 +114,8 @@ async def get_tool_history(
     
     logger.info(f"tool_history_fetched chat_id={chat_id[:8]} count={len(executions)} filter_request={filter_by_request is not None} filter_tool={filter_by_tool is not None} latest_only={latest_only}")
     
-    # Convert to response format
-    return [ToolExecutionResponse.model_validate(execution) for execution in executions]
+    # Convert to response format with computed fields
+    return [ToolExecutionResponse(**enrich_tool_execution(execution)) for execution in executions]
 
 
 @router.get("/messages/{message_id}/tool-history", response_model=List[ToolExecutionResponse])
@@ -120,9 +152,9 @@ async def get_message_tool_history(
         ToolExecution.message_id == message_id
     ).order_by(ToolExecution.started_at.asc()).all()
     
-    logger.info(f"message_tool_history_fetched message_id={message_id[:8]} count={len(executions)} request_id={message.request_id[:8] if message.request_id else None}")
+    logger.info(f"message_tool_history_fetched message_id={message_id[:8]} count={len(executions)}")
     
-    return [ToolExecutionResponse.model_validate(execution) for execution in executions]
+    return [ToolExecutionResponse(**enrich_tool_execution(execution)) for execution in executions]
 
 
 @router.get("/tool-executions/{execution_id}", response_model=ToolExecutionResponse)
@@ -152,5 +184,5 @@ async def get_tool_execution(
             detail="Tool execution not found"
         )
     
-    return ToolExecutionResponse.model_validate(execution)
+    return ToolExecutionResponse(**enrich_tool_execution(execution))
 

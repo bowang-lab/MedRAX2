@@ -9,7 +9,6 @@ export interface Doctor {
     id: string;
     name: string;
     createdAt: string;
-    updatedAt: string;
 }
 
 export interface DoctorRegistration {

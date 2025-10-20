@@ -172,9 +172,9 @@ export function ScanGalleryDrawer({
                                     <span className="text-zinc-300">{selectedScan.fileType.toUpperCase()}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-400">Chat:</span>
+                                    <span className="text-zinc-400">Type:</span>
                                     <span className="text-zinc-300">
-                                        {selectedScan.messageId ? 'Attached to message' : 'General upload'}
+                                        {selectedScan.fileType.toUpperCase()}
                                     </span>
                                 </div>
                             </div>

@@ -39,9 +39,11 @@ class ToolExecutionResponse(BaseModel):
     message_id: str
     request_id: Optional[str] = None
     tool_name: str
-    status: str  # 'pending', 'running', 'success', 'error'
+    tool_display_name: str = ""
+    status: str  # 'pending', 'running', 'completed', 'failed'
     started_at: datetime
     completed_at: Optional[datetime] = None
+    execution_time_ms: Optional[int] = None
     image_paths: Optional[List[str]] = None
     
     class Config:

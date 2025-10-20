@@ -18,7 +18,7 @@ export interface Patient {
     doctorId: string;
     name: string | null;  // null = anonymous patient
     createdAt: string;
-    updatedAt: string;
+    lastActivityAt: string | null;
 }
 
 /**

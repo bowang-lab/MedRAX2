@@ -10,10 +10,10 @@ export type ScanFileType = 'dicom' | 'jpg' | 'png';
 export interface Scan {
     id: string;
     chatId: string;
-    messageId: string | null;  // null = general chat scan, not message-specific
     filePath: string;
     displayPath: string;  // Path for display (DICOM converted to image)
     fileType: ScanFileType;
+    fileSize: number;  // Size in bytes
     uploadedAt: string;
 }
 

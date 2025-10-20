@@ -11,6 +11,7 @@ export interface Chat {
     patientId: string;
     name: string;  // Auto: "2025-01-15 10:30 AM" or custom
     createdAt: string;
+    updatedAt: string;
     lastMessageAt: string | null;
     messageCount: number;
     scanCount: number;

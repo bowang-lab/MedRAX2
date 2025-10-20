@@ -30,6 +30,9 @@ class ChatResponse(BaseModel):
     name: str
     created_at: datetime
     updated_at: datetime
+    last_message_at: datetime | None = None
+    message_count: int = 0
+    scan_count: int = 0
     
     class Config:
         from_attributes = True

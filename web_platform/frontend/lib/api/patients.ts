@@ -32,7 +32,6 @@ export async function getPatients(): Promise<PatientWithStats[]> {
         doctorId: patient.doctor_id,
         createdAt: patient.created_at,
         lastActivityAt: patient.last_activity_at,
-        updatedAt: patient.created_at, // Backend doesn't have updatedAt, use createdAt
         chatCount: patient.total_chats || 0,
         scanCount: patient.total_scans || 0,
     }));
@@ -55,7 +54,6 @@ export async function createPatient(data: {
         doctorId: patient.doctor_id,
         createdAt: patient.created_at,
         lastActivityAt: patient.last_activity_at,
-        updatedAt: patient.created_at, // Backend doesn't have updatedAt, use createdAt
         chatCount: patient.total_chats || 0,
         scanCount: patient.total_scans || 0,
     };
@@ -79,7 +77,6 @@ export async function updatePatient(
         doctorId: patient.doctor_id,
         createdAt: patient.created_at,
         lastActivityAt: patient.last_activity_at,
-        updatedAt: patient.created_at, // Backend doesn't have updatedAt, use createdAt
         chatCount: patient.total_chats || 0,
         scanCount: patient.total_scans || 0,
     };

@@ -21,7 +21,7 @@ class ToolExecution(Base):
     message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
     request_id = Column(String(36), nullable=True)  # Groups executions from same analysis request
     tool_name = Column(String(255), nullable=False)
-    status = Column(String(50), nullable=False)  # 'pending', 'running', 'success', 'error'
+    status = Column(String(50), nullable=False)  # 'pending', 'running', 'completed', 'failed'
     started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
     image_paths = Column(JSON, nullable=True)  # Track which images were used

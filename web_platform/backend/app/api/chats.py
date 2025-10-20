@@ -9,8 +9,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 
+from sqlalchemy import func
+
 from ..database import get_db
-from ..models import Doctor, Patient, Chat
+from ..models import Doctor, Patient, Chat, Message, Scan
 from ..schemas.chat import ChatCreate, ChatUpdate, ChatResponse
 from ..dependencies import get_current_doctor
 from ..utils.formatting import generate_chat_name
@@ -49,7 +51,30 @@ def list_patient_chats(
     
     chats = db.query(Chat).filter(Chat.patient_id == patient_id).order_by(Chat.created_at.desc()).all()
     logger.info(f"Found {len(chats)} chats for patient {patient_id}")
-    return [ChatResponse.model_validate(chat) for chat in chats]
+    
+    # Enrich with computed fields
+    result = []
+    for chat in chats:
+        # Get last message timestamp
+        last_message = db.query(Message).filter(Message.chat_id == chat.id).order_by(Message.created_at.desc()).first()
+        
+        # Count messages and scans
+        message_count = db.query(func.count(Message.id)).filter(Message.chat_id == chat.id).scalar() or 0
+        scan_count = db.query(func.count(Scan.id)).filter(Scan.chat_id == chat.id).scalar() or 0
+        
+        chat_dict = {
+            "id": chat.id,
+            "patient_id": chat.patient_id,
+            "name": chat.name,
+            "created_at": chat.created_at,
+            "updated_at": chat.updated_at,
+            "last_message_at": last_message.created_at if last_message else None,
+            "message_count": message_count,
+            "scan_count": scan_count,
+        }
+        result.append(ChatResponse(**chat_dict))
+    
+    return result
 
 
 @router.post("/patients/{patient_id}/chats", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
@@ -88,7 +113,18 @@ def create_chat(
     db.commit()
     db.refresh(chat)
     
-    return ChatResponse.model_validate(chat)
+    # Return with default computed fields (new chat has no messages/scans yet)
+    chat_dict = {
+        "id": chat.id,
+        "patient_id": chat.patient_id,
+        "name": chat.name,
+        "created_at": chat.created_at,
+        "updated_at": chat.updated_at,
+        "last_message_at": None,
+        "message_count": 0,
+        "scan_count": 0,
+    }
+    return ChatResponse(**chat_dict)
 
 
 @router.get("/chats/{chat_id}", response_model=ChatResponse)
@@ -110,7 +146,22 @@ def get_chat(
             detail="Chat not found"
         )
     
-    return ChatResponse.model_validate(chat)
+    # Enrich with computed fields
+    last_message = db.query(Message).filter(Message.chat_id == chat.id).order_by(Message.created_at.desc()).first()
+    message_count = db.query(func.count(Message.id)).filter(Message.chat_id == chat.id).scalar() or 0
+    scan_count = db.query(func.count(Scan.id)).filter(Scan.chat_id == chat.id).scalar() or 0
+    
+    chat_dict = {
+        "id": chat.id,
+        "patient_id": chat.patient_id,
+        "name": chat.name,
+        "created_at": chat.created_at,
+        "updated_at": chat.updated_at,
+        "last_message_at": last_message.created_at if last_message else None,
+        "message_count": message_count,
+        "scan_count": scan_count,
+    }
+    return ChatResponse(**chat_dict)
 
 
 @router.patch("/chats/{chat_id}", response_model=ChatResponse)
@@ -141,7 +192,22 @@ def update_chat(
     db.commit()
     db.refresh(chat)
     
-    return ChatResponse.model_validate(chat)
+    # Enrich with computed fields
+    last_message = db.query(Message).filter(Message.chat_id == chat.id).order_by(Message.created_at.desc()).first()
+    message_count = db.query(func.count(Message.id)).filter(Message.chat_id == chat.id).scalar() or 0
+    scan_count = db.query(func.count(Scan.id)).filter(Scan.chat_id == chat.id).scalar() or 0
+    
+    chat_dict = {
+        "id": chat.id,
+        "patient_id": chat.patient_id,
+        "name": chat.name,
+        "created_at": chat.created_at,
+        "updated_at": chat.updated_at,
+        "last_message_at": last_message.created_at if last_message else None,
+        "message_count": message_count,
+        "scan_count": scan_count,
+    }
+    return ChatResponse(**chat_dict)
 
 
 @router.delete("/chats/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)

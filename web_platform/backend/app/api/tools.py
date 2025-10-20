@@ -24,6 +24,38 @@ from ..utils.logging_config import logger
 router = APIRouter()
 
 
+def enrich_tool_execution(execution: ToolExecution) -> dict:
+    """Enrich tool execution with computed fields."""
+    # Calculate execution time if completed
+    execution_time_ms = None
+    if execution.completed_at and execution.started_at:
+        delta = execution.completed_at - execution.started_at
+        execution_time_ms = int(delta.total_seconds() * 1000)
+    
+    # Get display name from tool registry
+    tool_display_name = execution.tool_name
+    try:
+        from ..services.tool_manager import tool_manager
+        tool_info = tool_manager.get_tool(execution.tool_name)
+        if tool_info:
+            tool_display_name = tool_info.display_name
+    except:
+        pass
+    
+    return {
+        "id": execution.id,
+        "message_id": execution.message_id,
+        "request_id": execution.request_id,
+        "tool_name": execution.tool_name,
+        "tool_display_name": tool_display_name,
+        "status": execution.status,
+        "started_at": execution.started_at,
+        "completed_at": execution.completed_at,
+        "execution_time_ms": execution_time_ms,
+        "image_paths": execution.image_paths,
+    }
+
+
 @router.get("")
 def list_tools(current_doctor: Doctor = Depends(get_current_doctor)):
     """List all available tools with their current status."""
@@ -120,8 +152,9 @@ def get_execution_detail(
             detail="Tool execution not found"
         )
     
-    # Build detailed response
-    execution_data = ToolExecutionResponse.model_validate(execution)
+    # Build detailed response with computed fields
+    execution_dict = enrich_tool_execution(execution)
+    execution_data = ToolExecutionResponse(**execution_dict)
     logs_data = [ToolExecutionLogResponse.model_validate(log) for log in execution.logs]
     result_data = ToolExecutionResultResponse.model_validate(execution.result) if execution.result else None
     
