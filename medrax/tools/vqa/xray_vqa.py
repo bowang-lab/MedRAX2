@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
+import logging
 
 import torch
 import transformers
@@ -10,6 +11,10 @@ from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device, get_device_map
+
+logger = logging.getLogger(__name__)
 
 
 class XRayVQAToolInput(BaseModel):
@@ -35,7 +40,7 @@ class CheXagentXRayVQATool(BaseTool):
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     return_direct: bool = True
     cache_dir: Optional[str] = None
-    device: Optional[str] = None
+    device: str = "cuda"
     dtype: torch.dtype = torch.bfloat16
     tokenizer: Optional[AutoTokenizer] = None
     model: Optional[AutoModelForCausalLM] = None
@@ -43,7 +48,7 @@ class CheXagentXRayVQATool(BaseTool):
     def __init__(
         self,
         model_name: str = "StanfordAIMI/CheXagent-2-3b",
-        device: Optional[str] = "cuda",
+        device: Optional[str] = None,
         dtype: torch.dtype = torch.bfloat16,
         cache_dir: Optional[str] = None,
         **kwargs: Any,
@@ -52,39 +57,65 @@ class CheXagentXRayVQATool(BaseTool):
 
         Args:
             model_name: Name of the CheXagent model to use
-            device: Device to run model on (cuda/cpu)
+            device: Device to run model on (cuda/cpu/auto). If None, uses environment config.
             dtype: Data type for model weights
             cache_dir: Directory to cache downloaded models
             **kwargs: Additional arguments
         """
         super().__init__(**kwargs)
 
-        # Dangerous code, but works for now
-        import transformers
 
-        original_transformers_version = transformers.__version__
-        transformers.__version__ = "4.40.0"
-
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = get_device(device)
         self.dtype = dtype
         self.cache_dir = cache_dir
+        
+        logger.info(f"Initializing CheXagent VQA on device: {self.device}")
+        
+        # Check if model will work on CPU
+        if self.device == "cpu":
+            logger.warning("CheXagent VQA running on CPU. This will be significantly slower than GPU.")
+            logger.warning("For better performance, consider using a system with CUDA support.")
 
-        # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map=self.device,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-        )
-        self.model = self.model.to(dtype=self.dtype)
-        self.model.eval()
+        try:
+            # Dangerous code, but works for now
+            import transformers
 
-        transformers.__version__ = original_transformers_version
+            original_transformers_version = transformers.__version__
+            transformers.__version__ = "4.40.0"
+
+            # Load tokenizer
+            logger.info(f"Loading tokenizer from {model_name}...")
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+            )
+            
+            # Load model with appropriate device mapping
+            logger.info(f"Loading model from {model_name}...")
+            device_map = get_device_map(self.device)
+            
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map=device_map,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+                torch_dtype=self.dtype if self.device == "cuda" else torch.float32,  # Use float32 on CPU
+            )
+            
+            # Only set dtype if on CUDA (CPU uses float32 by default)
+            if self.device == "cuda":
+                self.model = self.model.to(dtype=self.dtype)
+            
+            self.model.eval()
+            
+            logger.info("CheXagent VQA model loaded successfully")
+
+            transformers.__version__ = original_transformers_version
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize CheXagent VQA: {e}")
+            raise
 
     def _generate_response(self, image_paths: List[str], prompt: str, max_new_tokens: int) -> str:
         """Generate response using CheXagent model.
