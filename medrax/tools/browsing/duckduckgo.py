@@ -115,30 +115,32 @@ class DuckDuckGoSearchTool(BaseTool):
         logger.info(f"Performing web search: '{query}' (max_results={max_results}, region={region})")
 
         try:
-            # Initialize DDGS with error handling
-            with DDGS() as ddgs:
-                # Perform the search
-                search_results = list(
-                    ddgs.text(
-                        keywords=query,
-                        region=region,
-                        safesearch="moderate",
-                        timelimit=None,
-                        max_results=max_results,
-                    )
-                )
+            ddgs = DDGS()
+            
+            search_results = list(ddgs.text(
+                keywords=query,
+                region=region,
+                safesearch="moderate",
+                max_results=max_results
+            ))
 
-                # Format results for the agent
-                formatted_results = []
-                for i, result in enumerate(search_results, 1):
-                    formatted_result = {
-                        "rank": i,
-                        "title": result.get("title", "No title"),
-                        "url": result.get("href", "No URL"),
-                        "snippet": result.get("body", "No description available"),
-                        "source": "DuckDuckGo",
-                    }
-                    formatted_results.append(formatted_result)
+            if search_results is None:
+                logger.warning("DuckDuckGo returned None instead of results list")
+                search_results = []
+
+            formatted_results = []
+            for i, result in enumerate(search_results, 1):
+                if result is None or not isinstance(result, dict):
+                    continue
+                    
+                formatted_result = {
+                    "rank": i,
+                    "title": result.get("title", result.get("t", "No title")),
+                    "url": result.get("href", result.get("l", "No URL")),
+                    "snippet": result.get("body", result.get("a", "No description available")),
+                    "source": "DuckDuckGo",
+                }
+                formatted_results.append(formatted_result)
 
                 # Create summary for the agent
                 if formatted_results:
@@ -149,7 +151,6 @@ class DuckDuckGoSearchTool(BaseTool):
                 else:
                     summary = f"No results found for '{query}'"
 
-                # Log successful completion
                 logger.info(f"Web search completed successfully: {len(formatted_results)} results")
 
                 return {
@@ -191,9 +192,7 @@ class DuckDuckGoSearchTool(BaseTool):
             run_manager: Callback manager (unused)
 
         Returns:
-            Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing:
-                - output: Dictionary with search results
-                - metadata: Dictionary with execution metadata
+            Tuple[Dict[str, Any], Dict[str, Any]]: Output dictionary and metadata dictionary
         """
         # Create metadata structure
         metadata = {
@@ -249,9 +248,7 @@ class DuckDuckGoSearchTool(BaseTool):
             run_manager: Callback manager (unused)
 
         Returns:
-            Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing:
-                - output: Dictionary with search results
-                - metadata: Dictionary with execution metadata
+            Tuple[Dict[str, Any], Dict[str, Any]]: Output dictionary and metadata dictionary
         """
         # Try to get LangGraph stream writer for progress updates
         writer = None
@@ -284,12 +281,10 @@ class DuckDuckGoSearchTool(BaseTool):
                     }
                 )
 
-            # Use asyncio to run sync search in executor
             loop = asyncio.get_event_loop()
             result, metadata = await loop.run_in_executor(None, self._run, query, max_results, region)
 
             if writer:
-                # Parse result to get count for progress update
                 results_count = result.get("results_count", 0)
                 writer(
                     {
