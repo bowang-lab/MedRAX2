@@ -13,6 +13,8 @@
 import { useState, useEffect } from 'react';
 import { Wrench, Loader2, Info, Download, Check, X, AlertCircle } from 'lucide-react';
 import { getTools, loadTool, unloadTool } from '../../lib/api/toolManagement';
+import { useToolLoadingSSE } from '../../lib/hooks/useToolLoadingSSE';
+import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -62,6 +64,8 @@ export function ToolsSettings() {
     const [error, setError] = useState<string | null>(null);
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+    const [loadingToolId, setLoadingToolId] = useState<string | null>(null);
+    const [loadingProgress, setLoadingProgress] = useState<{ progress: number; message: string } | null>(null);
 
     useEffect(() => {
         loadTools();
@@ -69,22 +73,7 @@ export function ToolsSettings() {
         setExpandedCategories(new Set(Object.keys(CATEGORY_DISPLAY_NAMES)));
     }, []);
 
-    // Auto-poll for tool status updates when tools are loading
-    useEffect(() => {
-        const hasLoadingTools = tools.some(tool => tool.status === 'loading');
-
-        if (!hasLoadingTools) {
-            return; // No polling needed
-        }
-
-        // Poll every 3 seconds while tools are loading
-        const pollInterval = setInterval(() => {
-            loadTools();
-        }, 3000);
-
-        // Cleanup interval on unmount or when no tools are loading
-        return () => clearInterval(pollInterval);
-    }, [tools]);
+    // NO MORE POLLING! SSE handles real-time updates now
 
     const loadTools = async () => {
         setIsLoading(true);
@@ -104,14 +93,57 @@ export function ToolsSettings() {
         setTools(tools.map(t =>
             t.id === toolId ? { ...t, status: 'loading' as const } : t
         ));
+        
+        setLoadingToolId(toolId);
+        setLoadingProgress({ progress: 0, message: 'Connecting...' });
 
-        try {
-            await loadTool(toolId);
-            await loadTools(); // Refresh all tools
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load tool');
-            await loadTools(); // Refresh to show error state
+        // Use SSE for real-time progress updates
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setError('Authentication required');
+            setLoadingToolId(null);
+            setLoadingProgress(null);
+            return;
         }
+
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const eventSource = new EventSource(
+            `${apiBaseUrl}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`
+        );
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.status === 'loading') {
+                    setLoadingProgress({ progress: data.progress, message: data.message });
+                } else if (data.status === 'loaded') {
+                    setLoadingProgress({ progress: 100, message: 'Complete!' });
+                    eventSource.close();
+                    setLoadingToolId(null);
+                    setLoadingProgress(null);
+                    // Refresh tools list once
+                    loadTools();
+                } else if (data.status === 'error') {
+                    setError(data.message);
+                    eventSource.close();
+                    setLoadingToolId(null);
+                    setLoadingProgress(null);
+                    loadTools();
+                }
+            } catch (err) {
+                console.error('Failed to parse SSE message:', err);
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            console.error('SSE connection error:', err);
+            setError('Connection error. Please try again.');
+            eventSource.close();
+            setLoadingToolId(null);
+            setLoadingProgress(null);
+            loadTools();
+        };
     };
 
     const handleUnloadTool = async (toolId: string) => {
@@ -323,6 +355,16 @@ export function ToolsSettings() {
                                                     <p className="text-sm text-zinc-400 mb-2">
                                                         {tool.description}
                                                     </p>
+
+                                                    {/* Real-time SSE progress bar */}
+                                                    {loadingToolId === tool.id && loadingProgress && (
+                                                        <div className="mb-3">
+                                                            <ToolLoadingProgress
+                                                                progress={loadingProgress.progress}
+                                                                message={loadingProgress.message}
+                                                            />
+                                                        </div>
+                                                    )}
 
                                                     {tool.loaded_at && (
                                                         <p className="text-xs text-zinc-500">
