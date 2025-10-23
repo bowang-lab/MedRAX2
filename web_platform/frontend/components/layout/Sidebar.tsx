@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { useAppStore } from '../../lib/store/appStore';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../../lib/api/patients';
+import { createChat } from '../../lib/api/chats';
 import { PatientCard } from '../sidebar/PatientCard';
 import { NewPatientModal } from '../sidebar/NewPatientModal';
 import { RenamePatientModal } from '../sidebar/RenamePatientModal';
@@ -25,6 +26,7 @@ export function Sidebar() {
         patients,
         setPatients,
         addPatient,
+        addChat,
         updatePatient: updatePatientInStore,
         removePatient,
         selectedChatId,
@@ -65,9 +67,20 @@ export function Sidebar() {
     const handleCreatePatient = async (name: string | null) => {
         const newPatient = await createPatient({ name });
         addPatient(newPatient);
-        // Auto-expand the new patient
+
         if (!expandedPatientIds.includes(newPatient.id)) {
             togglePatientExpanded(newPatient.id);
+        }
+
+        try {
+            const initialChat = await createChat(newPatient.id, {
+                name: 'Initial Consultation'
+            });
+
+            addChat(newPatient.id, initialChat);
+            selectChat(initialChat.id);
+        } catch (error) {
+            console.error('Failed to create initial consultation:', error);
         }
     };
 

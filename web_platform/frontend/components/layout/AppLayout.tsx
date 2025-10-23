@@ -24,12 +24,12 @@ export function AppLayout() {
                 <Header />
 
                 {/* Main Content: 3-column layout */}
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden min-h-0">
                     {/* Left Sidebar: Patients & Chats */}
                     <Sidebar />
 
                     {/* Center: Chat Interface */}
-                    <main className="flex-1 flex flex-col overflow-hidden">
+                    <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                         <ChatInterface />
                     </main>
 

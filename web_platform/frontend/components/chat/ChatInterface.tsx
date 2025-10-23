@@ -180,7 +180,7 @@ export function ChatInterface() {
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-zinc-950">
+        <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
             {/* Chat Header */}
             {currentChat && (
                 <div className="h-16 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-6 flex-shrink-0">
@@ -239,45 +239,50 @@ export function ChatInterface() {
                 </div>
             )}
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {isLoadingMessages ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Spinner size="lg" />
-                    </div>
-                ) : error ? (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="text-red-400 text-sm">{error}</div>
-                    </div>
-                ) : chatMessages.length > 0 ? (
-                    <>
-                        {chatMessages.map((message) => (
-                            <Message
-                                key={message.id}
-                                message={message}
-                                onShowToolDetails={handleShowToolDetails}
-                            />
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </>
-                ) : (
-                    <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-                        No messages yet. Start the conversation below.
-                    </div>
-                )}
+            {/* Messages Area - Scrollable */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="p-6 space-y-4">
+                    {isLoadingMessages ? (
+                        <div className="flex items-center justify-center min-h-[300px]">
+                            <Spinner size="lg" />
+                        </div>
+                    ) : error ? (
+                        <div className="flex items-center justify-center min-h-[300px]">
+                            <div className="text-red-400 text-sm">{error}</div>
+                        </div>
+                    ) : chatMessages.length > 0 ? (
+                        <>
+                            {chatMessages.map((message) => (
+                                <Message
+                                    key={message.id}
+                                    message={message}
+                                    onShowToolDetails={handleShowToolDetails}
+                                />
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </>
+                    ) : (
+                        <div className="flex items-center justify-center min-h-[300px] text-zinc-500 text-sm">
+                            No messages yet. Start the conversation below.
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Suggested Questions */}
-            <SuggestedQuestions
-                questions={suggestedQuestions}
-                onSelect={handleQuestionClick}
-            />
+            {/* Bottom Section - Fixed at bottom, never scrolls away */}
+            <div className="flex-shrink-0 bg-zinc-950">
+                {/* Suggested Questions */}
+                <SuggestedQuestions
+                    questions={suggestedQuestions}
+                    onSelect={handleQuestionClick}
+                />
 
-            {/* Input Area */}
-            <ChatInput
-                onSend={handleSendMessage}
-                disabled={isSendingMessage || isLoadingMessages}
-            />
+                {/* Input Area */}
+                <ChatInput
+                    onSend={handleSendMessage}
+                    disabled={isSendingMessage || isLoadingMessages}
+                />
+            </div>
         </div>
     );
 }
