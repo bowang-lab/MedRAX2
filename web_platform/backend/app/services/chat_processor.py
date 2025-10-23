@@ -86,7 +86,6 @@ class ChatProcessor:
                 "content": f"image_paths: {', '.join(scan_paths)}"
             })
             
-            # Encode images for multimodal
             for scan in scans:
                 try:
                     with open(scan.file_path, "rb") as f:
@@ -107,15 +106,13 @@ class ChatProcessor:
             "content": [{"type": "text", "text": message.content}]
         })
         
-        # Yield initial status
         yield {
             "type": "status",
-            "message": "🤖 Processing message...",
+            "message": "Processing message...",
             "request_id": self.request_id
         }
         
         try:
-            # Process through agent with memory persistence
             config = {"configurable": {"thread_id": self.chat_id}}
             
             async for event in self.agent.workflow.astream(
@@ -123,7 +120,6 @@ class ChatProcessor:
                 config
             ):
                 if isinstance(event, dict):
-                    # Handle agent events (AI response)
                     if "agent" in event:
                         content = event["agent"]["messages"][-1].content
                         if content:
@@ -132,7 +128,6 @@ class ChatProcessor:
                                 "data": {"content": content}
                             }
                     
-                    # Handle tools events (tool execution)
                     elif "tools" in event:
                         for tool_message in event["tools"]["messages"]:
                             async for tool_event in self._process_tool_execution(
@@ -142,17 +137,16 @@ class ChatProcessor:
                             ):
                                 yield tool_event
             
-            # Yield completion
             yield {
                 "type": "complete",
-                "message": "✅ Message processed successfully"
+                "message": "Message processed successfully"
             }
             
         except Exception as e:
             logger.error(f"message_processing_error message_id={message.id[:8]} error={str(e)}", exc_info=True)
             yield {
                 "type": "error",
-                "message": f"❌ Error: {str(e)}"
+                "message": f"Error: {str(e)}"
             }
     
     async def _process_tool_execution(
@@ -195,33 +189,21 @@ class ChatProcessor:
         }
         
         try:
-            # Parse tool result - tools return (output_dict, metadata_dict)
             result_data = None
             metadata = {}
             
             if tool_message.content:
-                # All MedRAX tools return Tuple[Dict, Dict]
-                # LangChain converts this to string, we need to parse it back
                 try:
-                    import json
-                    # Try JSON first (cleaner)
-                    parsed = json.loads(tool_message.content)
-                    if isinstance(parsed, dict):
+                    import ast
+                    parsed = ast.literal_eval(str(tool_message.content))
+                    if isinstance(parsed, tuple) and len(parsed) >= 2:
+                        result_data, metadata = parsed[0], parsed[1]
+                    elif isinstance(parsed, dict):
                         result_data = parsed
-                except (json.JSONDecodeError, TypeError):
-                    # Fallback to ast.literal_eval for tuples
-                    try:
-                        import ast
-                        parsed = ast.literal_eval(str(tool_message.content))
-                        if isinstance(parsed, tuple) and len(parsed) >= 2:
-                            result_data, metadata = parsed[0], parsed[1]
-                        elif isinstance(parsed, dict):
-                            result_data = parsed
-                        else:
-                            result_data = {"raw": str(parsed)}
-                    except (ValueError, SyntaxError):
-                        # Last resort: treat as raw string
-                        result_data = {"raw": str(tool_message.content)}
+                    else:
+                        result_data = {"raw": str(parsed)}
+                except (ValueError, SyntaxError, TypeError):
+                    result_data = {"raw": str(tool_message.content)}
             
             # Create result record
             if result_data is not None:

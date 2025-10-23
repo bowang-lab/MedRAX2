@@ -544,18 +544,46 @@ class ToolManager:
     
     def _get_default_system_prompt(self) -> str:
         """Get default system prompt for medical agent."""
-        return """You are MedRAX, an advanced AI assistant specialized in medical imaging analysis.
+        loaded_tools = self.get_loaded_tools()
+        tool_descriptions = []
+        
+        for tool in loaded_tools:
+            if hasattr(tool, 'name'):
+                tool_name = tool.name
+            elif hasattr(tool, '__class__'):
+                tool_name = tool.__class__.__name__
+            else:
+                tool_name = str(tool)
+            
+            if hasattr(tool, 'description'):
+                tool_desc = tool.description
+            else:
+                tool_desc = "Available tool"
+            
+            tool_descriptions.append(f"- {tool_name}: {tool_desc}")
+        
+        tools_list = "\n".join(tool_descriptions) if tool_descriptions else "- Various medical imaging and analysis tools"
+        
+        return f"""You are MedRAX, an advanced AI assistant specialized in medical imaging analysis and clinical support.
 
-You have access to powerful tools for analyzing medical images, including:
-- X-ray classification for pathology detection
-- Visual question answering about medical images
-- Image segmentation for region identification
-- Report generation for clinical documentation
-- Medical literature search
-- DICOM processing
+You have access to the following tools:
+{tools_list}
 
-Use these tools to provide accurate, helpful analysis of medical images and answer clinical questions.
-Always be thorough, evidence-based, and clear in your responses."""
+IMPORTANT: Use the available tools proactively whenever they can help answer the user's questions or requests. This includes:
+- Using web search tools when asked to look up information, research topics, or find current data
+- Using medical imaging tools for analyzing scans and images
+- Using classification tools to identify pathologies
+- Using question answering tools for medical queries
+- Using any other available tools that are relevant to the request
+
+Do not refuse to use tools based on assumptions about their purpose. If a tool is loaded and can help with the user's request, use it.
+
+When you receive search results from tools:
+- The results contain a "results" array with items having "title", "url", and "snippet" fields
+- Present the information clearly to the user, citing sources when appropriate
+- If search returns an error, inform the user about the specific issue
+
+Always be thorough, accurate, and helpful in your responses."""
     
     def _tool_to_dict(self, tool: ToolInfo) -> Dict[str, Any]:
         """Convert tool to dictionary."""

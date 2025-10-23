@@ -6,7 +6,7 @@ Endpoints for messages and SSE streaming.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List
 from datetime import datetime
 import asyncio
@@ -76,7 +76,11 @@ def list_messages(
             detail="Chat not found"
         )
     
-    messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.created_at).all()
+    # Use eager loading to avoid N+1 query problem
+    messages = db.query(Message).options(
+        selectinload(Message.attached_scans),
+        selectinload(Message.tool_executions)
+    ).filter(Message.chat_id == chat_id).order_by(Message.created_at).all()
     
     # Build full message responses with scans and tool executions
     messages_with_details = []

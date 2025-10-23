@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     TOOL_TIMEOUT: int = 300  # 5 minutes
     MAX_CONCURRENT_TOOLS: int = 3
     AUTO_UNLOAD_TOOLS: bool = False  # Auto-unload after use to save memory
+    
+    # Device Configuration for Medical Imaging Tools
+    # Options: "cuda", "cpu", "auto" (auto-detect)
+    DEVICE: str = "auto"
+    # Force CPU even if CUDA is available (useful for testing/development)
+    FORCE_CPU: bool = False
 
 
 settings = Settings()
