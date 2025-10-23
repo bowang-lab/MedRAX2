@@ -16,6 +16,7 @@ import { getTools, loadTool, unloadTool } from '../../lib/api/toolManagement';
 import { useToolLoadingSSE } from '../../lib/hooks/useToolLoadingSSE';
 import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
 import { API_CONFIG } from '../../lib/config/api';
+import { useAuthStore } from '../../lib/store/authStore';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -68,6 +69,9 @@ export function ToolsSettings() {
     const [loadingToolId, setLoadingToolId] = useState<string | null>(null);
     const [loadingProgress, setLoadingProgress] = useState<{ progress: number; message: string } | null>(null);
     
+    // Get auth token from store
+    const { token } = useAuthStore();
+    
     // Store EventSource ref for cleanup on unmount
     const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -118,9 +122,8 @@ export function ToolsSettings() {
         setLoadingProgress({ progress: 0, message: 'Connecting...' });
 
         // Use SSE for real-time progress updates
-        const token = localStorage.getItem('token');
         if (!token) {
-            setError('Authentication required');
+            setError('Authentication required - please log in again');
             setLoadingToolId(null);
             setLoadingProgress(null);
             return;

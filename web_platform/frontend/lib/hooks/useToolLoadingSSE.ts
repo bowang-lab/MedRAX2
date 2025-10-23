@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { API_CONFIG } from '../config/api';
+import { AUTH_CONFIG } from '../config/app';
 
 export interface ToolLoadingProgress {
     status: 'loading' | 'loaded' | 'error';
@@ -81,10 +82,10 @@ export function useToolLoadingSSE({
             message: 'Connecting to server...',
         });
 
-        // Get auth token from localStorage
-        const token = localStorage.getItem('token');
+        // Get auth token from localStorage using correct key
+        const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
         if (!token) {
-            const errorMsg = 'Authentication required';
+            const errorMsg = 'Authentication required - please log in again';
             setError(errorMsg);
             setIsLoading(false);
             onError?.(errorMsg);
