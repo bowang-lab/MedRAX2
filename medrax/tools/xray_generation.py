@@ -2,11 +2,16 @@ from typing import Dict, Optional, Tuple, Type
 from pathlib import Path
 import uuid
 import tempfile
+import logging
 import torch
 from pydantic import BaseModel, Field, ConfigDict
 from diffusers import StableDiffusionPipeline
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRayGeneratorInput(BaseModel):
@@ -38,7 +43,7 @@ class ChestXRayGeneratorTool(BaseTool):
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: StableDiffusionPipeline = None
-    device: torch.device = None
+    device: str = "cuda"
     temp_dir: Path = None
 
     def __init__(
@@ -51,20 +56,22 @@ class ChestXRayGeneratorTool(BaseTool):
         """Initialize the chest X-ray generator tool."""
         super().__init__()
 
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Generator on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Chest X-Ray Generator running on CPU. This will be slower than GPU.")
+        
         self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)
         self.model = self.model.to(torch.float32).to(self.device)
 
         self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
         self.temp_dir.mkdir(exist_ok=True)
+        
+        logger.info("Chest X-Ray Generator model loaded successfully")
 
     def _run(
         self,

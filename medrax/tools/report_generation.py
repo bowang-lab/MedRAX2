@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Tuple, Type
 from pydantic import BaseModel, Field, ConfigDict
+import logging
 
 import torch
 
@@ -17,6 +18,10 @@ from transformers import (
     VisionEncoderDecoderModel,
     GenerationConfig,
 )
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRayInput(BaseModel):
@@ -45,7 +50,7 @@ class ChestXRayReportGeneratorTool(BaseTool):
         "to a chest X-ray image file. Output is a structured report with both detailed "
         "observations and key clinical conclusions."
     )
-    device: Optional[str] = "cuda"
+    device: str = "cuda"
     args_schema: Type[BaseModel] = ChestXRayInput
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     findings_model: VisionEncoderDecoderModel = None
@@ -59,15 +64,15 @@ class ChestXRayReportGeneratorTool(BaseTool):
     def __init__(self, cache_dir: Optional[str] = None, device: Optional[str] = None):
         """Initialize the ChestXRayReportGeneratorTool with both findings and impression models."""
         super().__init__()
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
+        
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Report Generator on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Report Generator running on CPU. This will be significantly slower than GPU.")
 
         # Initialize findings model
         self.findings_model = VisionEncoderDecoderModel.from_pretrained(
@@ -102,6 +107,8 @@ class ChestXRayReportGeneratorTool(BaseTool):
             "use_cache": True,
             "beam_width": 2,
         }
+        
+        logger.info("Chest X-Ray Report Generator models loaded successfully")
 
     def _process_image(
         self, image_path: str, processor: ViTImageProcessor, model: VisionEncoderDecoderModel
