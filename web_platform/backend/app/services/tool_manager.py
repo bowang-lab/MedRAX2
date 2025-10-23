@@ -437,6 +437,20 @@ class ToolManager:
             # Special handling for tools that require configuration
             if tool.tool_class == "RAGTool":
                 # RAGTool requires a RAGConfig parameter
+                # Also need to set Cohere and Pinecone API keys as environment variables
+                import os
+                
+                # Cohere SDK looks for CO_API_KEY env var
+                if settings.COHERE_API_KEY:
+                    os.environ['CO_API_KEY'] = settings.COHERE_API_KEY
+                    os.environ['COHERE_API_KEY'] = settings.COHERE_API_KEY
+                    logger.info(f"Set Cohere API key from settings")
+                
+                # Pinecone API key
+                if settings.PINECONE_API_KEY:
+                    os.environ['PINECONE_API_KEY'] = settings.PINECONE_API_KEY
+                    logger.info(f"Set Pinecone API key from settings")
+                
                 from medrax.rag.rag import RAGConfig
                 config = RAGConfig()  # Use default configuration
                 logger.info(f"Creating RAGTool with default RAGConfig")
