@@ -2,17 +2,22 @@ from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
 import uuid
 import tempfile
+import logging
 import matplotlib.pyplot as plt
 import torch
 from PIL import Image
 from pydantic import BaseModel, Field, ConfigDict
 
-from transformers import AutoModelForCausalLM, AutoProcessor, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoProcessor, BitsAndBytesConfig, AutoConfig
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device, get_device_map
+
+logger = logging.getLogger(__name__)
 
 
 class XRayPhraseGroundingInput(BaseModel):
@@ -61,49 +66,139 @@ class XRayPhraseGroundingTool(BaseTool):
         temp_dir: Optional[str] = None,
         load_in_4bit: bool = False,
         load_in_8bit: bool = False,
-        device: Optional[str] = "cuda",
+        device: Optional[str] = None,
     ):
         """Initialize the XRay Phrase Grounding Tool."""
         super().__init__()
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
+        
+        # Patch transformers for MAIRA-2 compatibility
+        import transformers
+        if not hasattr(transformers, 'BaseImageProcessor'):
+            logger.info("Pre-patching BaseImageProcessor for MAIRA-2 compatibility")
+            if hasattr(transformers, 'ImageProcessingMixin'):
+                transformers.BaseImageProcessor = transformers.ImageProcessingMixin
+                logger.info("Using ImageProcessingMixin as BaseImageProcessor")
+            elif hasattr(transformers, 'ProcessorMixin'):
+                transformers.BaseImageProcessor = transformers.ProcessorMixin
+                logger.info("Using ProcessorMixin as BaseImageProcessor")
+            else:
+                from transformers.processing_utils import ProcessorMixin
+                transformers.BaseImageProcessor = ProcessorMixin
+                logger.warning("Created minimal BaseImageProcessor for compatibility")
+        
+        # Patch LlavaProcessor to accept MAIRA-2 specific parameters
+        from transformers import LlavaProcessor
+        original_llava_init = LlavaProcessor.__init__
+        
+        def patched_llava_init(self, image_processor=None, tokenizer=None, patch_size=None, vision_feature_select_strategy=None, **kwargs):
+            """Patched LlavaProcessor that accepts extra MAIRA-2 parameters."""
+            original_llava_init(self, image_processor=image_processor, tokenizer=tokenizer, **kwargs)
+            if patch_size is not None:
+                self.patch_size = patch_size
+            if vision_feature_select_strategy is not None:
+                self.vision_feature_select_strategy = vision_feature_select_strategy
+        
+        LlavaProcessor.__init__ = patched_llava_init
+        logger.info("Patched LlavaProcessor to accept MAIRA-2 parameters")
+        
+        device_str = get_device(device)
+        self.device = device_str
+        
+        logger.info(f"Initializing X-Ray Phrase Grounding on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("X-Ray Phrase Grounding running on CPU. This will be significantly slower than GPU.")
 
-        # Setup quantization config
-        if load_in_4bit:
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.bfloat16,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4",
-            )
-        elif load_in_8bit:
-            quantization_config = BitsAndBytesConfig(
-                load_in_8bit=True,
-            )
-        else:
-            quantization_config = None
+        quantization_config = None
+        if device_str == "cuda":
+            if load_in_4bit:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                )
+            elif load_in_8bit:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=True,
+                )
+        elif load_in_4bit or load_in_8bit:
+            logger.warning("Quantization (4-bit/8-bit) only available on CUDA. Loading full precision model.")
 
-        # Load model
+        device_map = get_device_map(device_str)
+        logger.info(f"Loading MAIRA-2 model (bypassing rope_scaling validation)...")
+        
+        import json
+        from huggingface_hub import hf_hub_download
+        
+        logger.info("Downloading config.json...")
+        config_file = hf_hub_download(
+            repo_id=model_path,
+            filename="config.json",
+            cache_dir=cache_dir,
+        )
+        
+        with open(config_file, 'r') as f:
+            config_dict = json.load(f)
+        
+        logger.info(f"Original rope_scaling in config: {config_dict.get('rope_scaling')}")
+        
+        if 'rope_scaling' in config_dict:
+            if config_dict['rope_scaling'] is not None:
+                if isinstance(config_dict['rope_scaling'], dict):
+                    if config_dict['rope_scaling'].get('type') is None:
+                        logger.info("Removing invalid rope_scaling (type=None)")
+                        config_dict['rope_scaling'] = None
+        
+        logger.info("Loading base config without custom class to bypass validation...")
+        
+        if 'auto_map' in config_dict:
+            logger.info("Removing auto_map to prevent custom config class loading")
+            del config_dict['auto_map']
+        
+        architecture = config_dict.get('architectures', ['LlamaForCausalLM'])[0]
+        model_type = config_dict.get('model_type', 'llama')
+        
+        logger.info(f"Model architecture: {architecture}, model_type: {model_type}")
+        
+        from transformers import LlamaConfig, Qwen2Config
+        
+        try:
+            if 'qwen' in model_type.lower():
+                model_config = Qwen2Config(**config_dict)
+            else:
+                model_config = LlamaConfig(**config_dict)
+            logger.info("Successfully loaded config with base class")
+        except Exception as e:
+            logger.warning(f"Failed to load with specific base class: {e}")
+            logger.info("Loading with AutoConfig without trust_remote_code...")
+            model_config = AutoConfig.for_model(model_type, **config_dict)
+        
+        logger.info("Loading model with patched config and custom model class...")
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            device_map=self.device,
+            config=model_config,
+            device_map=device_map,
             cache_dir=cache_dir,
             trust_remote_code=True,
             quantization_config=quantization_config,
+            torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
         )
-        self.processor = AutoProcessor.from_pretrained(model_path, cache_dir=cache_dir, trust_remote_code=True)
+        
+        logger.info("Loading processor...")
+        self.processor = AutoProcessor.from_pretrained(
+            model_path,
+            cache_dir=cache_dir,
+            trust_remote_code=True
+        )
+        logger.info("Processor loaded successfully")
 
         self.model = self.model.eval()
 
         self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
         self.temp_dir.mkdir(exist_ok=True)
+        
+        logger.info("X-Ray Phrase Grounding model loaded successfully")
 
     def _visualize_bboxes(
         self, image: Image.Image, bboxes: List[Tuple[float, float, float, float]], phrase: str
