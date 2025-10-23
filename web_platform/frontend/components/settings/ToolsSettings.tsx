@@ -10,11 +10,12 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Wrench, Loader2, Info, Download, Check, X, AlertCircle } from 'lucide-react';
 import { getTools, loadTool, unloadTool } from '../../lib/api/toolManagement';
 import { useToolLoadingSSE } from '../../lib/hooks/useToolLoadingSSE';
 import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
+import { API_CONFIG } from '../../lib/config/api';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -66,11 +67,24 @@ export function ToolsSettings() {
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
     const [loadingToolId, setLoadingToolId] = useState<string | null>(null);
     const [loadingProgress, setLoadingProgress] = useState<{ progress: number; message: string } | null>(null);
+    
+    // Store EventSource ref for cleanup on unmount
+    const eventSourceRef = useRef<EventSource | null>(null);
 
     useEffect(() => {
         loadTools();
         // Expand all categories by default
         setExpandedCategories(new Set(Object.keys(CATEGORY_DISPLAY_NAMES)));
+    }, []);
+
+    // Cleanup EventSource on unmount to prevent memory leak
+    useEffect(() => {
+        return () => {
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+        };
     }, []);
 
     // NO MORE POLLING! SSE handles real-time updates now
@@ -89,6 +103,12 @@ export function ToolsSettings() {
     };
 
     const handleLoadTool = async (toolId: string) => {
+        // Close any existing connection first
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+        }
+        
         // Update UI immediately
         setTools(tools.map(t =>
             t.id === toolId ? { ...t, status: 'loading' as const } : t
@@ -106,10 +126,13 @@ export function ToolsSettings() {
             return;
         }
 
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        // Use centralized API config
         const eventSource = new EventSource(
-            `${apiBaseUrl}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`
+            `${API_CONFIG.baseURL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`
         );
+        
+        // Store in ref for cleanup
+        eventSourceRef.current = eventSource;
 
         eventSource.onmessage = (event) => {
             try {
@@ -120,6 +143,7 @@ export function ToolsSettings() {
                 } else if (data.status === 'loaded') {
                     setLoadingProgress({ progress: 100, message: 'Complete!' });
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setLoadingToolId(null);
                     setLoadingProgress(null);
                     // Refresh tools list once
@@ -127,6 +151,7 @@ export function ToolsSettings() {
                 } else if (data.status === 'error') {
                     setError(data.message);
                     eventSource.close();
+                    eventSourceRef.current = null;
                     setLoadingToolId(null);
                     setLoadingProgress(null);
                     loadTools();
@@ -140,6 +165,7 @@ export function ToolsSettings() {
             console.error('SSE connection error:', err);
             setError('Connection error. Please try again.');
             eventSource.close();
+            eventSourceRef.current = null;
             setLoadingToolId(null);
             setLoadingProgress(null);
             loadTools();
@@ -425,6 +451,8 @@ export function ToolsSettings() {
                                                             variant="primary"
                                                             size="sm"
                                                             onClick={() => handleLoadTool(tool.id)}
+                                                            disabled={loadingToolId !== null}
+                                                            title={loadingToolId !== null ? 'Another tool is loading' : undefined}
                                                         >
                                                             Load
                                                         </Button>
