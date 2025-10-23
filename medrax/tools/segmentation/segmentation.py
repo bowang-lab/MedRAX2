@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
 import uuid
 import tempfile
+import logging
 
 import numpy as np
 import torch
@@ -21,6 +22,9 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 
 from medrax.utils.utils import preprocess_medical_image
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRaySegmentationInput(BaseModel):
@@ -75,27 +79,30 @@ class ChestXRaySegmentationTool(BaseTool):
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: Any = None
-    device: Optional[str] = "cuda"
+    device: str = "cuda"
     image_transform: Any = None
     pixel_spacing_mm: float = 0.2
     temp_dir: Path = Path("temp")
     organ_map: Dict[str, int] = None
 
-    def __init__(self, device: Optional[str] = "cuda", temp_dir: Optional[Path] = Path("temp")):
+    def __init__(self, device: Optional[str] = None, temp_dir: Optional[Path] = Path("temp")):
         """Initialize the segmentation tool with model and temporary directory."""
         super().__init__()
+        
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Segmentation on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Chest X-Ray Segmentation running on CPU. This will be slower than GPU.")
+        
         self.model = xrv.baseline_models.chestx_det.PSPNet()
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
         self.model = self.model.to(self.device)
         self.model.eval()
+        
+        logger.info("Chest X-Ray Segmentation model loaded successfully")
 
         self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
 

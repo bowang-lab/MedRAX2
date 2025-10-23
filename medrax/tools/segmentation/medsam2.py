@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import sys
+import logging
 
 from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import (
@@ -13,6 +14,10 @@ from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 # Add MedSAM2 to Python path for proper module resolution
 medsam2_path = str(Path(__file__).parent.parent.parent.parent / "MedSAM2")
@@ -66,8 +71,8 @@ class MedSAM2Tool(BaseTool):
     args_schema: Type[BaseModel] = MedSAM2Input
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
-    device: Optional[str] = "cuda"
-    cache_dir: Path = None
+    device: str = "cuda"
+    cache_dir: Optional[Path] = None
     temp_dir: Path = Path("temp")
     predictor: Any = None
 
@@ -83,8 +88,27 @@ class MedSAM2Tool(BaseTool):
     ):
         """Initialize the MedSAM2 tool."""
         super().__init__()
-        self.device = device
-        self.cache_dir = Path(cache_dir)
+        
+
+        self.device = get_device(device)
+        
+        logger.info(f"Initializing MedSAM2 on device: {self.device}")
+        
+        if self.device == "cpu":
+            logger.warning("MedSAM2 running on CPU. This will be significantly slower than GPU.")
+            logger.warning("For better performance, consider using a system with CUDA support.")
+        
+        # Handle cache_dir properly - don't pass None to Path()
+        if cache_dir:
+            self.cache_dir = Path(cache_dir)
+        else:
+            # Use default model cache directory
+            import os
+            default_cache = os.getenv("MODEL_CACHE_DIR", "./model_cache")
+            self.cache_dir = Path(default_cache) / "medsam2"
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Using default cache directory: {self.cache_dir}")
+        
         self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
 
         try:
@@ -101,10 +125,13 @@ class MedSAM2Tool(BaseTool):
             )
 
             config_path = model_cfg.replace(".yaml", "")
-            sam2_model = build_sam2(config_path, str(self.cache_dir / model_file), device=device)
+            sam2_model = build_sam2(config_path, str(self.cache_dir / model_file), device=self.device)
             self.predictor = SAM2ImagePredictor(sam2_model)
+            
+            logger.info("MedSAM2 model loaded successfully")
 
         except Exception as e:
+            logger.error(f"Failed to initialize MedSAM2: {e}")
             raise RuntimeError(f"Failed to initialize MedSAM2: {str(e)}")
 
     def _load_image(self, image_path: str) -> np.ndarray:
