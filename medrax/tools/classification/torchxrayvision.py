@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Tuple, Type
 from pydantic import BaseModel, Field, ConfigDict
+import logging
 
 import skimage.io
 import torch
@@ -19,6 +20,9 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 
 from medrax.utils.utils import preprocess_medical_image
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class TorchXRayVisionInput(BaseModel):
@@ -54,26 +58,28 @@ class TorchXRayVisionClassifierTool(BaseTool):
     args_schema: Type[BaseModel] = TorchXRayVisionInput
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     model: xrv.models.DenseNet = None
-    device: Optional[str] = "cuda"
+    device: str = "cuda"
     image_transform: torchvision.transforms.Compose = None
 
     def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = None):
         super().__init__()
+        
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing TorchXRayVision on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("TorchXRayVision running on CPU. This will be slower than GPU.")
+        
         self.model = xrv.models.DenseNet(weights=model_name)
         self.model.eval()
-        
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
-            
         self.model = self.model.to(self.device)
+        
         self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
+        
+        logger.info("TorchXRayVision model loaded successfully")
 
     def _process_image(self, image_path: str) -> torch.Tensor:
         """

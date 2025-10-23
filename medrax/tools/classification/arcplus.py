@@ -1,5 +1,6 @@
 import os
 from typing import ClassVar, Dict, List, Optional, Tuple, Type
+import logging
 
 import numpy as np
 import torch
@@ -14,6 +15,10 @@ from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class OmniSwinTransformer(SwinTransformer):
@@ -105,7 +110,7 @@ class ArcPlusClassifierTool(BaseTool):
     args_schema: Type[BaseModel] = ArcPlusInput
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     model: OmniSwinTransformer = None
-    device: Optional[str] = "cuda"
+    device: str = "cuda"
     normalize: transforms.Normalize = None
     disease_list: List[str] = None
     num_classes_list: List[int] = None
@@ -228,20 +233,21 @@ class ArcPlusClassifierTool(BaseTool):
 
         self.model.eval()
         
-        # Auto-detect device: CUDA > MPS (Apple Silicon) > CPU
-        if device:
-            self.device = torch.device(device)
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing ArcPlus Classifier on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("ArcPlus Classifier running on CPU. This will be significantly slower than GPU.")
             
         self.model = self.model.to(self.device)
 
         # ImageNet normalization parameters for optimal performance
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        
+        logger.info("ArcPlus Classifier loaded successfully")
 
     def _load_checkpoint(self, model_path: str) -> None:
         """
