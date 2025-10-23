@@ -181,4 +181,5 @@ echo "=================================================="
 echo ""
 
 # Start the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Use --loop asyncio to avoid conflict with nest_asyncio (used by duckduckgo-search)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --loop asyncio
