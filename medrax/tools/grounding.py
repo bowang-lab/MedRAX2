@@ -91,7 +91,13 @@ class XRayPhraseGroundingTool(BaseTool):
         original_llava_init = LlavaProcessor.__init__
         
         def patched_llava_init(self, image_processor=None, tokenizer=None, patch_size=None, vision_feature_select_strategy=None, **kwargs):
-            """Patched LlavaProcessor that accepts extra MAIRA-2 parameters."""
+            """Patched LlavaProcessor that accepts extra MAIRA-2 parameters and drops unsupported kwargs."""
+            # Drop unsupported kwargs that can be supplied by remote processors (e.g., MAIRA-2)
+            for key in ("chat_template", "conv_template", "chat_template_content"):
+                if key in kwargs:
+                    kwargs.pop(key, None)
+                    logger.info(f"Dropping unsupported LlavaProcessor kwarg: {key}")
+
             original_llava_init(self, image_processor=image_processor, tokenizer=tokenizer, **kwargs)
             if patch_size is not None:
                 self.patch_size = patch_size

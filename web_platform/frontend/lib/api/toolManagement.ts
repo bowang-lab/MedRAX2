@@ -40,3 +40,19 @@ export async function unloadTool(toolId: string): Promise<void> {
     await apiClient.post(API_ENDPOINTS.TOOL_UNLOAD(toolId));
 }
 
+/**
+ * Bulk load tools
+ */
+export async function bulkLoadTools(params: { toolIds?: string[]; loadAll?: boolean }): Promise<{
+    results: { id: string; success: boolean; status: string; message?: string }[];
+}> {
+    const response = await apiClient.post(
+        API_ENDPOINTS.TOOLS_BULK_LOAD,
+        {
+            tool_ids: params.toolIds,
+            load_all: params.loadAll ?? false,
+        }
+    );
+    return response.data;
+}
+

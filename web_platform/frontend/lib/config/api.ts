@@ -51,5 +51,6 @@ export const API_ENDPOINTS = {
     TOOLS: '/api/tools',
     TOOL_LOAD: (id: string) => `/api/tools/${id}/load`,
     TOOL_UNLOAD: (id: string) => `/api/tools/${id}/unload`,
+    TOOLS_BULK_LOAD: '/api/tools/bulk-load',
 };
 

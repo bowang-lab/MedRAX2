@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Wrench, Loader2, Info, Download, Check, X, AlertCircle } from 'lucide-react';
-import { getTools, loadTool, unloadTool } from '../../lib/api/toolManagement';
+import { getTools, loadTool, unloadTool, bulkLoadTools } from '../../lib/api/toolManagement';
 import { useToolLoadingSSE } from '../../lib/hooks/useToolLoadingSSE';
 import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
 import { API_CONFIG } from '../../lib/config/api';
@@ -68,10 +68,11 @@ export function ToolsSettings() {
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
     const [loadingToolId, setLoadingToolId] = useState<string | null>(null);
     const [loadingProgress, setLoadingProgress] = useState<{ progress: number; message: string } | null>(null);
-    
+    const [selectedToolIds, setSelectedToolIds] = useState<Set<string>>(new Set());
+
     // Get auth token from store
     const { token } = useAuthStore();
-    
+
     // Store EventSource ref for cleanup on unmount
     const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -112,12 +113,12 @@ export function ToolsSettings() {
             eventSourceRef.current.close();
             eventSourceRef.current = null;
         }
-        
+
         // Update UI immediately
         setTools(tools.map(t =>
             t.id === toolId ? { ...t, status: 'loading' as const } : t
         ));
-        
+
         setLoadingToolId(toolId);
         setLoadingProgress({ progress: 0, message: 'Connecting...' });
 
@@ -133,14 +134,14 @@ export function ToolsSettings() {
         const eventSource = new EventSource(
             `${API_CONFIG.baseURL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`
         );
-        
+
         // Store in ref for cleanup
         eventSourceRef.current = eventSource;
 
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                
+
                 if (data.status === 'loading') {
                     setLoadingProgress({ progress: data.progress, message: data.message });
                 } else if (data.status === 'loaded') {
@@ -200,6 +201,14 @@ export function ToolsSettings() {
         setExpandedCategories(newExpanded);
     };
 
+    const toggleSelectTool = (toolId: string) => {
+        setSelectedToolIds(prev => {
+            const next = new Set(prev);
+            if (next.has(toolId)) next.delete(toolId); else next.add(toolId);
+            return next;
+        });
+    };
+
     const groupToolsByCategory = (): ToolsByCategory => {
         return tools.reduce((acc, tool) => {
             const category = tool.category || 'other';
@@ -249,6 +258,30 @@ export function ToolsSettings() {
     const toolsByCategory = groupToolsByCategory();
     const stats = getToolStats();
 
+    const handleBulkLoadAll = async () => {
+        try {
+            setIsLoading(true);
+            await bulkLoadTools({ loadAll: true });
+            await loadTools();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to bulk load tools');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleBulkLoadSelected = async (ids: string[]) => {
+        try {
+            setIsLoading(true);
+            await bulkLoadTools({ toolIds: ids });
+            await loadTools();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to bulk load selected tools');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -262,13 +295,32 @@ export function ToolsSettings() {
                         Load and unload medical imaging analysis tools dynamically
                     </p>
                 </div>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={loadTools}
-                >
-                    Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={loadTools}
+                    >
+                        Refresh
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleBulkLoadAll}
+                        title="Load all available tools"
+                    >
+                        Load All
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleBulkLoadSelected(Array.from(selectedToolIds))}
+                        disabled={selectedToolIds.size === 0}
+                        title={selectedToolIds.size === 0 ? 'Select tools to load' : 'Load selected tools'}
+                    >
+                        Load Selected ({selectedToolIds.size})
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}
@@ -367,6 +419,14 @@ export function ToolsSettings() {
                                                 {/* Tool Info */}
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 accent-blue-500"
+                                                            checked={selectedToolIds.has(tool.id)}
+                                                            onChange={() => toggleSelectTool(tool.id)}
+                                                            disabled={tool.status === 'loading'}
+                                                            aria-label={`Select ${tool.name}`}
+                                                        />
                                                         <h4 className="font-semibold text-white">
                                                             {tool.name}
                                                         </h4>

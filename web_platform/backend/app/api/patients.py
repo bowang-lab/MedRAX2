@@ -57,18 +57,25 @@ def create_patient(
     db.commit()
     db.refresh(patient)
     
-    # Create first chat automatically (named "Initial Consultation")
-    first_chat = Chat(
-        patient_id=patient.id,
-        name="Initial Consultation"
-    )
-    db.add(first_chat)
-    db.commit()
+    # Create first chat automatically (named "Initial Consultation") if not already present
+    existing_initial = db.query(Chat).filter(
+        Chat.patient_id == patient.id,
+        Chat.name == "Initial Consultation"
+    ).first()
+    if not existing_initial:
+        first_chat = Chat(
+            patient_id=patient.id,
+            name="Initial Consultation"
+        )
+        db.add(first_chat)
+        db.commit()
     
     # Return patient with stats
+    total_chats = db.query(func.count(Chat.id)).filter(Chat.patient_id == patient.id).scalar() or 0
+    total_scans = db.query(func.count(Scan.id)).join(Chat).filter(Chat.patient_id == patient.id).scalar() or 0
     patient_dict = PatientResponse.model_validate(patient).model_dump()
-    patient_dict['total_chats'] = 1
-    patient_dict['total_scans'] = 0
+    patient_dict['total_chats'] = total_chats
+    patient_dict['total_scans'] = total_scans
     return PatientWithStats(**patient_dict)
 
 

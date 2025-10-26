@@ -44,7 +44,7 @@ python-decouple==3.8
 # ============================================================================
 torch>=2.0.0
 torchvision>=0.15.0
-transformers>=4.30.0
+transformers>=4.43.0,<4.44.0
 diffusers==0.35.2
 safetensors==0.4.2
 accelerate==0.27.2

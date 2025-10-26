@@ -16,6 +16,9 @@ from ..schemas.tool import (
     ToolExecutionLogResponse,
     ToolExecutionResultResponse,
     ToolLoadRequest,
+    ToolBulkLoadRequest,
+    ToolBulkLoadResponse,
+    ToolBulkLoadResult,
 )
 from ..dependencies import get_current_doctor
 from ..services.tool_manager import tool_manager
@@ -100,6 +103,49 @@ async def load_tool(
             "loaded_at": tool_info.loaded_at.isoformat() if tool_info.loaded_at else None
         }
     }
+
+
+@router.post("/bulk-load", response_model=ToolBulkLoadResponse)
+async def bulk_load_tools(
+    bulk: ToolBulkLoadRequest,
+    background_tasks: BackgroundTasks,
+    current_doctor: Doctor = Depends(get_current_doctor),
+):
+    """Bulk load tools. If load_all is true, load all available tools unless tool_ids provided."""
+    tools = tool_manager.get_all_tools()
+    target_ids = set()
+    if bulk.load_all and (not bulk.tool_ids or len(bulk.tool_ids) == 0):
+        target_ids = {t['id'] for t in tools if t.get('status') in ('available', 'unloaded')}
+    else:
+        target_ids = set(bulk.tool_ids or [])
+
+    results: list[ToolBulkLoadResult] = []
+
+    for tool_id in target_ids:
+        tm_tool = tool_manager.get_tool(tool_id)
+        if not tm_tool:
+            results.append(ToolBulkLoadResult(id=tool_id, success=False, status="error", message="Tool not found"))
+            continue
+        # Skip if already loaded
+        if tm_tool.status == "loaded":
+            results.append(ToolBulkLoadResult(id=tool_id, success=True, status="loaded", message="Already loaded"))
+            continue
+
+        # Initiate loading
+        result = tool_manager.load_tool(tool_id)
+        if not result.get("success"):
+            results.append(ToolBulkLoadResult(id=tool_id, success=False, status="error", message=result.get("error")))
+            continue
+
+        # Schedule background loading if in loading state
+        if tm_tool.status == "loading":
+            background_tasks.add_task(tool_manager.load_tool_in_background, tool_id)
+            results.append(ToolBulkLoadResult(id=tool_id, success=True, status="loading", message="Loading started"))
+        else:
+            # If status changed synchronously, reflect it
+            results.append(ToolBulkLoadResult(id=tool_id, success=True, status=tm_tool.status, message=result.get("message")))
+
+    return ToolBulkLoadResponse(results=results)
 
 
 @router.post("/{tool_id}/unload")

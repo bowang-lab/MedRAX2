@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { useAppStore } from '../../lib/store/appStore';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../../lib/api/patients';
-import { createChat } from '../../lib/api/chats';
+import { getChats } from '../../lib/api/chats';
 import { PatientCard } from '../sidebar/PatientCard';
 import { NewPatientModal } from '../sidebar/NewPatientModal';
 import { RenamePatientModal } from '../sidebar/RenamePatientModal';
@@ -26,7 +26,7 @@ export function Sidebar() {
         patients,
         setPatients,
         addPatient,
-        addChat,
+        setChats,
         updatePatient: updatePatientInStore,
         removePatient,
         selectedChatId,
@@ -73,14 +73,14 @@ export function Sidebar() {
         }
 
         try {
-            const initialChat = await createChat(newPatient.id, {
-                name: 'Initial Consultation'
-            });
-
-            addChat(newPatient.id, initialChat);
-            selectChat(initialChat.id);
+            // Backend already creates the initial chat; fetch chats and select it
+            const chats = await getChats(newPatient.id);
+            setChats(newPatient.id, chats);
+            if (chats && chats.length > 0) {
+                selectChat(chats[0].id);
+            }
         } catch (error) {
-            console.error('Failed to create initial consultation:', error);
+            console.error('Failed to load initial consultation chat:', error);
         }
     };
 

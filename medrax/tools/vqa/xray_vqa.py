@@ -64,7 +64,6 @@ class CheXagentXRayVQATool(BaseTool):
         """
         super().__init__(**kwargs)
 
-
         self.device = get_device(device)
         self.dtype = dtype
         self.cache_dir = cache_dir
@@ -77,12 +76,6 @@ class CheXagentXRayVQATool(BaseTool):
             logger.warning("For better performance, consider using a system with CUDA support.")
 
         try:
-            # Dangerous code, but works for now
-            import transformers
-
-            original_transformers_version = transformers.__version__
-            transformers.__version__ = "4.40.0"
-
             # Load tokenizer
             logger.info(f"Loading tokenizer from {model_name}...")
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -110,8 +103,6 @@ class CheXagentXRayVQATool(BaseTool):
             self.model.eval()
             
             logger.info("CheXagent VQA model loaded successfully")
-
-            transformers.__version__ = original_transformers_version
             
         except Exception as e:
             logger.error(f"Failed to initialize CheXagent VQA: {e}")
@@ -132,6 +123,9 @@ class CheXagentXRayVQATool(BaseTool):
             {"from": "system", "value": "You are a helpful assistant."},
             {"from": "human", "value": query},
         ]
+        # transformers 4.43 has chat templating; ensure tokenizer exposes it
+        if not hasattr(self.tokenizer, "apply_chat_template"):
+            raise RuntimeError("This transformers version lacks chat templating; please upgrade to >=4.43.0 or set a chat_template.")
         input_ids = self.tokenizer.apply_chat_template(conv, add_generation_prompt=True, return_tensors="pt").to(
             device=self.device
         )

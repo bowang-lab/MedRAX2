@@ -79,5 +79,24 @@ class ToolHistoryQuery(BaseModel):
     latest_only: bool = False
 
 
+class ToolBulkLoadRequest(BaseModel):
+    """Schema for bulk loading tools."""
+    tool_ids: Optional[List[str]] = None  # If None and load_all is True, load all available
+    load_all: bool = False
+
+
+class ToolBulkLoadResult(BaseModel):
+    """Result for each tool in a bulk load operation."""
+    id: str
+    success: bool
+    status: str
+    message: Optional[str] = None
+
+
+class ToolBulkLoadResponse(BaseModel):
+    """Response for bulk load operation."""
+    results: List[ToolBulkLoadResult]
+
+
 
 
