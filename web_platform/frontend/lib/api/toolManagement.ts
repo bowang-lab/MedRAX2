@@ -11,9 +11,13 @@ export interface Tool {
     id: string;
     name: string;
     description: string;
-    status: 'available' | 'unavailable' | 'loaded' | 'unloaded' | 'error';
+    status: 'available' | 'unavailable' | 'loaded' | 'unloaded' | 'error' | 'loading';
     category: string;
     loaded_at?: string;
+    // Additional fields returned by backend
+    dependencies?: string[];
+    requires_gpu?: boolean;
+    error_message?: string;
 }
 
 /**

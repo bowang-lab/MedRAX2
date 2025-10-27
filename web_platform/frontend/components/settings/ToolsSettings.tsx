@@ -3,38 +3,31 @@
  * 
  * Manage medical imaging tools:
  * - View available tools grouped by category
- * - Load/unload tools dynamically
+ * - Load/unload tools dynamically with real-time SSE progress
  * - View tool status, dependencies, and info
- * - Install all dependencies button
+ * - Bulk load tools with SSE for each tool
  */
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Wrench, Loader2, Info, Download, Check, X, AlertCircle } from 'lucide-react';
-import { getTools, unloadTool, bulkLoadTools } from '../../lib/api/toolManagement';
+import { getTools, loadTool, unloadTool, bulkLoadTools, Tool } from '../../lib/api/toolManagement';
 import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
-import { API_CONFIG } from '../../lib/config/api';
-import { useAuthStore } from '../../lib/store/authStore';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 import { Badge } from '../ui/Badge';
-
-interface Tool {
-    id: string;
-    name: string;
-    description: string;
-    status: 'available' | 'unavailable' | 'loaded' | 'unloaded' | 'error' | 'loading';
-    category: string;
-    loaded_at?: string;
-    dependencies?: string[];
-    requires_gpu?: boolean;
-    error_message?: string;
-}
+import { API_CONFIG } from '../../lib/config/api';
+import { AUTH_CONFIG } from '../../lib/config/app';
 
 interface ToolsByCategory {
     [category: string]: Tool[];
+}
+
+interface ToolLoadingState {
+    progress: number;
+    message: string;
 }
 
 const CATEGORY_DISPLAY_NAMES: { [key: string]: string } = {
@@ -65,33 +58,23 @@ export function ToolsSettings() {
     const [error, setError] = useState<string | null>(null);
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
-    const [loadingToolId, setLoadingToolId] = useState<string | null>(null);
-    const [loadingProgress, setLoadingProgress] = useState<{ progress: number; message: string } | null>(null);
     const [selectedToolIds, setSelectedToolIds] = useState<Set<string>>(new Set());
 
-    // Get auth token from store
-    const { token } = useAuthStore();
-
-    // Store EventSource ref for cleanup on unmount
-    const eventSourceRef = useRef<EventSource | null>(null);
+    // Track loading tools with SSE connections
+    const [loadingTools, setLoadingTools] = useState<Map<string, ToolLoadingState>>(new Map());
+    const sseConnectionsRef = useRef<Map<string, EventSource>>(new Map());
 
     useEffect(() => {
         loadTools();
         // Expand all categories by default
         setExpandedCategories(new Set(Object.keys(CATEGORY_DISPLAY_NAMES)));
-    }, []);
 
-    // Cleanup EventSource on unmount to prevent memory leak
-    useEffect(() => {
+        // Cleanup SSE connections on unmount
         return () => {
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
+            sseConnectionsRef.current.forEach(connection => connection.close());
+            sseConnectionsRef.current.clear();
         };
     }, []);
-
-    // NO MORE POLLING! SSE handles real-time updates now
 
     const loadTools = async () => {
         setIsLoading(true);
@@ -106,58 +89,53 @@ export function ToolsSettings() {
         }
     };
 
-    const handleLoadTool = async (toolId: string) => {
-        // Close any existing connection first
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-        }
-
-        // Update UI immediately
-        setTools(tools.map(t =>
-            t.id === toolId ? { ...t, status: 'loading' as const } : t
-        ));
-
-        setLoadingToolId(toolId);
-        setLoadingProgress({ progress: 0, message: 'Connecting...' });
-
-        // Use SSE for real-time progress updates
-        if (!token) {
-            setError('Authentication required - please log in again');
-            setLoadingToolId(null);
-            setLoadingProgress(null);
+    // Create SSE connection for a specific tool
+    const createSSEConnection = useCallback((toolId: string) => {
+        // Don't create duplicate connections
+        if (sseConnectionsRef.current.has(toolId)) {
             return;
         }
 
-        // Use centralized API config
-        const eventSource = new EventSource(
-            `${API_CONFIG.baseURL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`
-        );
+        const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
+        if (!token) {
+            console.error('No auth token available');
+            return;
+        }
 
-        // Store in ref for cleanup
-        eventSourceRef.current = eventSource;
+        const url = `${API_CONFIG.baseURL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`;
+        const eventSource = new EventSource(url);
 
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
 
                 if (data.status === 'loading') {
-                    setLoadingProgress({ progress: data.progress, message: data.message });
+                    setLoadingTools(prev => new Map(prev).set(toolId, {
+                        progress: data.progress,
+                        message: data.message
+                    }));
                 } else if (data.status === 'loaded') {
-                    setLoadingProgress({ progress: 100, message: 'Complete!' });
+                    // Tool loaded successfully
+                    console.log(`✅ Tool ${toolId} loaded successfully`);
+                    setLoadingTools(prev => {
+                        const next = new Map(prev);
+                        next.delete(toolId);
+                        return next;
+                    });
                     eventSource.close();
-                    eventSourceRef.current = null;
-                    setLoadingToolId(null);
-                    setLoadingProgress(null);
-                    // Refresh tools list once
-                    loadTools();
+                    sseConnectionsRef.current.delete(toolId);
+                    loadTools(); // Refresh to get final state
                 } else if (data.status === 'error') {
-                    setError(data.message);
+                    console.error(`❌ Tool ${toolId} loading error:`, data.message);
+                    setError(`${toolId}: ${data.message}`);
+                    setLoadingTools(prev => {
+                        const next = new Map(prev);
+                        next.delete(toolId);
+                        return next;
+                    });
                     eventSource.close();
-                    eventSourceRef.current = null;
-                    setLoadingToolId(null);
-                    setLoadingProgress(null);
-                    loadTools();
+                    sseConnectionsRef.current.delete(toolId);
+                    loadTools(); // Refresh to get error state
                 }
             } catch (err) {
                 console.error('Failed to parse SSE message:', err);
@@ -165,14 +143,49 @@ export function ToolsSettings() {
         };
 
         eventSource.onerror = (err) => {
-            console.error('SSE connection error:', err);
-            setError('Connection error. Please try again.');
+            console.error(`SSE connection error for ${toolId}:`, err);
+            setLoadingTools(prev => {
+                const next = new Map(prev);
+                next.delete(toolId);
+                return next;
+            });
             eventSource.close();
-            eventSourceRef.current = null;
-            setLoadingToolId(null);
-            setLoadingProgress(null);
+            sseConnectionsRef.current.delete(toolId);
             loadTools();
         };
+
+        sseConnectionsRef.current.set(toolId, eventSource);
+    }, []);
+
+    const handleLoadTool = async (toolId: string) => {
+        try {
+            setError(null);
+
+            // Update UI immediately
+            setTools(tools.map(t =>
+                t.id === toolId ? { ...t, status: 'loading' as const } : t
+            ));
+
+            // Start SSE connection BEFORE calling load
+            setLoadingTools(prev => new Map(prev).set(toolId, {
+                progress: 0,
+                message: 'Initiating load...'
+            }));
+
+            // Initiate the actual load request (backend starts background loading)
+            await loadTool(toolId);
+
+            // Create SSE connection to track progress
+            createSSEConnection(toolId);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load tool');
+            setLoadingTools(prev => {
+                const next = new Map(prev);
+                next.delete(toolId);
+                return next;
+            });
+            loadTools();
+        }
     };
 
     const handleUnloadTool = async (toolId: string) => {
@@ -187,6 +200,76 @@ export function ToolsSettings() {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to unload tool');
             await loadTools();
+        }
+    };
+
+    const handleBulkLoadAll = async () => {
+        try {
+            setError(null);
+
+            // Call bulk load endpoint
+            const result = await bulkLoadTools({ loadAll: true });
+
+            // For each tool that started loading, create an SSE connection
+            const loadingToolIds = result.results
+                .filter(r => r.success && r.status === 'loading')
+                .map(r => r.id);
+
+            console.log(`📡 Starting SSE for ${loadingToolIds.length} tools:`, loadingToolIds);
+
+            // Update UI to show loading state
+            setTools(prev => prev.map(t =>
+                loadingToolIds.includes(t.id) ? { ...t, status: 'loading' as const } : t
+            ));
+
+            // Create SSE connection for each loading tool
+            loadingToolIds.forEach(toolId => {
+                setLoadingTools(prev => new Map(prev).set(toolId, {
+                    progress: 0,
+                    message: 'Starting...'
+                }));
+                createSSEConnection(toolId);
+            });
+
+            // Immediate refresh to get accurate states
+            await loadTools();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to bulk load tools');
+        }
+    };
+
+    const handleBulkLoadSelected = async (ids: string[]) => {
+        try {
+            setError(null);
+
+            // Call bulk load endpoint
+            const result = await bulkLoadTools({ toolIds: ids });
+
+            // For each tool that started loading, create an SSE connection
+            const loadingToolIds = result.results
+                .filter(r => r.success && r.status === 'loading')
+                .map(r => r.id);
+
+            console.log(`📡 Starting SSE for ${loadingToolIds.length} tools:`, loadingToolIds);
+
+            // Update UI to show loading state
+            setTools(prev => prev.map(t =>
+                loadingToolIds.includes(t.id) ? { ...t, status: 'loading' as const } : t
+            ));
+
+            // Create SSE connection for each loading tool
+            loadingToolIds.forEach(toolId => {
+                setLoadingTools(prev => new Map(prev).set(toolId, {
+                    progress: 0,
+                    message: 'Starting...'
+                }));
+                createSSEConnection(toolId);
+            });
+
+            // Immediate refresh to get accurate states
+            await loadTools();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to bulk load selected tools');
         }
     };
 
@@ -243,10 +326,11 @@ export function ToolsSettings() {
         const available = tools.filter(t => t.status === 'available').length;
         const loaded = tools.filter(t => t.status === 'loaded').length;
         const unavailable = tools.filter(t => t.status === 'unavailable').length;
-        return { total: tools.length, available, loaded, unavailable };
+        const loading = tools.filter(t => t.status === 'loading').length;
+        return { total: tools.length, available, loaded, unavailable, loading };
     };
 
-    if (isLoading) {
+    if (isLoading && tools.length === 0) {
         return (
             <div className="flex items-center justify-center py-12">
                 <Spinner size="lg" />
@@ -256,30 +340,7 @@ export function ToolsSettings() {
 
     const toolsByCategory = groupToolsByCategory();
     const stats = getToolStats();
-
-    const handleBulkLoadAll = async () => {
-        try {
-            setIsLoading(true);
-            await bulkLoadTools({ loadAll: true });
-            await loadTools();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to bulk load tools');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleBulkLoadSelected = async (ids: string[]) => {
-        try {
-            setIsLoading(true);
-            await bulkLoadTools({ toolIds: ids });
-            await loadTools();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to bulk load selected tools');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const hasActiveSSE = loadingTools.size > 0;
 
     return (
         <div className="space-y-6">
@@ -299,6 +360,7 @@ export function ToolsSettings() {
                         variant="secondary"
                         size="sm"
                         onClick={loadTools}
+                        disabled={hasActiveSSE}
                     >
                         Refresh
                     </Button>
@@ -306,7 +368,8 @@ export function ToolsSettings() {
                         variant="primary"
                         size="sm"
                         onClick={handleBulkLoadAll}
-                        title="Load all available tools"
+                        disabled={hasActiveSSE}
+                        title={hasActiveSSE ? 'Tools are currently loading' : 'Load all available tools'}
                     >
                         Load All
                     </Button>
@@ -314,8 +377,8 @@ export function ToolsSettings() {
                         variant="primary"
                         size="sm"
                         onClick={() => handleBulkLoadSelected(Array.from(selectedToolIds))}
-                        disabled={selectedToolIds.size === 0}
-                        title={selectedToolIds.size === 0 ? 'Select tools to load' : 'Load selected tools'}
+                        disabled={selectedToolIds.size === 0 || hasActiveSSE}
+                        title={selectedToolIds.size === 0 ? 'Select tools to load' : hasActiveSSE ? 'Tools are currently loading' : 'Load selected tools'}
                     >
                         Load Selected ({selectedToolIds.size})
                     </Button>
@@ -324,7 +387,7 @@ export function ToolsSettings() {
 
             {/* Stats */}
             <Card className="p-4 bg-zinc-800/50">
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                     <div>
                         <div className="text-2xl font-bold text-white">{stats.total}</div>
                         <div className="text-sm text-zinc-400">Total Tools</div>
@@ -338,11 +401,33 @@ export function ToolsSettings() {
                         <div className="text-sm text-zinc-400">Loaded</div>
                     </div>
                     <div>
+                        <div className="text-2xl font-bold text-purple-500">{stats.loading}</div>
+                        <div className="text-sm text-zinc-400">Loading</div>
+                    </div>
+                    <div>
                         <div className="text-2xl font-bold text-amber-500">{stats.unavailable}</div>
                         <div className="text-sm text-zinc-400">Unavailable</div>
                     </div>
                 </div>
             </Card>
+
+            {/* Real-time SSE Loading Indicator */}
+            {hasActiveSSE && (
+                <Card className="p-4 bg-blue-900/20 border border-blue-800">
+                    <div className="flex items-center gap-3">
+                        <Loader2 className="h-5 w-5 text-blue-500 animate-spin flex-shrink-0" />
+                        <div className="flex-1">
+                            <h3 className="font-semibold text-blue-200">Real-time Tool Loading (SSE)</h3>
+                            <p className="text-sm text-blue-300/80 mt-1">
+                                {loadingTools.size} tool{loadingTools.size !== 1 ? 's are' : ' is'} loading with live progress updates via Server-Sent Events.
+                            </p>
+                            <p className="text-xs text-blue-400/70 mt-2">
+                                ⓘ Progress shows estimated completion. First-time downloads may take several minutes.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             {/* Installation Info */}
             {stats.unavailable > 0 && (
@@ -368,7 +453,10 @@ export function ToolsSettings() {
             {/* Error Display */}
             {error && (
                 <Card className="p-4 bg-red-900/20 border border-red-800">
-                    <p className="text-red-400">{error}</p>
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-red-400">{error}</p>
+                    </div>
                 </Card>
             )}
 
@@ -409,120 +497,131 @@ export function ToolsSettings() {
                             {/* Category Tools */}
                             {expandedCategories.has(category) && (
                                 <div className="p-6 space-y-4">
-                                    {categoryTools.map((tool) => (
-                                        <div
-                                            key={tool.id}
-                                            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-colors"
-                                        >
-                                            <div className="flex items-start justify-between gap-4">
-                                                {/* Tool Info */}
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="h-4 w-4 accent-blue-500"
-                                                            checked={selectedToolIds.has(tool.id)}
-                                                            onChange={() => toggleSelectTool(tool.id)}
-                                                            disabled={tool.status === 'loading'}
-                                                            aria-label={`Select ${tool.name}`}
-                                                        />
-                                                        <h4 className="font-semibold text-white">
-                                                            {tool.name}
-                                                        </h4>
-                                                        <Badge variant={getStatusBadgeVariant(tool.status)} size="sm">
-                                                            <span className="flex items-center gap-1">
-                                                                {getStatusIcon(tool.status)}
-                                                                {tool.status}
-                                                            </span>
-                                                        </Badge>
-                                                        {tool.requires_gpu && (
-                                                            <Badge variant="default" size="sm">GPU Required</Badge>
+                                    {categoryTools.map((tool) => {
+                                        const toolLoadingState = loadingTools.get(tool.id);
+                                        const hasSSE = toolLoadingState !== undefined;
+
+                                        return (
+                                            <div
+                                                key={tool.id}
+                                                className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    {/* Tool Info */}
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 accent-blue-500"
+                                                                checked={selectedToolIds.has(tool.id)}
+                                                                onChange={() => toggleSelectTool(tool.id)}
+                                                                disabled={tool.status === 'loading' || tool.status === 'loaded'}
+                                                                aria-label={`Select ${tool.name}`}
+                                                            />
+                                                            <h4 className="font-semibold text-white">
+                                                                {tool.name}
+                                                            </h4>
+                                                            <Badge variant={getStatusBadgeVariant(tool.status)} size="sm">
+                                                                <span className="flex items-center gap-1">
+                                                                    {getStatusIcon(tool.status)}
+                                                                    {tool.status}
+                                                                </span>
+                                                            </Badge>
+                                                            {tool.requires_gpu && (
+                                                                <Badge variant="default" size="sm">GPU Required</Badge>
+                                                            )}
+                                                            {hasSSE && (
+                                                                <Badge variant="info" size="sm">📡 SSE</Badge>
+                                                            )}
+                                                        </div>
+
+                                                        <p className="text-sm text-zinc-400 mb-2">
+                                                            {tool.description}
+                                                        </p>
+
+                                                        {/* Real-time SSE progress bar */}
+                                                        {hasSSE && (
+                                                            <div className="mb-3">
+                                                                <ToolLoadingProgress
+                                                                    progress={toolLoadingState.progress}
+                                                                    message={toolLoadingState.message}
+                                                                />
+                                                                <p className="text-xs text-zinc-500 mt-1">
+                                                                    ⓘ Real-time progress via SSE (estimated completion)
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {tool.loaded_at && (
+                                                            <p className="text-xs text-zinc-500">
+                                                                Loaded at: {new Date(tool.loaded_at).toLocaleString()}
+                                                            </p>
+                                                        )}
+
+                                                        {tool.error_message && (
+                                                            <p className="text-xs text-amber-400 mt-1">
+                                                                {tool.error_message}
+                                                            </p>
+                                                        )}
+
+                                                        {tool.dependencies && tool.dependencies.length > 0 && (
+                                                            <div className="mt-2">
+                                                                <button
+                                                                    onClick={() => setSelectedTool(selectedTool?.id === tool.id ? null : tool)}
+                                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                                                >
+                                                                    <Info className="h-3 w-3" />
+                                                                    Show dependencies ({tool.dependencies.length})
+                                                                </button>
+                                                                {selectedTool?.id === tool.id && (
+                                                                    <div className="mt-2 p-2 bg-black/30 rounded text-xs text-zinc-400 font-mono">
+                                                                        {tool.dependencies.join(', ')}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
 
-                                                    <p className="text-sm text-zinc-400 mb-2">
-                                                        {tool.description}
-                                                    </p>
-
-                                                    {/* Real-time SSE progress bar */}
-                                                    {loadingToolId === tool.id && loadingProgress && (
-                                                        <div className="mb-3">
-                                                            <ToolLoadingProgress
-                                                                progress={loadingProgress.progress}
-                                                                message={loadingProgress.message}
-                                                            />
-                                                        </div>
-                                                    )}
-
-                                                    {tool.loaded_at && (
-                                                        <p className="text-xs text-zinc-500">
-                                                            Loaded at: {new Date(tool.loaded_at).toLocaleString()}
-                                                        </p>
-                                                    )}
-
-                                                    {tool.error_message && (
-                                                        <p className="text-xs text-amber-400 mt-1">
-                                                            {tool.error_message}
-                                                        </p>
-                                                    )}
-
-                                                    {tool.dependencies && tool.dependencies.length > 0 && (
-                                                        <div className="mt-2">
-                                                            <button
-                                                                onClick={() => setSelectedTool(selectedTool?.id === tool.id ? null : tool)}
-                                                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                                    {/* Action Buttons */}
+                                                    <div className="flex items-center gap-2">
+                                                        {tool.status === 'loading' ? (
+                                                            <Button variant="secondary" size="sm" disabled>
+                                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                Loading...
+                                                            </Button>
+                                                        ) : tool.status === 'loaded' ? (
+                                                            <Button
+                                                                variant="secondary"
+                                                                size="sm"
+                                                                onClick={() => handleUnloadTool(tool.id)}
                                                             >
-                                                                <Info className="h-3 w-3" />
-                                                                Show dependencies ({tool.dependencies.length})
-                                                            </button>
-                                                            {selectedTool?.id === tool.id && (
-                                                                <div className="mt-2 p-2 bg-black/30 rounded text-xs text-zinc-400 font-mono">
-                                                                    {tool.dependencies.join(', ')}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Action Buttons */}
-                                                <div className="flex items-center gap-2">
-                                                    {tool.status === 'loading' ? (
-                                                        <Button variant="secondary" size="sm" disabled>
-                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                            Loading...
-                                                        </Button>
-                                                    ) : tool.status === 'loaded' ? (
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="sm"
-                                                            onClick={() => handleUnloadTool(tool.id)}
-                                                        >
-                                                            Unload
-                                                        </Button>
-                                                    ) : tool.status === 'unavailable' ? (
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="sm"
-                                                            disabled
-                                                            title="Install dependencies first"
-                                                        >
-                                                            Unavailable
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            variant="primary"
-                                                            size="sm"
-                                                            onClick={() => handleLoadTool(tool.id)}
-                                                            disabled={loadingToolId !== null}
-                                                            title={loadingToolId !== null ? 'Another tool is loading' : undefined}
-                                                        >
-                                                            Load
-                                                        </Button>
-                                                    )}
+                                                                Unload
+                                                            </Button>
+                                                        ) : tool.status === 'unavailable' ? (
+                                                            <Button
+                                                                variant="secondary"
+                                                                size="sm"
+                                                                disabled
+                                                                title="Install dependencies first"
+                                                            >
+                                                                Unavailable
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                variant="primary"
+                                                                size="sm"
+                                                                onClick={() => handleLoadTool(tool.id)}
+                                                                disabled={hasActiveSSE}
+                                                                title={hasActiveSSE ? 'Another tool is loading' : undefined}
+                                                            >
+                                                                Load
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </Card>
