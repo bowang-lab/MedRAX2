@@ -22,8 +22,7 @@ class XRayVQAToolInput(BaseModel):
 
     image_paths: List[str] = Field(
         ..., 
-        description="List of paths to chest X-ray images to analyze",
-        json_schema_extra={"items": {"type": "string"}}  # Explicit for Gemini compatibility
+        description="List of paths to chest X-ray images to analyze"
     )
     prompt: str = Field(..., description="Question or instruction about the chest X-ray images")
     max_new_tokens: int = Field(512, description="Maximum number of tokens to generate in the response")

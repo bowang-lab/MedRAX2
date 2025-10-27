@@ -86,6 +86,10 @@ class ToolManager:
         self._load_semaphore = threading.BoundedSemaphore(max_conc)
         self._semaphore_max = max_conc  # Track max value for cleanup
         
+        # Agent and memory persistence
+        self.agent_instance = None
+        self.checkpointer = None
+        
         # Try to add MedRAX to path
         self._setup_medrax_path()
         
@@ -485,6 +489,8 @@ class ToolManager:
                 tool.status = ToolStatus.LOADED
                 tool.loaded_at = datetime.utcnow()
                 tool.error_message = None
+                # Reset agent so it gets recreated with the new tool
+                self.agent_instance = None
                 logger.info(f"[OK] Tool loaded in background: {tool.name}")
             else:
                 tool.status = ToolStatus.ERROR
@@ -730,6 +736,9 @@ class ToolManager:
             tool.status = ToolStatus.AVAILABLE if tool.error_message is None else ToolStatus.UNAVAILABLE
             tool.loaded_at = None
             
+            # Reset agent so it gets recreated with updated tools
+            self.agent_instance = None
+            
             logger.info(f"[OK] Tool unloaded: {tool.name}")
             return {
                 "success": True,
@@ -754,13 +763,14 @@ class ToolManager:
         loaded_tools = self.get_loaded_tools()
         return len(loaded_tools) > 0
     
-    def create_agent(self, model=None, system_prompt: str = ""):
+    def create_agent(self, model=None, system_prompt: str = "", force_recreate: bool = False):
         """
         Create MedRAX agent with loaded tools and memory persistence.
         
         Args:
             model: Language model to use (if None, will use default)
             system_prompt: System prompt for the agent
+            force_recreate: If True, force recreation of agent even if one exists
             
         Returns:
             Agent instance or None if not available
@@ -768,6 +778,10 @@ class ToolManager:
         if not self.is_agent_ready():
             logger.warning("Cannot create agent: no tools loaded")
             return None
+        
+        # Return existing agent if available and not forcing recreation
+        if self.agent_instance is not None and not force_recreate:
+            return self.agent_instance
         
         try:
             from medrax.agent import Agent
@@ -786,14 +800,16 @@ class ToolManager:
             # Get loaded tool instances directly
             tool_instances = self.get_loaded_tools()
             
-            # Create in-memory checkpointer for conversation persistence
-            checkpointer = MemorySaver()
+            # Create or reuse in-memory checkpointer for conversation persistence
+            if self.checkpointer is None:
+                self.checkpointer = MemorySaver()
+                logger.info("[OK] Created new MemorySaver checkpointer for conversation persistence")
             
             # Create agent with memory
             self.agent_instance = Agent(
                 model=model,
                 tools=tool_instances,
-                checkpointer=checkpointer,
+                checkpointer=self.checkpointer,
                 system_prompt=system_prompt or self._get_default_system_prompt()
             )
             
@@ -803,6 +819,37 @@ class ToolManager:
         except Exception as e:
             logger.error(f"Failed to create agent: {e}")
             return None
+    
+    def clear_chat_memory(self, thread_id: str) -> bool:
+        """
+        Clear memory for a specific chat thread.
+        
+        Args:
+            thread_id: The chat ID / thread ID to clear memory for
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if self.checkpointer is None:
+            logger.warning("No checkpointer available to clear memory")
+            return False
+        
+        try:
+            # Clear the specific thread from checkpointer
+            config = {"configurable": {"thread_id": thread_id}}
+            # MemorySaver stores state in memory dict, clear it
+            if hasattr(self.checkpointer, 'storage'):
+                # Remove the thread from storage
+                thread_key = (thread_id,)
+                if thread_key in self.checkpointer.storage:
+                    del self.checkpointer.storage[thread_key]
+                    logger.info(f"[OK] Cleared memory for thread: {thread_id[:8]}")
+                    return True
+            logger.warning(f"Could not clear memory for thread: {thread_id[:8]}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to clear memory for thread {thread_id[:8]}: {e}")
+            return False
     
     def _get_default_system_prompt(self) -> str:
         """Get default system prompt for medical agent."""

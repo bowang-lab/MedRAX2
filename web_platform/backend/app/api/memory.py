@@ -48,15 +48,15 @@ async def clear_chat_memory(
             detail="Chat not found"
         )
     
-    # TODO: Clear LangGraph checkpointer state for this thread_id (chat_id)
-    # This would require access to the checkpointer instance
-    # For now, just log the action
+    # Clear LangGraph checkpointer state for this thread_id (chat_id)
+    from ..services.tool_manager import tool_manager
+    success = tool_manager.clear_chat_memory(chat_id)
     
-    logger.info(f"chat_memory_cleared chat_id={chat_id[:8]}")
+    logger.info(f"chat_memory_cleared chat_id={chat_id[:8]} success={success}")
     
     return {
-        "success": True,
-        "message": f"Memory cleared for chat {chat_id}",
+        "success": success,
+        "message": f"Memory cleared for chat {chat_id}" if success else "Failed to clear memory",
         "chat_id": chat_id
     }
 
