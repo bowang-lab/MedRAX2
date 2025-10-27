@@ -40,11 +40,12 @@ class MedSAM2Input(BaseModel):
         description="Type of prompt: 'box' for bounding box, 'point' for point click, or 'auto' for automatic segmentation",
     )
     prompt_coords: Optional[List[int]] = Field(
-        None,
+        default=None,
         description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave None for auto segmentation",
+        json_schema_extra={"items": {"type": "integer"}}  # Explicit for Gemini compatibility
     )
     slice_index: Optional[int] = Field(
-        None,
+        default=None,
         description="Specific slice index for 3D volumes (0-based). If None, processes middle slice",
     )
 
