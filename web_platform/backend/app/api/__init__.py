@@ -12,7 +12,8 @@ from . import auth, patients, chats, messages, scans, tools, tools_sse, question
 api_router = APIRouter(prefix="/api")
 
 # Include all routers
-api_router.include_router(system.router, tags=["system"])  # System endpoints (no prefix - routes include full paths)
+# System endpoints (no prefix - routes include full paths like /api/system/validate-secret)
+api_router.include_router(system.router, tags=["system"])
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 api_router.include_router(patients.router, prefix="/patients", tags=["patients"])
 api_router.include_router(chats.router, tags=["chats"])  # No prefix - routes include full paths

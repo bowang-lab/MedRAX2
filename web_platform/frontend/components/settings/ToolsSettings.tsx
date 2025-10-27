@@ -12,8 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Wrench, Loader2, Info, Download, Check, X, AlertCircle } from 'lucide-react';
-import { getTools, loadTool, unloadTool, bulkLoadTools } from '../../lib/api/toolManagement';
-import { useToolLoadingSSE } from '../../lib/hooks/useToolLoadingSSE';
+import { getTools, unloadTool, bulkLoadTools } from '../../lib/api/toolManagement';
 import { ToolLoadingProgress } from '../tools/ToolLoadingProgress';
 import { API_CONFIG } from '../../lib/config/api';
 import { useAuthStore } from '../../lib/store/authStore';

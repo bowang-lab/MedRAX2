@@ -9,17 +9,26 @@ import { useEffect, useRef, useState } from 'react';
 import { API_CONFIG } from '../config/api';
 import { AUTH_CONFIG } from '../config/app';
 
+export interface ToolData {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+    category: string;
+    [key: string]: unknown;  // Allow additional properties
+}
+
 export interface ToolLoadingProgress {
     status: 'loading' | 'loaded' | 'error';
     progress: number;  // 0-100
     message: string;
-    tool?: any;  // Tool data when loaded
+    tool?: ToolData;  // Tool data when loaded
 }
 
 export interface UseToolLoadingSSEOptions {
     toolId: string;
     onProgress?: (progress: ToolLoadingProgress) => void;
-    onComplete?: (tool: any) => void;
+    onComplete?: (tool: ToolData) => void;
     onError?: (error: string) => void;
 }
 
@@ -54,7 +63,7 @@ export function useToolLoadingSSE({
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    
+
     const eventSourceRef = useRef<EventSource | null>(null);
     const isStartedRef = useRef(false);
 
@@ -95,7 +104,7 @@ export function useToolLoadingSSE({
 
         // Create SSE connection
         // Note: EventSource doesn't support custom headers, so we pass token as query param
-        const url = `${API_CONFIG.BASE_URL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`;
+        const url = `${API_CONFIG.baseURL}/api/tools/${toolId}/load-stream?token=${encodeURIComponent(token)}`;
         const eventSource = new EventSource(url);
 
         eventSource.onopen = () => {
@@ -105,13 +114,15 @@ export function useToolLoadingSSE({
         eventSource.onmessage = (event) => {
             try {
                 const data: ToolLoadingProgress = JSON.parse(event.data);
-                
+
                 setProgress(data);
                 onProgress?.(data);
 
                 if (data.status === 'loaded') {
                     console.log('Tool loaded successfully:', toolId);
-                    onComplete?.(data.tool);
+                    if (data.tool && onComplete) {
+                        onComplete(data.tool);
+                    }
                     stop();
                 } else if (data.status === 'error') {
                     console.error('Tool loading error:', data.message);
