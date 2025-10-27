@@ -4,7 +4,7 @@ Tool API Routes
 Endpoints for tool management and execution details.
 """
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -72,30 +72,32 @@ def list_tools(current_doctor: Doctor = Depends(get_current_doctor)):
 @router.post("/{tool_id}/load")
 async def load_tool(
     tool_id: str,
-    background_tasks: BackgroundTasks,
     current_doctor: Doctor = Depends(get_current_doctor)
 ):
-    """Load/activate a tool (starts loading in background for large models)."""
+    """
+    Load/activate a tool (starts loading in background for large models).
+    
+    Note: For real-time progress updates, use the SSE endpoint at /{tool_id}/load-stream
+    """
     logger.info(f"Doctor {current_doctor.id} loading tool: {tool_id}")
     
-    # Initiate loading (returns immediately)
-    result = tool_manager.load_tool(tool_id)
+    # Start managed background loading (creates thread internally)
+    started = tool_manager.start_background_load(tool_id)
     
-    if not result["success"]:
-        logger.error(f"Failed to load tool {tool_id}: {result.get('error')}")
+    if not started:
+        tool_info = tool_manager.get_tool(tool_id)
+        error_msg = tool_info.error_message if tool_info else "Tool not found"
+        logger.error(f"Failed to start load for {tool_id}: {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("error", "Failed to load tool")
+            detail=error_msg or "Failed to start tool loading"
         )
     
-    # Add background task to actually load the tool
     tool_info = tool_manager.get_tool(tool_id)
-    if tool_info.status == "loading":
-        background_tasks.add_task(tool_manager.load_tool_in_background, tool_id)
-        logger.info(f"Added background task to load {tool_id}")
+    logger.info(f"Started background load for {tool_id}")
     
     return {
-        "message": result["message"],
+        "message": f"Tool '{tool_info.name}' is loading (use SSE endpoint for progress)",
         "tool": {
             "id": tool_info.id,
             "name": tool_info.name,
@@ -108,10 +110,13 @@ async def load_tool(
 @router.post("/bulk-load", response_model=ToolBulkLoadResponse)
 async def bulk_load_tools(
     bulk: ToolBulkLoadRequest,
-    background_tasks: BackgroundTasks,
     current_doctor: Doctor = Depends(get_current_doctor),
 ):
-    """Bulk load tools. If load_all is true, load all available tools unless tool_ids provided."""
+    """
+    Bulk load tools. If load_all is true, load all available tools unless tool_ids provided.
+    
+    Note: For real-time progress, use SSE endpoint for each tool being loaded.
+    """
     tools = tool_manager.get_all_tools()
     target_ids = set()
     if bulk.load_all and (not bulk.tool_ids or len(bulk.tool_ids) == 0):
@@ -131,19 +136,13 @@ async def bulk_load_tools(
             results.append(ToolBulkLoadResult(id=tool_id, success=True, status="loaded", message="Already loaded"))
             continue
 
-        # Initiate loading
-        result = tool_manager.load_tool(tool_id)
-        if not result.get("success"):
-            results.append(ToolBulkLoadResult(id=tool_id, success=False, status="error", message=result.get("error")))
-            continue
-
-        # Schedule background loading if in loading state
-        if tm_tool.status == "loading":
-            background_tasks.add_task(tool_manager.load_tool_in_background, tool_id)
+        # Use managed background loading (consistent with single load endpoint)
+        started = tool_manager.start_background_load(tool_id)
+        if started:
             results.append(ToolBulkLoadResult(id=tool_id, success=True, status="loading", message="Loading started"))
         else:
-            # If status changed synchronously, reflect it
-            results.append(ToolBulkLoadResult(id=tool_id, success=True, status=tm_tool.status, message=result.get("message")))
+            error_msg = tm_tool.error_message or "Failed to start load"
+            results.append(ToolBulkLoadResult(id=tool_id, success=False, status="error", message=error_msg))
 
     return ToolBulkLoadResponse(results=results)
 

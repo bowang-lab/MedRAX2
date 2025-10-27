@@ -36,8 +36,7 @@ class ChestXRaySegmentationInput(BaseModel):
         description="List of organs to segment. If None, all available organs will be segmented. "
         "Available organs: Left/Right Clavicle, Left/Right Scapula, Left/Right Lung, "
         "Left/Right Hilus Pulmonis, Heart, Aorta, Facies Diaphragmatica, "
-        "Mediastinum, Weasand, Spine",
-        json_schema_extra={"items": {"type": "string"}}  # Explicit for Gemini compatibility
+        "Mediastinum, Weasand, Spine"
     )
 
 

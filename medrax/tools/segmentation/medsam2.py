@@ -41,8 +41,7 @@ class MedSAM2Input(BaseModel):
     )
     prompt_coords: Optional[List[int]] = Field(
         default=None,
-        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave None for auto segmentation",
-        json_schema_extra={"items": {"type": "integer"}}  # Explicit for Gemini compatibility
+        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave None for auto segmentation"
     )
     slice_index: Optional[int] = Field(
         default=None,

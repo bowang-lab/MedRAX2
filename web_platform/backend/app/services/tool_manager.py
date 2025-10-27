@@ -56,6 +56,7 @@ class ToolInfo:
         self.instance = None
         self.error_message: Optional[str] = None
         self.loaded_at: Optional[datetime] = None
+        self.cancel_event: Optional[threading.Event] = None  # For cancelling individual tool loads
 
 
 class ToolManager:
@@ -73,13 +74,17 @@ class ToolManager:
         self.tools: Dict[str, ToolInfo] = {}
         self.medrax_path = None
         self._threads: Dict[str, threading.Thread] = {}
-        self._shutdown: bool = False
+        self._shutdown_event = threading.Event()  # For graceful shutdown signaling
+        self._threads_lock = threading.Lock()  # Thread-safe access to _threads dict
+        
         # Limit concurrent background loads to reduce resource contention
+        # Use BoundedSemaphore for better error detection
         try:
             max_conc = getattr(settings, 'MAX_CONCURRENT_TOOLS', 3) or 1
         except Exception:
             max_conc = 3
-        self._load_semaphore = threading.Semaphore(max_conc)
+        self._load_semaphore = threading.BoundedSemaphore(max_conc)
+        self._semaphore_max = max_conc  # Track max value for cleanup
         
         # Try to add MedRAX to path
         self._setup_medrax_path()
@@ -89,6 +94,14 @@ class ToolManager:
         
         # Check availability for each tool
         self._check_tool_availability()
+    
+    def __del__(self):
+        """Cleanup resources on deletion."""
+        try:
+            if hasattr(self, '_shutdown_event') and not self._shutdown_event.is_set():
+                self.shutdown()
+        except Exception:
+            pass  # Ignore errors in destructor
         
     def _setup_medrax_path(self):
         """Setup MedRAX path for imports."""
@@ -383,35 +396,117 @@ class ToolManager:
         """
         Actually load the tool in background (can take a long time for large models).
         This is called as a background task after load_tool() returns.
+        Checks shutdown event and per-tool cancel event to allow graceful cancellation.
         """
         tool = self.tools.get(tool_id)
         if not tool or tool.status != ToolStatus.LOADING:
+            if tool and tool.status == ToolStatus.LOADED:
+                logger.debug(f"Tool {tool.name} already loaded, skipping")
             return
         
+        # Check if shutdown was requested before even starting
+        if self._shutdown_event.is_set():
+            logger.info(f"Shutdown requested, aborting load of {tool.name}")
+            tool.status = ToolStatus.AVAILABLE
+            tool.cancel_event = None
+            return
+        
+        # Check if this tool was cancelled
+        if tool.cancel_event and tool.cancel_event.is_set():
+            logger.info(f"Load cancelled for {tool.name}")
+            tool.status = ToolStatus.AVAILABLE
+            tool.cancel_event = None
+            return
+        
+        acquired = False
         try:
-            # Concurrency cap
-            with self._load_semaphore:
-                logger.info(f"Background loading tool: {tool.name}")
-                
-                # Import and instantiate the tool (this may take 10-30 minutes for large models)
-                tool_instance = self._load_tool_instance(tool)
-                
-                if tool_instance:
-                    tool.instance = tool_instance
-                    tool.status = ToolStatus.LOADED
-                    tool.loaded_at = datetime.utcnow()
-                    tool.error_message = None
-                    
-                    logger.info(f"[OK] Tool loaded in background: {tool.name}")
-                else:
-                    tool.status = ToolStatus.ERROR
-                    tool.error_message = "Failed to instantiate tool"
-                    logger.error(f"Failed to load tool {tool.name}: Failed to instantiate")
+            # Concurrency cap with timeout to allow shutdown/cancellation checks
+            acquired = self._load_semaphore.acquire(timeout=1.0)
+            if not acquired:
+                # Couldn't acquire semaphore, probably at max concurrency
+                # Check shutdown/cancellation and retry or abort
+                if self._shutdown_event.is_set():
+                    logger.info(f"Shutdown during semaphore wait for {tool.name}")
+                    tool.status = ToolStatus.AVAILABLE
+                    tool.cancel_event = None
+                    return
+                if tool.cancel_event and tool.cancel_event.is_set():
+                    logger.info(f"Cancelled during semaphore wait for {tool.name}")
+                    tool.status = ToolStatus.AVAILABLE
+                    tool.cancel_event = None
+                    return
+                # Try again without timeout (blocking)
+                self._load_semaphore.acquire()
+                acquired = True
+            
+            # Check shutdown/cancellation again after acquiring semaphore
+            if self._shutdown_event.is_set():
+                logger.info(f"Shutdown after acquiring semaphore for {tool.name}")
+                tool.status = ToolStatus.AVAILABLE
+                tool.cancel_event = None
+                return
+            if tool.cancel_event and tool.cancel_event.is_set():
+                logger.info(f"Cancelled after acquiring semaphore for {tool.name}")
+                tool.status = ToolStatus.AVAILABLE
+                tool.cancel_event = None
+                return
+            
+            logger.info(f"Background loading tool: {tool.name}")
+            
+            # Import and instantiate the tool (this may take 10-30 minutes for large models)
+            tool_instance = self._load_tool_instance(tool)
+            
+            # Final shutdown/cancellation check before marking as loaded
+            if self._shutdown_event.is_set():
+                logger.info(f"Shutdown during load of {tool.name}, discarding instance")
+                tool.status = ToolStatus.AVAILABLE
+                tool.cancel_event = None
+                # Try to cleanup the instance if it has cleanup methods
+                if tool_instance and hasattr(tool_instance, 'cleanup'):
+                    try:
+                        tool_instance.cleanup()
+                    except Exception:
+                        pass
+                return
+            if tool.cancel_event and tool.cancel_event.is_set():
+                logger.info(f"Cancelled during load of {tool.name}, discarding instance")
+                tool.status = ToolStatus.AVAILABLE
+                tool.cancel_event = None
+                # Try to cleanup the instance if it has cleanup methods
+                if tool_instance and hasattr(tool_instance, 'cleanup'):
+                    try:
+                        tool_instance.cleanup()
+                    except Exception:
+                        pass
+                return
+            
+            if tool_instance:
+                tool.instance = tool_instance
+                tool.status = ToolStatus.LOADED
+                tool.loaded_at = datetime.utcnow()
+                tool.error_message = None
+                logger.info(f"[OK] Tool loaded in background: {tool.name}")
+            else:
+                tool.status = ToolStatus.ERROR
+                tool.error_message = "Failed to instantiate tool"
+                logger.error(f"Failed to load tool {tool.name}: Failed to instantiate")
                 
         except Exception as e:
-            logger.error(f"Failed to load tool {tool.name} in background: {e}")
-            tool.status = ToolStatus.ERROR
-            tool.error_message = str(e)
+            if not self._shutdown_event.is_set():
+                logger.error(f"Failed to load tool {tool.name} in background: {e}")
+                tool.status = ToolStatus.ERROR
+                tool.error_message = str(e)
+            else:
+                logger.info(f"Exception during shutdown for {tool.name}: {e}")
+                tool.status = ToolStatus.AVAILABLE
+        finally:
+            # Always release semaphore if we acquired it
+            if acquired:
+                try:
+                    self._load_semaphore.release()
+                except ValueError:
+                    # Semaphore already released or corrupted, ignore
+                    pass
 
     def start_background_load(self, tool_id: str) -> bool:
         """Start background loading in a managed thread (tracked for clean shutdown)."""
@@ -420,33 +515,55 @@ class ToolManager:
             return False
         if tool.status in (ToolStatus.LOADING, ToolStatus.LOADED):
             return True
+        
+        # Don't start new loads if shutting down
+        if self._shutdown_event.is_set():
+            logger.warning(f"Cannot start load during shutdown: {tool_id}")
+            return False
+        
         # Ensure marked loading
         load_result = self.load_tool(tool_id)
         if not load_result.get("success"):
             return False
+        
+        # Create cancellation event for this tool
+        tool.cancel_event = threading.Event()
+        
         # Create and start daemon thread
         def _runner():
             try:
                 self.load_tool_in_background(tool_id)
             finally:
-                # Remove from tracking when done
-                try:
+                # Remove from tracking when done (thread-safe)
+                with self._threads_lock:
                     self._threads.pop(tool_id, None)
-                except Exception:
-                    pass
+                # Clear cancel event
+                if tool.cancel_event:
+                    tool.cancel_event = None
+        
         t = threading.Thread(target=_runner, name=f"tool-loader-{tool_id}", daemon=True)
-        self._threads[tool_id] = t
+        
+        # Add to tracking (thread-safe)
+        with self._threads_lock:
+            self._threads[tool_id] = t
+        
         t.start()
         return True
 
     def shutdown(self):
         """Attempt to cleanly stop background threads at app shutdown."""
         logger.info("Shutting down tool manager...")
-        self._shutdown = True
+        
+        # Signal shutdown to all background threads
+        self._shutdown_event.set()
+        
+        # Get snapshot of threads (thread-safe)
+        with self._threads_lock:
+            threads_snapshot = list(self._threads.items())
         
         # Join all threads with timeout
         active_threads = []
-        for tool_id, t in list(self._threads.items()):
+        for tool_id, t in threads_snapshot:
             try:
                 logger.debug(f"Waiting for thread {tool_id} to complete...")
                 t.join(timeout=2.0)
@@ -456,8 +573,24 @@ class ToolManager:
             except Exception as e:
                 logger.debug(f"Error joining thread {tool_id}: {e}")
         
-        # Clear thread tracking
-        self._threads.clear()
+        # Force-release semaphore to prevent leaks
+        # Try to release as many times as max value to drain it
+        logger.debug("Force-releasing semaphore to prevent leaks...")
+        released_count = 0
+        for _ in range(self._semaphore_max):
+            try:
+                self._load_semaphore.release()
+                released_count += 1
+            except ValueError:
+                # Can't release more, semaphore is at max
+                break
+        
+        if released_count > 0:
+            logger.debug(f"Force-released semaphore {released_count} times")
+        
+        # Clear thread tracking (thread-safe)
+        with self._threads_lock:
+            self._threads.clear()
         
         # Unload all loaded tools to free resources
         loaded_tools = [t.id for t in self.tools.values() if t.status == ToolStatus.LOADED]
@@ -466,6 +599,13 @@ class ToolManager:
                 self.unload_tool(tool_id)
             except Exception as e:
                 logger.debug(f"Error unloading tool {tool_id}: {e}")
+        
+        # Final cleanup: explicitly delete semaphore reference
+        try:
+            del self._load_semaphore
+            logger.debug("Semaphore deleted successfully")
+        except Exception as e:
+            logger.debug(f"Error deleting semaphore: {e}")
         
         if active_threads:
             logger.info(f"Shutdown complete ({len(active_threads)} background threads will terminate with process)")
@@ -545,7 +685,7 @@ class ToolManager:
     
     def unload_tool(self, tool_id: str) -> Dict[str, Any]:
         """
-        Unload a specific tool.
+        Unload a specific tool. If tool is currently loading, cancels the load.
         
         Returns:
             Status information about the tool
@@ -553,6 +693,19 @@ class ToolManager:
         tool = self.tools.get(tool_id)
         if not tool:
             return {"success": False, "error": f"Tool '{tool_id}' not found"}
+        
+        # Handle LOADING status - cancel the load
+        if tool.status == ToolStatus.LOADING:
+            logger.info(f"Cancelling load of {tool.name}")
+            # Signal cancellation
+            if tool.cancel_event:
+                tool.cancel_event.set()
+            # Note: Thread will clean up and set status to AVAILABLE
+            return {
+                "success": True,
+                "message": f"Tool '{tool.name}' load cancelled",
+                "tool": self._tool_to_dict(tool)
+            }
         
         if tool.status != ToolStatus.LOADED:
             return {
@@ -563,6 +716,14 @@ class ToolManager:
         
         try:
             logger.info(f"Unloading tool: {tool.name}")
+            
+            # Try to cleanup the instance if it has cleanup methods
+            if tool.instance and hasattr(tool.instance, 'cleanup'):
+                try:
+                    logger.debug(f"Calling cleanup() on {tool.name}")
+                    tool.instance.cleanup()
+                except Exception as e:
+                    logger.warning(f"Error during cleanup of {tool.name}: {e}")
             
             # Clear the instance
             tool.instance = None
