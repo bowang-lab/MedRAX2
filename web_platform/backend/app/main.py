@@ -43,6 +43,10 @@ async def validate_api_secret(request: Request, call_next):
     Validate API secret key for all requests (except whitelisted public endpoints).
     This prevents unauthorized access even if someone gets network access.
     """
+    # Allow CORS preflight requests (OPTIONS)
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    
     # Whitelist public endpoints that don't require API secret
     public_paths = [
         "/health",                      # Health check
