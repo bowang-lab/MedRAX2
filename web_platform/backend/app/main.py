@@ -59,7 +59,8 @@ async def validate_api_secret(request: Request, call_next):
     
     # Allow SSE endpoints - EventSource doesn't support custom headers
     # These endpoints use JWT token in query string for authentication instead
-    if "/load-stream" in request.url.path:
+    # SECURITY: Use exact path matching to prevent bypass attacks
+    if request.url.path.startswith("/api/tools/") and request.url.path.endswith("/load-stream"):
         return await call_next(request)
     
     # Allow public endpoints without secret

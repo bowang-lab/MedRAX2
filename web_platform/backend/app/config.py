@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # REQUIRED: Must be set in .env file - no default value for security
     SECRET_KEY: str  # No default! App will fail if not in .env
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 3600
     
     # API Access Control - Shared secret between frontend and backend
     # All API requests must include this in X-API-Secret header
