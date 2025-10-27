@@ -1,36 +1,30 @@
 """
-System API Endpoints
+System API Routes
 
-Handles system-level operations like API secret validation.
+Routes for system-level operations like API secret validation.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
-
 from ..config import settings
 from ..utils.logging_config import logger
 
 router = APIRouter()
 
 
-class ValidateSecretRequest(BaseModel):
-    """Request to validate API secret."""
-    secret: str
-
-
 class ValidateSecretResponse(BaseModel):
-    """Response from API secret validation."""
+    """Response for API secret validation."""
     valid: bool
     message: str
 
 
-@router.post("/api/system/validate-secret", response_model=ValidateSecretResponse)
-async def validate_secret(request: ValidateSecretRequest):
+@router.post("/system/validate-secret", response_model=ValidateSecretResponse)
+async def validate_api_secret(x_api_secret: str = Header(None, alias="X-API-Secret")):
     """
-    Validate an API secret key.
+    Validate API secret key.
     
-    This endpoint is public (no API secret required) to allow
-    users to validate their secret before making other requests.
+    This endpoint allows the frontend to validate the API secret
+    before storing it locally.
     """
     if not settings.REQUIRE_API_SECRET:
         return ValidateSecretResponse(
@@ -38,18 +32,22 @@ async def validate_secret(request: ValidateSecretRequest):
             message="API secret validation is disabled"
         )
     
-    is_valid = request.secret == settings.API_SECRET_KEY
-    
-    if is_valid:
-        logger.info("✓ API secret validated successfully")
+    if not x_api_secret:
+        logger.warning("API secret validation failed - no secret provided")
         return ValidateSecretResponse(
-            valid=True,
-            message="API secret is valid"
+            valid=False,
+            message="API secret is required"
         )
-    else:
-        logger.warning("✗ Invalid API secret attempt")
+    
+    if x_api_secret != settings.API_SECRET_KEY:
+        logger.warning(f"API secret validation failed - invalid secret provided")
         return ValidateSecretResponse(
             valid=False,
             message="Invalid API secret"
         )
-
+    
+    logger.info("API secret validated successfully")
+    return ValidateSecretResponse(
+        valid=True,
+        message="API secret is valid"
+    )
