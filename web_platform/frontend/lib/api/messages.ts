@@ -5,7 +5,7 @@
  */
 
 import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, API_SECRET_CONFIG } from '../config/api';
 import type { MessageWithDetails, SSEEvent } from '../types/message';
 
 /**
@@ -47,12 +47,14 @@ export function streamChatResponse(
 
     const url = `${apiClient.defaults.baseURL}${API_ENDPOINTS.CHAT_STREAM(chatId)}`;
     const token = localStorage.getItem('medrax_auth_token');
+    const apiSecret = API_SECRET_CONFIG.getSecret();
 
     fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             Authorization: token ? `Bearer ${token}` : '',
+            'X-API-Secret': apiSecret || '', // Include API secret for middleware
         },
         body: JSON.stringify({ content, scanIds }),
         signal,
