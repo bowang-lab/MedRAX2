@@ -43,8 +43,8 @@ export function ApiSecretGate({ children }: ApiSecretGateProps) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-API-Secret': storedSecret,  // Send in header, not body!
                 },
-                body: JSON.stringify({ secret: storedSecret }),
             });
 
             const data = await response.json();
@@ -74,8 +74,8 @@ export function ApiSecretGate({ children }: ApiSecretGateProps) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-API-Secret': secret,  // Send in header, not body!
                 },
-                body: JSON.stringify({ secret }),
             });
 
             const data = await response.json();
