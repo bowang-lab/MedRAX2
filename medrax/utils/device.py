@@ -21,7 +21,7 @@ def get_device(preferred_device: Optional[str] = None, force_cpu: bool = False) 
         force_cpu: Force CPU usage even if CUDA is available
         
     Returns:
-        str: Device string ("cuda" or "cpu")
+        str: Device string ("cuda", "mps", or "cpu")
         
     Environment Variables:
         CUDA: Set to "FALSE" or "false" to disable CUDA (force CPU mode)
@@ -104,7 +104,7 @@ def _auto_detect_device() -> str:
     Auto-detect the best available device.
     
     Returns:
-        str: "cuda" if available, otherwise "cpu"
+        str: "cuda" if available, otherwise "mps" if available on Apple Silicon, else "cpu"
     """
     if _is_cuda_available():
         try:
@@ -115,7 +115,15 @@ def _auto_detect_device() -> str:
             return "cuda"
         except Exception as e:
             logger.warning(f"CUDA detected but not functional: {e}. Using CPU.")
-            return "cpu"
+            # Fall through to check MPS
+    # Check Apple MPS
+    try:
+        import torch
+        if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            logger.info("Apple MPS detected and available")
+            return "mps"
+    except Exception as e:
+        logger.debug(f"MPS check failed: {e}")
     else:
         logger.info("CUDA not available, using CPU")
         return "cpu"
@@ -135,6 +143,7 @@ def get_torch_device(preferred_device: Optional[str] = None, force_cpu: bool = F
     try:
         import torch
         device_str = get_device(preferred_device, force_cpu)
+        # torch.device accepts 'cuda', 'cpu', and 'mps'
         return torch.device(device_str)
     except ImportError:
         raise ImportError("PyTorch is required. Install with: pip install torch")
@@ -155,10 +164,10 @@ def get_device_map(preferred_device: Optional[str] = None, force_cpu: bool = Fal
     
     # For HuggingFace models, we can use "auto" which intelligently distributes
     # the model across available devices
-    if device_str == "cuda":
-        return "auto"  # Let HuggingFace auto-distribute on GPU(s)
-    else:
-        return "cpu"
+    if device_str in ("cuda", "mps"):
+        # Let HF/accelerate auto-place on available accelerator
+        return "auto"
+    return "cpu"
 
 
 def check_gpu_availability() -> dict:

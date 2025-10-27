@@ -16,17 +16,34 @@ NC='\033[0m' # No Color
 # Change to backend directory
 cd "$(dirname "$0")"
 
-# Activate virtual environment
-if [ ! -d "venv" ]; then
-    echo -e "${RED}Error: Virtual environment not found!${NC}"
-    echo "Run ./setup.sh first to create the virtual environment."
-    exit 1
+# Check if conda is available and environment exists
+USE_CONDA=0
+if command -v conda &> /dev/null; then
+    ENV_NAME=$(grep -E '^name:' environment.yml 2>/dev/null | awk '{print $2}')
+    if [ -n "$ENV_NAME" ] && conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+        USE_CONDA=1
+        echo "Using conda environment: $ENV_NAME"
+        # shellcheck disable=SC1091
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        conda activate "$ENV_NAME"
+    fi
 fi
 
-source venv/bin/activate
+# Fall back to venv if conda not available
+if [ $USE_CONDA -eq 0 ]; then
+    if [ ! -d "venv" ]; then
+        echo -e "${RED}Error: Neither conda environment nor venv found!${NC}"
+        echo "Create environment first:"
+        echo "  Conda: conda env create -f environment.yml"
+        echo "  Venv: python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+        exit 1
+    fi
+    echo "Using Python venv"
+    source venv/bin/activate
+fi
 
 echo ""
-echo "Activated virtual environment: $(which python)"
+echo "Activated environment: $(which python)"
 echo "Python version: $(python --version)"
 echo ""
 

@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from ..utils.logging_config import logger
+from ..config import settings
+import threading
 
 # Set PyTorch environment for better compatibility
 import os
@@ -70,6 +72,14 @@ class ToolManager:
     def __init__(self):
         self.tools: Dict[str, ToolInfo] = {}
         self.medrax_path = None
+        self._threads: Dict[str, threading.Thread] = {}
+        self._shutdown: bool = False
+        # Limit concurrent background loads to reduce resource contention
+        try:
+            max_conc = getattr(settings, 'MAX_CONCURRENT_TOOLS', 3) or 1
+        except Exception:
+            max_conc = 3
+        self._load_semaphore = threading.Semaphore(max_conc)
         
         # Try to add MedRAX to path
         self._setup_medrax_path()
@@ -379,27 +389,66 @@ class ToolManager:
             return
         
         try:
-            logger.info(f"Background loading tool: {tool.name}")
-            
-            # Import and instantiate the tool (this may take 10-30 minutes for large models)
-            tool_instance = self._load_tool_instance(tool)
-            
-            if tool_instance:
-                tool.instance = tool_instance
-                tool.status = ToolStatus.LOADED
-                tool.loaded_at = datetime.utcnow()
-                tool.error_message = None
+            # Concurrency cap
+            with self._load_semaphore:
+                logger.info(f"Background loading tool: {tool.name}")
                 
-                logger.info(f"[OK] Tool loaded in background: {tool.name}")
-            else:
-                tool.status = ToolStatus.ERROR
-                tool.error_message = "Failed to instantiate tool"
-                logger.error(f"Failed to load tool {tool.name}: Failed to instantiate")
+                # Import and instantiate the tool (this may take 10-30 minutes for large models)
+                tool_instance = self._load_tool_instance(tool)
+                
+                if tool_instance:
+                    tool.instance = tool_instance
+                    tool.status = ToolStatus.LOADED
+                    tool.loaded_at = datetime.utcnow()
+                    tool.error_message = None
+                    
+                    logger.info(f"[OK] Tool loaded in background: {tool.name}")
+                else:
+                    tool.status = ToolStatus.ERROR
+                    tool.error_message = "Failed to instantiate tool"
+                    logger.error(f"Failed to load tool {tool.name}: Failed to instantiate")
                 
         except Exception as e:
             logger.error(f"Failed to load tool {tool.name} in background: {e}")
             tool.status = ToolStatus.ERROR
             tool.error_message = str(e)
+
+    def start_background_load(self, tool_id: str) -> bool:
+        """Start background loading in a managed thread (tracked for clean shutdown)."""
+        tool = self.tools.get(tool_id)
+        if not tool:
+            return False
+        if tool.status in (ToolStatus.LOADING, ToolStatus.LOADED):
+            return True
+        # Ensure marked loading
+        load_result = self.load_tool(tool_id)
+        if not load_result.get("success"):
+            return False
+        # Create and start daemon thread
+        def _runner():
+            try:
+                self.load_tool_in_background(tool_id)
+            finally:
+                # Remove from tracking when done
+                try:
+                    self._threads.pop(tool_id, None)
+                except Exception:
+                    pass
+        t = threading.Thread(target=_runner, name=f"tool-loader-{tool_id}", daemon=True)
+        self._threads[tool_id] = t
+        t.start()
+        return True
+
+    def shutdown(self):
+        """Attempt to cleanly stop background threads at app shutdown."""
+        self._shutdown = True
+        for tool_id, t in list(self._threads.items()):
+            try:
+                t.join(timeout=2.0)
+                if t.is_alive():
+                    logger.warning(f"Background loader still running for tool {tool_id}; it will be terminated with process.")
+            except Exception as e:
+                logger.debug(f"Error joining loader thread {tool_id}: {e}")
     
     def _load_tool_instance(self, tool: ToolInfo):
         """Load the actual tool instance with model caching."""

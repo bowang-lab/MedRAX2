@@ -45,16 +45,12 @@ async def tool_load_event_generator(tool_id: str, doctor_id: str) -> AsyncGenera
             yield f"data: {json.dumps({'status': 'loading', 'progress': 0, 'message': 'Tool is already loading...'})}\n\n"
             # Fall through to monitor progress
         else:
-            # Initiate loading
-            result = tool_manager.load_tool(tool_id)
-            if not result["success"]:
-                yield f"data: {json.dumps({'status': 'error', 'message': result.get('error', 'Failed to load tool')})}\n\n"
+            # Initiate and start managed background loading
+            started = tool_manager.start_background_load(tool_id)
+            if not started:
+                yield f"data: {json.dumps({'status': 'error', 'message': 'Failed to start background load'})}\n\n"
                 return
-            
             yield f"data: {json.dumps({'status': 'loading', 'progress': 0, 'message': 'Starting tool loading...'})}\n\n"
-            
-            # Start background loading
-            asyncio.create_task(asyncio.to_thread(tool_manager.load_tool_in_background, tool_id))
         
         # Monitor loading progress
         last_status = None

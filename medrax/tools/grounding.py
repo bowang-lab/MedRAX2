@@ -96,7 +96,7 @@ class XRayPhraseGroundingTool(BaseTool):
             for key in ("chat_template", "conv_template", "chat_template_content"):
                 if key in kwargs:
                     kwargs.pop(key, None)
-                    logger.info(f"Dropping unsupported LlavaProcessor kwarg: {key}")
+                    logger.debug(f"Dropping unsupported LlavaProcessor kwarg: {key}")
 
             original_llava_init(self, image_processor=image_processor, tokenizer=tokenizer, **kwargs)
             if patch_size is not None:

@@ -6,7 +6,14 @@ A comprehensive web platform for medical imaging analysis using AI-powered tools
 
 ### Prerequisites
 
-**IMPORTANT: Use Python 3.11 for best compatibility**
+**Option A: Conda (Recommended for Research Servers)**
+
+```bash
+conda --version
+# If not installed: https://docs.conda.io/en/latest/miniconda.html
+```
+
+**Option B: Python 3.11 (Local Development)**
 
 ```bash
 python3.11 --version
@@ -19,6 +26,21 @@ If you don't have Python 3.11:
 - **Windows**: Download from python.org
 
 ### Installation
+
+**For Conda Users (Research Servers):**
+
+```bash
+# One-time setup
+cd web_platform/backend
+conda env create -f environment.yml
+conda activate alankrit-medrax2
+
+# Run backend (from repo root)
+cd ../..
+./web_platform/start-backend.sh
+```
+
+**For Venv Users (Local Dev):**
 
 1. **Start Backend:**
    ```bash
@@ -36,6 +58,8 @@ If you don't have Python 3.11:
    ```
    http://localhost:3000
    ```
+
+> **Note:** `start-backend.sh` auto-detects conda and uses it if available, otherwise falls back to Python venv.
 
 ## Python Version Requirements
 
@@ -119,6 +143,7 @@ If you don't have Python 3.11:
 
 ## Documentation
 
+- [Conda Setup Guide](backend/CONDA_SETUP.md) - **Conda environment setup for research servers**
 - [Tool Analysis](docs/MEDRAX_TOOLS_ANALYSIS.md) - Detailed tool information
 - [Backend Implementation](docs/OPTION_C_IMPLEMENTATION.md) - Architecture details
 - [Tool Manager](docs/TOOL_MANAGER_IMPLEMENTATION.md) - Tool loading system
@@ -127,7 +152,23 @@ If you don't have Python 3.11:
 
 ## Troubleshooting
 
-### Python 3.13 Issues
+### Conda: Environment Already Exists
+
+```bash
+# Option 1: Use existing environment
+conda activate alankrit-medrax2
+
+# Option 2: Remove and recreate
+conda env remove -n alankrit-medrax2
+cd web_platform/backend
+conda env create -f environment.yml
+```
+
+### Conda: Package Not Found
+
+Some packages aren't available on all conda channels. They're automatically installed via pip from `requirements.txt`.
+
+### Python 3.13 Issues (Venv Users)
 
 If you're seeing package installation errors, you're likely using Python 3.13.
 

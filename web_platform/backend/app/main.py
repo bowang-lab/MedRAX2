@@ -13,6 +13,7 @@ import time
 
 from .config import settings
 from .api import api_router
+from .services.tool_manager import tool_manager
 from .database import engine, Base
 from .utils.logging_config import logger
 
@@ -77,6 +78,10 @@ async def startup_event():
 async def shutdown_event():
     """Cleanup tasks on shutdown."""
     logger.info(f"👋 {settings.APP_NAME} shutting down...")
+    try:
+        tool_manager.shutdown()
+    except Exception as e:
+        logger.debug(f"Error during tool manager shutdown: {e}")
 
 
 @app.get("/")

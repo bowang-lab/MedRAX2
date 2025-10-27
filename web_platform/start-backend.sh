@@ -7,113 +7,68 @@ echo "Starting MedRAX Backend Server"
 echo "=================================================="
 echo ""
 
-# Check Python version
-echo "Checking Python version..."
-
-# Try to find Python 3.11 first (recommended)
-PYTHON_CMD=""
-if command -v python3.11 &> /dev/null; then
-    PYTHON_CMD="python3.11"
-    echo "   Using python3.11"
-elif command -v python3 &> /dev/null; then
-    PYTHON_CMD="python3"
-elif command -v python &> /dev/null; then
-    PYTHON_CMD="python"
-else
-    echo ""
-    echo "ERROR: Python not found!"
-    echo ""
-    echo "Please install Python 3.11:"
-    echo "  macOS: brew install python@3.11"
-    echo "  Ubuntu: sudo apt install python3.11"
-    echo ""
-    exit 1
+# Prefer conda env if available
+USE_CONDA=0
+if command -v conda &> /dev/null; then
+    USE_CONDA=1
 fi
 
-PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-echo "   Found Python $PYTHON_VERSION"
-
-# Warn if not Python 3.11
-if [ "$PYTHON_MAJOR" != "3" ] || [ "$PYTHON_MINOR" != "11" ]; then
-    echo ""
-    echo "   [WARNING] Python 3.11 is STRONGLY RECOMMENDED"
-    echo "   Current version: $PYTHON_VERSION"
-    
-    if [ "$PYTHON_MINOR" -ge "13" ]; then
-        echo ""
-        echo "   [CRITICAL] Python 3.13+ has COMPATIBILITY ISSUES:"
-        echo "   - SimpleITK not available"
-        echo "   - Many packages missing wheels"
-        echo "   - Medical imaging tools may not work"
-        echo ""
-        echo "   PLEASE install Python 3.11:"
-        echo "   brew install python@3.11"
-        echo ""
-        read -p "   Continue anyway? (y/N) " -n 1 -r
-        echo ""
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Installation cancelled. Please install Python 3.11 first."
-            exit 1
-        fi
-    elif [ "$PYTHON_MINOR" -eq "12" ]; then
-        echo "   Python 3.12 works but 3.11 is more stable"
-    elif [ "$PYTHON_MINOR" -lt "11" ]; then
-        echo "   Python 3.11 offers better performance and compatibility"
-    fi
-    echo ""
-fi
+echo "Checking backend environment..."
 
 cd backend
 
-# Check if virtual environment exists and if it's using the right Python version
-if [ -d "venv" ]; then
-    # Check if existing venv uses the correct Python version
-    if [ -f "venv/bin/python" ]; then
-        EXISTING_VENV_VERSION=$(venv/bin/python --version 2>&1 | awk '{print $2}')
-        EXISTING_MINOR=$(echo $EXISTING_VENV_VERSION | cut -d. -f2)
-        
-        if [ "$EXISTING_MINOR" != "11" ]; then
-            echo ""
-            echo "   [WARNING] Existing venv uses Python $EXISTING_VENV_VERSION"
-            echo "   Python 3.11 is required for best compatibility"
-            echo "   The old venv will be backed up and a new one created"
-            echo ""
-            
-            # Backup old venv with timestamp
-            BACKUP_NAME="venv_backup_$(date +%Y%m%d_%H%M%S)"
-            mv venv "$BACKUP_NAME"
-            echo "   [OK] Old venv backed up as: $BACKUP_NAME"
-            
-            # Create new venv with correct Python
-            echo "   Creating new virtual environment with Python $PYTHON_VERSION..."
-            $PYTHON_CMD -m venv venv
-            echo "   [OK] New virtual environment created"
-        else
-            echo "   [OK] Using existing virtual environment (Python $EXISTING_VENV_VERSION)"
-        fi
-    else
-        echo "   [WARNING] Existing venv appears corrupted, recreating..."
-        BACKUP_NAME="venv_backup_$(date +%Y%m%d_%H%M%S)"
-        mv venv "$BACKUP_NAME"
-        $PYTHON_CMD -m venv venv
-        echo "   [OK] Virtual environment recreated"
+PIP_INSTALL=1
+if [ $USE_CONDA -eq 1 ]; then
+    echo "Using conda environment"
+    # Read env name from environment.yml (fallback to medrax-backend)
+    ENV_NAME=$(grep -E '^name:' environment.yml | awk '{print $2}')
+    if [ -z "$ENV_NAME" ]; then ENV_NAME="medrax-backend"; fi
+    if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+        echo "   Creating conda env ($ENV_NAME) from environment.yml..."
+        conda env create -f environment.yml
     fi
+    # shellcheck disable=SC1091
+    source "$(conda info --base)/etc/profile.d/conda.sh"
+    conda activate "$ENV_NAME"
+    echo "   Python: $(python --version)"
+    # Environment.yml installs requirements via pip already; skip redundant pip install at runtime
+    PIP_INSTALL=0
 else
-    echo "Creating virtual environment with Python $PYTHON_VERSION..."
-    $PYTHON_CMD -m venv venv
-    echo "   [OK] Virtual environment created"
+    echo "Conda not found, using Python venv"
+    # Check Python version
+    echo "Checking Python version..."
+    PYTHON_CMD=""
+    if command -v python3.11 &> /dev/null; then
+        PYTHON_CMD="python3.11"
+        echo "   Using python3.11"
+    elif command -v python3 &> /dev/null; then
+        PYTHON_CMD="python3"
+    elif command -v python &> /dev/null; then
+        PYTHON_CMD="python"
+    else
+        echo ""
+        echo "ERROR: Python not found!"
+        echo ""
+        echo "Please install Python 3.11:"
+        echo "  macOS: brew install python@3.11"
+        echo "  Ubuntu: sudo apt install python3.11"
+        echo ""
+        exit 1
+    fi
+
+    PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
+    echo "   Found Python $PYTHON_VERSION"
+
+    if [ ! -d "venv" ]; then
+        echo "Creating virtual environment with Python $PYTHON_VERSION..."
+        $PYTHON_CMD -m venv venv
+        echo "   [OK] Virtual environment created"
+    fi
+    echo "Activating virtual environment..."
+    # shellcheck disable=SC1091
+    source venv/bin/activate
+    echo "   Virtual environment Python: $(python --version | awk '{print $2}')"
 fi
-
-# Activate virtual environment
-echo "Activating virtual environment..."
-source venv/bin/activate
-
-# Verify Python version in venv
-VENV_PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
-echo "   Virtual environment Python: $VENV_PYTHON_VERSION"
 
 # Set up model caching environment variables
 echo ""
@@ -123,32 +78,31 @@ export HF_HOME="$HOME/.cache/huggingface"
 export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
 export TORCH_HOME="$HOME/.cache/torch"
 
-# Create cache directories (only create, never delete existing data)
-mkdir -p "$MODEL_CACHE_DIR"
-mkdir -p "$HF_HOME"
-mkdir -p "$TORCH_HOME"
+mkdir -p "$MODEL_CACHE_DIR" "$HF_HOME" "$TORCH_HOME"
 echo "   [OK] Cache directories ready (existing data preserved)"
 
-
-# Install/upgrade dependencies
+# Install/upgrade dependencies (pip works in both conda and venv envs)
 echo ""
 echo "Installing/upgrading dependencies..."
-echo "   (This may take 10-20 minutes on first run, ~5-10GB download)"
-pip install --upgrade pip > /dev/null 2>&1
+pip install --upgrade pip > /dev/null 2>&1 || true
 echo "   [OK] Pip upgraded"
 
-echo "   Installing packages from requirements.txt..."
-pip install -r requirements.txt
+if [ $PIP_INSTALL -eq 1 ]; then
+  echo "   Installing packages from requirements.txt..."
+  pip install -r requirements.txt
+else
+  echo "   Skipping pip install (managed by conda environment.yml)"
+fi
 
 echo "   [OK] All dependencies installed"
 
-# Create uploads directory (only create, never delete)
+# Create uploads directory
 echo ""
 echo "Checking uploads directory..."
 mkdir -p uploads
 echo "   [OK] Uploads directory ready"
 
-# Check if database exists (never delete existing database)
+# Initialize database if needed
 if [ ! -f "medrax.db" ]; then
     echo ""
     echo "Initializing database..."
@@ -173,8 +127,6 @@ echo ""
 echo "Database: SQLite at ./medrax.db"
 echo "Uploads: ./uploads/"
 echo "Model Cache: $MODEL_CACHE_DIR"
-echo ""
-echo "Python Version: $VENV_PYTHON_VERSION"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo "=================================================="
