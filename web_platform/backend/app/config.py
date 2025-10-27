@@ -23,16 +23,23 @@ class Settings(BaseSettings):
     APP_NAME: str = "MedRAX API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
-    HOST: str = "0.0.0.0"
+    HOST: str = "127.0.0.1"  # Localhost only for security (use 0.0.0.0 only in production with proper firewall)
     PORT: int = 8000
     
     # Database
     DATABASE_URL: str = "sqlite:///./medrax.db"
     
     # Security
-    SECRET_KEY: str = "your-secret-key-change-this-in-production"
+    # REQUIRED: Must be set in .env file - no default value for security
+    SECRET_KEY: str  # No default! App will fail if not in .env
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days
+    
+    # API Access Control - Shared secret between frontend and backend
+    # All API requests must include this in X-API-Secret header
+    # REQUIRED: Must be set in .env file - no default value for security
+    API_SECRET_KEY: str  # No default! App will fail if not in .env
+    REQUIRE_API_SECRET: bool = True  # Set to False to disable API secret requirement
     
     # CORS
     CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://127.0.0.1:3000"

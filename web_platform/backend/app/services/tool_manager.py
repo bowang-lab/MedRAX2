@@ -441,14 +441,36 @@ class ToolManager:
 
     def shutdown(self):
         """Attempt to cleanly stop background threads at app shutdown."""
+        logger.info("Shutting down tool manager...")
         self._shutdown = True
+        
+        # Join all threads with timeout
+        active_threads = []
         for tool_id, t in list(self._threads.items()):
             try:
+                logger.debug(f"Waiting for thread {tool_id} to complete...")
                 t.join(timeout=2.0)
                 if t.is_alive():
-                    logger.warning(f"Background loader still running for tool {tool_id}; it will be terminated with process.")
+                    active_threads.append(tool_id)
+                    logger.warning(f"Thread {tool_id} still active after shutdown timeout")
             except Exception as e:
-                logger.debug(f"Error joining loader thread {tool_id}: {e}")
+                logger.debug(f"Error joining thread {tool_id}: {e}")
+        
+        # Clear thread tracking
+        self._threads.clear()
+        
+        # Unload all loaded tools to free resources
+        loaded_tools = [t.id for t in self.tools.values() if t.status == ToolStatus.LOADED]
+        for tool_id in loaded_tools:
+            try:
+                self.unload_tool(tool_id)
+            except Exception as e:
+                logger.debug(f"Error unloading tool {tool_id}: {e}")
+        
+        if active_threads:
+            logger.info(f"Shutdown complete ({len(active_threads)} background threads will terminate with process)")
+        else:
+            logger.info("Shutdown complete (all threads joined cleanly)")
     
     def _load_tool_instance(self, tool: ToolInfo):
         """Load the actual tool instance with model caching."""

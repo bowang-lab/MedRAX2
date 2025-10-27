@@ -17,6 +17,24 @@ echo "Checking backend environment..."
 
 cd backend
 
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env..."
+    # Export variables from .env file, properly handling spaces and special characters
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        if [[ ! "$key" =~ ^[[:space:]]*# && -n "$key" ]]; then
+            # Remove leading/trailing whitespace and export
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            export "$key=$value"
+        fi
+    done < .env
+    echo "   [OK] Environment variables loaded"
+else
+    echo "   [WARNING] No .env file found in backend directory"
+fi
+
 PIP_INSTALL=1
 if [ $USE_CONDA -eq 1 ]; then
     echo "Using conda environment"
@@ -70,16 +88,20 @@ else
     echo "   Virtual environment Python: $(python --version | awk '{print $2}')"
 fi
 
-# Set up model caching environment variables
-echo ""
-echo "Configuring model caching..."
-export MODEL_CACHE_DIR="./model_cache"
-export HF_HOME="$HOME/.cache/huggingface"
-export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
-export TORCH_HOME="$HOME/.cache/torch"
 
-mkdir -p "$MODEL_CACHE_DIR" "$HF_HOME" "$TORCH_HOME"
-echo "   [OK] Cache directories ready (existing data preserved)"
+# Create cache directories if they don't exist
+if [ -n "$MODEL_CACHE_DIR" ]; then
+    mkdir -p "$MODEL_CACHE_DIR"
+    echo "   [OK] Model cache directory ready: $MODEL_CACHE_DIR"
+fi
+if [ -n "$HUGGINGFACE_CACHE_DIR" ]; then
+    mkdir -p "$HUGGINGFACE_CACHE_DIR"
+    echo "   [OK] HuggingFace cache directory ready: $HUGGINGFACE_CACHE_DIR"
+fi
+if [ -n "$TORCH_CACHE_DIR" ]; then
+    mkdir -p "$TORCH_CACHE_DIR"
+    echo "   [OK] Torch cache directory ready: $TORCH_CACHE_DIR"
+fi
 
 # Install/upgrade dependencies (pip works in both conda and venv envs)
 echo ""
@@ -126,7 +148,9 @@ echo "  ReDoc: http://localhost:8000/redoc"
 echo ""
 echo "Database: SQLite at ./medrax.db"
 echo "Uploads: ./uploads/"
-echo "Model Cache: $MODEL_CACHE_DIR"
+if [ -n "$MODEL_CACHE_DIR" ]; then
+    echo "Model Cache: $MODEL_CACHE_DIR"
+fi
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo "=================================================="
@@ -134,4 +158,5 @@ echo ""
 
 # Start the server
 # Use --loop asyncio to avoid conflict with nest_asyncio (used by duckduckgo-search)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --loop asyncio
+# Use 127.0.0.1 (localhost) for development security - change to 0.0.0.0 in production with proper firewall
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --loop asyncio

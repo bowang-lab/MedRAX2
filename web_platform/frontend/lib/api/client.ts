@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_CONFIG } from '../config/api';
+import { API_CONFIG, API_SECRET_CONFIG } from '../config/api';
 import { AUTH_CONFIG } from '../config/app';
 import { ApiError } from '../types';
 
@@ -26,13 +26,19 @@ export const apiClient: AxiosInstance = axios.create({
     headers: API_CONFIG.headers,
 });
 
-// Request interceptor - Add auth token
+// Request interceptor - Add auth token and API secret
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
+        // Add JWT token for authenticated requests
         const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
-
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        // Add API secret from localStorage (not from env vars to prevent exposure)
+        const apiSecret = API_SECRET_CONFIG.getSecret();
+        if (apiSecret && config.headers) {
+            config.headers['X-API-Secret'] = apiSecret;
         }
 
         return config;
@@ -77,6 +83,15 @@ apiClient.interceptors.response.use(
                 // Redirect to login if not already there
                 if (!window.location.pathname.includes('/login')) {
                     window.location.href = '/login';
+                }
+            }
+
+            // Handle 403 - Forbidden (likely API secret issue)
+            if (error.response.status === 403) {
+                console.error('API Secret validation failed. Check configuration.');
+                // If it's an API secret issue, show a more specific error
+                if (errorMessage.toLowerCase().includes('api secret')) {
+                    apiError.message = 'Security configuration error. Please contact support.';
                 }
             }
 

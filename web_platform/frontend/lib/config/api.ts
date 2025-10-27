@@ -6,10 +6,36 @@
 
 export const API_CONFIG = {
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-    timeout: 30000,  // 30 seconds
+    timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000'),
     headers: {
         'Content-Type': 'application/json',
     },
+};
+
+// API Secret Management
+// Secret is NOT stored in env vars (to prevent browser exposure)
+// Instead, users enter it once and it's stored in localStorage
+export const API_SECRET_CONFIG = {
+    storageKey: 'medrax_api_secret',
+
+    getSecret(): string | null {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem(this.storageKey);
+    },
+
+    setSecret(secret: string): void {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem(this.storageKey, secret);
+    },
+
+    clearSecret(): void {
+        if (typeof window === 'undefined') return;
+        localStorage.removeItem(this.storageKey);
+    },
+
+    hasSecret(): boolean {
+        return this.getSecret() !== null;
+    }
 };
 
 export const API_ENDPOINTS = {

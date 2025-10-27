@@ -6,12 +6,13 @@ All API endpoints organized by resource.
 
 from fastapi import APIRouter
 
-from . import auth, patients, chats, messages, scans, tools, tools_sse, questions, tool_history, memory
+from . import auth, patients, chats, messages, scans, tools, tools_sse, questions, tool_history, memory, system
 
 # Main API router
 api_router = APIRouter(prefix="/api")
 
 # Include all routers
+api_router.include_router(system.router, tags=["system"])  # System endpoints (no prefix - routes include full paths)
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 api_router.include_router(patients.router, prefix="/patients", tags=["patients"])
 api_router.include_router(chats.router, tags=["chats"])  # No prefix - routes include full paths

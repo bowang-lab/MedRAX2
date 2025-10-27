@@ -8,6 +8,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pathlib import Path
 import time
 
@@ -35,24 +36,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API Secret validation middleware (SECURITY LAYER)
+@app.middleware("http")
+async def validate_api_secret(request: Request, call_next):
+    """
+    Validate API secret key for all requests (except whitelisted public endpoints).
+    This prevents unauthorized access even if someone gets network access.
+    """
+    # Whitelist public endpoints that don't require API secret
+    public_paths = [
+        "/health",                      # Health check
+        "/docs",                        # API documentation
+        "/redoc",                       # ReDoc documentation
+        "/openapi.json",                # OpenAPI schema
+        "/api/system/validate-secret",  # API secret validation endpoint
+        "/"                             # Root endpoint
+    ]
+    
+    # Allow public endpoints without secret
+    if request.url.path in public_paths:
+        return await call_next(request)
+    
+    # If API secret requirement is disabled, allow all requests
+    if not settings.REQUIRE_API_SECRET:
+        return await call_next(request)
+    
+    # Validate API secret header
+    api_secret = request.headers.get("X-API-Secret")
+    
+    if not api_secret:
+        logger.warning(f"🚫 Request blocked - Missing API secret: {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "API secret required. Include X-API-Secret header.",
+                "error": "forbidden"
+            }
+        )
+    
+    if api_secret != settings.API_SECRET_KEY:
+        logger.warning(f"🚫 Request blocked - Invalid API secret: {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Invalid API secret.",
+                "error": "forbidden"
+            }
+        )
+    
+    # API secret is valid, proceed with request
+    return await call_next(request)
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all incoming requests and their responses."""
     start_time = time.time()
     
-    # Log request
-    logger.info(f"→ {request.method} {request.url.path}")
-    logger.debug(f"  Headers: {dict(request.headers)}")
+    # Filter out common scanner/attack patterns to reduce log noise
+    suspicious_patterns = [
+        '.cgi', '.php', '.jsp', '.asp', '.aspx', '.exe',
+        'htaccess', 'config', 'admin', 'login/', 'web/',
+        'platform-ui', 'management', 'cgi-bin', 'webct'
+    ]
+    path = request.url.path.lower()
+    is_suspicious = any(pattern in path for pattern in suspicious_patterns) and response_would_be_404(path)
+    
+    # Only log legitimate API requests, not scanner noise
+    if not is_suspicious:
+        logger.info(f"→ {request.method} {request.url.path}")
+        logger.debug(f"  Headers: {dict(request.headers)}")
     
     # Process request
     response = await call_next(request)
     
-    # Log response
+    # Log response (skip 404s from scanners)
     process_time = time.time() - start_time
-    logger.info(f"← {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+    if not is_suspicious:
+        logger.info(f"← {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+    elif response.status_code != 404:
+        # Log if suspicious path somehow got a non-404 (security concern!)
+        logger.warning(f"⚠️ Suspicious path got {response.status_code}: {request.url.path}")
     
     return response
+
+def response_would_be_404(path: str) -> bool:
+    """Check if a path would likely result in 404."""
+    # API routes and valid endpoints
+    valid_prefixes = ['/api/', '/docs', '/redoc', '/health', '/uploads/']
+    if path == '/' or any(path.startswith(prefix) for prefix in valid_prefixes):
+        return False
+    return True
 
 # Include API routes
 app.include_router(api_router)
