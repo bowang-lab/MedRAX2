@@ -52,6 +52,9 @@ dependencies:
       - pytest-cov==5.0.0
       - anyio==4.11.0
       
+      # System utilities
+      - psutil>=5.9.0
+      
       # Environment & Configuration
       - python-dotenv==1.0.1
       - python-decouple==3.8
