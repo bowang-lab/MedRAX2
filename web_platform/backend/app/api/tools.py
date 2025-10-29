@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..database import get_db
-from ..models import Doctor, Patient, ToolExecution, ToolExecutionLog, ToolExecutionResult
+from ..models import Doctor, Patient, Chat, Message, ToolExecution, ToolExecutionLog, ToolExecutionResult
 from ..schemas.tool import (
     ToolExecutionDetailResponse,
     ToolExecutionResponse,
@@ -41,7 +41,7 @@ def enrich_tool_execution(execution: ToolExecution) -> dict:
         from ..services.tool_manager import tool_manager
         tool_info = tool_manager.get_tool(execution.tool_name)
         if tool_info:
-            tool_display_name = tool_info.display_name
+            tool_display_name = tool_info.name  # ToolInfo has 'name', not 'display_name'
     except:
         pass
     
@@ -183,10 +183,14 @@ def get_execution_detail(
 ):
     """Get detailed information about a tool execution."""
     
-    # Verify execution belongs to doctor
-    execution = db.query(ToolExecution).join(ToolExecution.message).join(
-        ToolExecution.message.property.mapper.class_.chat
-    ).join(Patient).filter(
+    # Verify execution belongs to doctor (use explicit model references)
+    execution = db.query(ToolExecution).join(
+        Message, ToolExecution.message_id == Message.id
+    ).join(
+        Chat, Message.chat_id == Chat.id
+    ).join(
+        Patient, Chat.patient_id == Patient.id
+    ).filter(
         ToolExecution.id == execution_id,
         Patient.doctor_id == current_doctor.id
     ).first()
