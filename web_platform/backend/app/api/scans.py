@@ -90,36 +90,58 @@ async def upload_scans(
         )
     
     uploaded_scans = []
+    saved_files = []  # Track saved files for cleanup on error
     
-    for file in files:
-        # Validate file type
-        if not is_allowed_file(file.filename):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"File type not allowed: {file.filename}"
+    try:
+        for file in files:
+            # Validate file type
+            if not is_allowed_file(file.filename):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File type not allowed: {file.filename}"
+                )
+            
+            # Validate file size (CRITICAL: prevent large file DoS attacks)
+            if file.size and file.size > settings.MAX_UPLOAD_SIZE:
+                max_size_mb = settings.MAX_UPLOAD_SIZE / (1024 * 1024)
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size ({max_size_mb:.0f}MB)"
+                )
+            
+            # Save file
+            file_path, display_path = await save_upload_file(file, f"chats/{chat_id}")
+            saved_files.append(file_path)  # Track for cleanup
+            
+            # Create scan record
+            scan = Scan(
+                chat_id=chat_id,
+                file_path=file_path,
+                display_path=display_path,
+                file_type=get_file_extension(file.filename),
+                file_size=file.size or 0
             )
+            db.add(scan)
+            uploaded_scans.append(scan)
         
-        # Save file
-        file_path, display_path = await save_upload_file(file, f"chats/{chat_id}")
+        db.commit()
         
-        # Create scan record
-        scan = Scan(
-            chat_id=chat_id,
-            file_path=file_path,
-            display_path=display_path,
-            file_type=get_file_extension(file.filename),
-            file_size=file.size or 0
-        )
-        db.add(scan)
-        uploaded_scans.append(scan)
+        # Refresh all scans
+        for scan in uploaded_scans:
+            db.refresh(scan)
+        
+        return [ScanResponse.model_validate(scan) for scan in uploaded_scans]
     
-    db.commit()
-    
-    # Refresh all scans
-    for scan in uploaded_scans:
-        db.refresh(scan)
-    
-    return [ScanResponse.model_validate(scan) for scan in uploaded_scans]
+    except Exception as e:
+        # Rollback database changes
+        db.rollback()
+        
+        # Clean up any files that were saved
+        for file_path in saved_files:
+            delete_file(file_path)
+        
+        # Re-raise the exception
+        raise
 
 
 @router.delete("/{scan_id}", status_code=status.HTTP_204_NO_CONTENT)

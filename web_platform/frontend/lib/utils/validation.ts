@@ -15,8 +15,8 @@ export const validation = {
         if (name.length < 2) {
             return 'Name must be at least 2 characters';
         }
-        if (name.length > 100) {
-            return 'Name must be less than 100 characters';
+        if (name.length > 255) {
+            return 'Name must be less than 255 characters';
         }
         return null;
     },
@@ -45,8 +45,8 @@ export const validation = {
         if (!name || name.trim().length === 0) {
             return null;
         }
-        if (name.length > 100) {
-            return 'Name must be less than 100 characters';
+        if (name.length > 255) {
+            return 'Name must be less than 255 characters';
         }
         return null;
     },
@@ -101,8 +101,14 @@ export const validation = {
             const maxSizeMB = maxSizeBytes / (1024 * 1024);
             return `File size must be less than ${maxSizeMB}MB`;
         }
+        // Validate MIME type (can be spoofed, but provides UX feedback)
         if (!allowedTypes.includes(file.type)) {
-            return `File type ${file.type} is not allowed`;
+            // Also check file extension as fallback
+            const ext = file.name.toLowerCase().split('.').pop();
+            const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'dcm', 'dicom'];
+            if (!ext || !allowedExts.includes(ext)) {
+                return `File type ${file.type || 'unknown'} is not allowed`;
+            }
         }
         return null;
     },
