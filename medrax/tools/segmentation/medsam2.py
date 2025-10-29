@@ -39,13 +39,9 @@ class MedSAM2Input(BaseModel):
         "box",
         description="Type of prompt: 'box' for bounding box, 'point' for point click, or 'auto' for automatic segmentation",
     )
-    prompt_coords: Optional[List[int]] = Field(
-        default=None,
-        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave None for auto segmentation",
-        json_schema_extra={
-            "type": "array",
-            "items": {"type": "integer"}
-        }
+    prompt_coords: List[int] = Field(
+        default_factory=list,
+        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave empty list for auto segmentation"
     )
     slice_index: Optional[int] = Field(
         default=None,

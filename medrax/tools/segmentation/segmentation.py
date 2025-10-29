@@ -31,16 +31,12 @@ class ChestXRaySegmentationInput(BaseModel):
     """Input schema for the Chest X-ray Segmentation Tool."""
 
     image_path: str = Field(..., description="Path to the chest X-ray image file to be segmented")
-    organs: Optional[List[str]] = Field(
-        default=None,
-        description="List of organs to segment. If None, all available organs will be segmented. "
+    organs: List[str] = Field(
+        default_factory=list,
+        description="List of organs to segment. If empty list, all available organs will be segmented. "
         "Available organs: Left/Right Clavicle, Left/Right Scapula, Left/Right Lung, "
         "Left/Right Hilus Pulmonis, Heart, Aorta, Facies Diaphragmatica, "
-        "Mediastinum, Weasand, Spine",
-        json_schema_extra={
-            "type": "array",
-            "items": {"type": "string"}
-        }
+        "Mediastinum, Weasand, Spine"
     )
 
 
@@ -229,19 +225,19 @@ class ChestXRaySegmentationTool(BaseTool):
     def _run(
         self,
         image_path: str,
-        organs: Optional[List[str]] = None,
+        organs: List[str] = [],
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Run segmentation analysis for specified organs."""
         try:
             # Validate and get organ indices
-            if organs:
+            if organs:  # If list is not empty
                 organs = [o.strip() for o in organs]
                 invalid_organs = [o for o in organs if o not in self.organ_map]
                 if invalid_organs:
                     raise ValueError(f"Invalid organs specified: {invalid_organs}")
                 organ_indices = [self.organ_map[o] for o in organs]
-            else:
+            else:  # If list is empty, use all organs
                 organ_indices = list(self.organ_map.values())
                 organs = list(self.organ_map.keys())
 
@@ -305,7 +301,7 @@ class ChestXRaySegmentationTool(BaseTool):
     async def _arun(
         self,
         image_path: str,
-        organs: Optional[List[str]] = None,
+        organs: List[str] = [],
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Async version of _run."""
