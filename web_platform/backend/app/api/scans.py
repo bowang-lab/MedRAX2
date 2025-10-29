@@ -13,6 +13,7 @@ from ..models import Doctor, Patient, Chat, Scan
 from ..schemas.scan import ScanResponse
 from ..dependencies import get_current_doctor
 from ..utils.file_utils import save_upload_file, delete_file, is_allowed_file, get_file_extension
+from ..config import settings
 
 router = APIRouter()
 
