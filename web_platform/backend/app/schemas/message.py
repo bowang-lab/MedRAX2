@@ -39,11 +39,12 @@ class MessageCreate(MessageBase):
     scan_ids: List[str] = []
 
 
-class MessageResponse(MessageBase):
-    """Schema for message response."""
+class MessageResponse(BaseModel):
+    """Schema for message response - allows empty content for failed assistant messages."""
     id: str
     chat_id: str
     role: str  # 'user', 'assistant', 'system'
+    content: str = Field(..., max_length=10000, description="Message content")
     created_at: datetime
     
     class Config:
