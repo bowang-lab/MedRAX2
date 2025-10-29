@@ -22,7 +22,11 @@ class XRayVQAToolInput(BaseModel):
 
     image_paths: List[str] = Field(
         ..., 
-        description="List of paths to chest X-ray images to analyze"
+        description="List of paths to chest X-ray images to analyze",
+        json_schema_extra={
+            "type": "array",
+            "items": {"type": "string"}
+        }
     )
     prompt: str = Field(..., description="Question or instruction about the chest X-ray images")
     max_new_tokens: int = Field(512, description="Maximum number of tokens to generate in the response")

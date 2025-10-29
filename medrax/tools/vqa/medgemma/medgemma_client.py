@@ -14,6 +14,10 @@ class MedGemmaVQAInput(BaseModel):
     image_paths: List[str] = Field(
         ...,
         description="List of paths to medical image files to analyze, only supports JPG or PNG images",
+        json_schema_extra={
+            "type": "array",
+            "items": {"type": "string"}
+        }
     )
     prompt: str = Field(..., description="Question or instruction about the medical images")
     system_prompt: Optional[str] = Field(
