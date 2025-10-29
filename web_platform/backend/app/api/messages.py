@@ -38,7 +38,7 @@ def enrich_tool_execution(execution: ToolExecution) -> dict:
     try:
         tool_info = tool_manager.get_tool(execution.tool_name)
         if tool_info:
-            tool_display_name = tool_info.display_name
+            tool_display_name = tool_info.name  # ToolInfo has 'name', not 'display_name'
     except:
         pass
     
@@ -226,8 +226,8 @@ async def stream_chat_response(
                     yield create_sse_event("content_chunk", content=event["data"].get("content", ""))
                 elif event["type"] == "tool_start":
                     yield create_sse_event("tool_start", **event["data"])
-                elif event["type"] == "tool_result":
-                    yield create_sse_event("tool_result", **event["data"])
+                elif event["type"] == "tool_done":
+                    yield create_sse_event("tool_done", **event["data"])
                 elif event["type"] == "tool_error":
                     yield create_sse_event("tool_error", **event["data"])
             
@@ -248,6 +248,12 @@ async def stream_chat_response(
             # Send error event
             yield create_sse_event("error", error=str(e))
             db.rollback()
+        finally:
+            # Ensure database session is properly closed
+            try:
+                db.close()
+            except Exception as e:
+                logger.warning(f"Error closing database session: {e}")
     
     return StreamingResponse(
         event_generator(),

@@ -41,6 +41,7 @@ export type SSEEventType =
     | 'content_chunk'
     | 'tool_start'
     | 'tool_done'
+    | 'tool_error'
     | 'message_done'
     | 'error';
 

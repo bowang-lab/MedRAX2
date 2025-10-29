@@ -233,7 +233,7 @@ class ChatProcessor:
             
             # Yield tool completion
             yield {
-                "type": "tool_complete",
+                "type": "tool_done",
                 "data": {
                     "tool_name": tool_name,
                     "execution_id": execution.id
