@@ -73,6 +73,11 @@ export const API_ENDPOINTS = {
     QUESTIONS: '/api/questions',
     QUESTION_DETAIL: (id: string) => `/api/questions/${id}`,
 
+    // Memory Management
+    CHAT_MEMORY_CLEAR: (chatId: string) => `/api/chats/${chatId}/memory/clear`,
+    CHAT_MEMORY_STATS: (chatId: string) => `/api/chats/${chatId}/memory/stats`,
+    SYSTEM_MEMORY_CLEANUP: '/api/system/memory/cleanup',
+
     // Tools
     TOOLS: '/api/tools',
     TOOL_LOAD: (id: string) => `/api/tools/${id}/load`,
