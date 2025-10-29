@@ -152,7 +152,9 @@ def delete_patient(
     current_doctor: Doctor = Depends(get_current_doctor),
     db: Session = Depends(get_db)
 ):
-    """Delete a patient and all associated data."""
+    """Delete a patient and all associated data including files on disk."""
+    from ..models import Chat, Message, Scan, ToolExecution
+    from ..utils.file_utils import delete_file
     
     patient = db.query(Patient).filter(
         Patient.id == patient_id,
@@ -165,6 +167,24 @@ def delete_patient(
             detail="Patient not found"
         )
     
+    # Clean up all scan files for this patient from disk
+    scans = db.query(Scan).join(Chat).filter(Chat.patient_id == patient_id).all()
+    for scan in scans:
+        delete_file(scan.file_path)
+    
+    # Clean up all tool execution generated images for this patient
+    tool_executions = db.query(ToolExecution).join(Message).join(Chat).filter(
+        Chat.patient_id == patient_id
+    ).all()
+    
+    for execution in tool_executions:
+        if execution.image_paths:
+            for image_path in execution.image_paths:
+                # Only delete generated images (in temp or output dirs), not input scans
+                if isinstance(image_path, str) and ('temp' in image_path.lower() or 'output' in image_path.lower()):
+                    delete_file(image_path)
+    
+    # Delete database record (cascades to chats, messages, scans, tool executions)
     db.delete(patient)
     db.commit()
     

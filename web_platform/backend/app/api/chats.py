@@ -216,7 +216,9 @@ def delete_chat(
     current_doctor: Doctor = Depends(get_current_doctor),
     db: Session = Depends(get_db)
 ):
-    """Delete a chat and all associated messages."""
+    """Delete a chat and all associated messages, scans, and tool execution files."""
+    from ..models import Scan, ToolExecution
+    from ..utils.file_utils import delete_file
     
     chat = db.query(Chat).join(Patient).filter(
         Chat.id == chat_id,
@@ -229,6 +231,25 @@ def delete_chat(
             detail="Chat not found"
         )
     
+    # Clean up scan files from disk before deleting DB records
+    scans = db.query(Scan).filter(Scan.chat_id == chat_id).all()
+    for scan in scans:
+        delete_file(scan.file_path)
+    
+    # Clean up tool execution generated images from disk
+    # Get all tool executions via messages in this chat
+    tool_executions = db.query(ToolExecution).join(Message).filter(
+        Message.chat_id == chat_id
+    ).all()
+    
+    for execution in tool_executions:
+        if execution.image_paths:
+            for image_path in execution.image_paths:
+                # Only delete generated images (in temp or output dirs), not input scans
+                if isinstance(image_path, str) and ('temp' in image_path.lower() or 'output' in image_path.lower()):
+                    delete_file(image_path)
+    
+    # Delete database record (cascades to messages, scans, tool executions)
     db.delete(chat)
     db.commit()
     
