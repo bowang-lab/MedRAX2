@@ -82,10 +82,11 @@ class ToolManager:
         
         # Limit concurrent background loads to reduce resource contention
         # Use BoundedSemaphore for better error detection
+        # NOTE: MUST be 1 to avoid Python import deadlocks when loading tools concurrently
         try:
-            max_conc = getattr(settings, 'MAX_CONCURRENT_TOOLS', 3) or 1
+            max_conc = getattr(settings, 'MAX_CONCURRENT_TOOLS', 1) or 1
         except Exception:
-            max_conc = 3
+            max_conc = 1
         self._load_semaphore = threading.BoundedSemaphore(max_conc)
         self._semaphore_max = max_conc  # Track max value for cleanup
         
