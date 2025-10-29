@@ -78,14 +78,24 @@ class ChatProcessor:
         # Build messages for agent
         agent_messages = []
         
-        # Add image paths if scans attached
+        # Add image paths and images if scans attached
         if scans:
             scan_paths = [scan.file_path for scan in scans]
+            
+            # Create a clear message about available images
+            image_context = (
+                f"The user has uploaded {len(scans)} medical image(s). "
+                f"When using tools that require an image_path parameter, use these file paths:\n"
+            )
+            for i, scan in enumerate(scans, 1):
+                image_context += f"  {i}. {scan.file_path}\n"
+            
             agent_messages.append({
-                "role": "user",
-                "content": f"image_paths: {', '.join(scan_paths)}"
+                "role": "system",
+                "content": image_context.strip()
             })
             
+            # Also send the actual images for visual analysis
             for scan in scans:
                 try:
                     with open(scan.file_path, "rb") as f:
