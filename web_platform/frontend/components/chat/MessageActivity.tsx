@@ -84,9 +84,9 @@ export function MessageActivity({ executions, onShowDetails }: MessageActivityPr
                 ))}
             </div>
 
-            {onShowDetails && (
+            {onShowDetails && executions && executions.length > 0 && (
                 <button
-                    onClick={() => executions && executions.length > 0 && onShowDetails(executions[0].id)}
+                    onClick={() => onShowDetails(executions[0].id)}
                     className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                     Show detailed tool history
