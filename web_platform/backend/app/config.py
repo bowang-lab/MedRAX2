@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # File Upload
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 104857600  # 100MB
-    ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".dcm", ".dicom"}
+    ALLOWED_EXTENSIONS: set = {"jpg", "jpeg", "png", "gif", "dcm", "dicom"}  # No dots - get_file_extension() strips them
     
     # AI/ML API Keys
     OPENAI_API_KEY: str = ""

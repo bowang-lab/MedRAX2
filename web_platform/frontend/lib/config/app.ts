@@ -21,9 +21,9 @@ export const UI_CONFIG = {
     sidebarMaxWidth: 400,
     sidebarDefaultWidth: 320,
 
-    maxFileSize: 50 * 1024 * 1024,  // 50MB
+    maxFileSize: 100 * 1024 * 1024,  // 100MB (matches backend MAX_UPLOAD_SIZE)
     allowedFileTypes: ['image/jpeg', 'image/png', 'image/gif', 'application/dicom'],
-    allowedFileExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.dcm'],
+    allowedFileExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.dcm', '.dicom'],
 };
 
 export const PAGINATION_CONFIG = {
