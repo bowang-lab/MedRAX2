@@ -113,10 +113,28 @@ export const useAppStore = create<AppState>()((set) => ({
     removePatient: (id) =>
         set((state) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { [id]: removed, ...restChats } = state.chats;
+            const { [id]: removedChats, ...restChats } = state.chats;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { [id]: removedLoading, ...restLoadingChats } = state.isLoadingChats;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { [id]: removedError, ...restChatsError } = state.chatsError;
+
+            // Also clear messages and scans for all chats of this patient
+            const restMessages = { ...state.messages };
+            const restScans = { ...state.scans };
+            const patientChatIds = state.chats[id]?.map(c => c.id) || [];
+            patientChatIds.forEach(chatId => {
+                delete restMessages[chatId];
+                delete restScans[chatId];
+            });
+
             return {
                 patients: (state.patients || []).filter((p) => p.id !== id),
                 chats: restChats,
+                isLoadingChats: restLoadingChats,
+                chatsError: restChatsError,
+                messages: restMessages,
+                scans: restScans,
             };
         }),
 
@@ -152,6 +170,8 @@ export const useAppStore = create<AppState>()((set) => ({
                 },
                 messages: restMessages,
                 scans: restScans,
+                // CRITICAL: Clear selectedChatId if we're deleting the selected chat
+                selectedChatId: state.selectedChatId === chatId ? null : state.selectedChatId,
             };
         }),
 

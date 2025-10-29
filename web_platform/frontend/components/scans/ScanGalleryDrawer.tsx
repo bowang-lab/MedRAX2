@@ -13,6 +13,7 @@ import { Drawer } from '../ui/Drawer';
 import { Spinner } from '../ui/Spinner';
 import { getPatientScans, deleteScan } from '../../lib/api/scans';
 import { formatDateTime, classNames } from '../../lib/utils';
+import { getImageUrl } from '../../lib/utils/image';
 import type { Scan } from '../../lib/types/scan';
 
 /**
@@ -102,7 +103,7 @@ export function ScanGalleryDrawer({
                             >
                                 {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
                                 <img
-                                    src={scan.displayPath}
+                                    src={getImageUrl(scan.displayPath)}
                                     alt="Scan"
                                     className="w-full h-48 object-cover"
                                 />
@@ -157,7 +158,7 @@ export function ScanGalleryDrawer({
 
                             {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
                             <img
-                                src={selectedScan.displayPath}
+                                src={getImageUrl(selectedScan.displayPath)}
                                 alt="Selected Scan"
                                 className="w-full rounded-lg mb-3"
                             />
@@ -181,7 +182,7 @@ export function ScanGalleryDrawer({
 
                             <div className="mt-4 flex items-center space-x-2">
                                 <a
-                                    href={selectedScan.displayPath}
+                                    href={getImageUrl(selectedScan.displayPath)}
                                     download
                                     className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium text-center transition-colors"
                                 >
