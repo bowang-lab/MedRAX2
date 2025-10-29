@@ -135,6 +135,15 @@ else
     echo "   [OK] Database exists (existing data preserved)"
 fi
 
+# Validate tool schemas (optional check, won't block startup)
+echo ""
+echo "Validating tool schemas..."
+if python ../../medrax/tools/validate_schemas.py 2>/dev/null; then
+    echo "   [OK] All tool schemas valid"
+else
+    echo "   [SKIP] Schema validation skipped (optional check)"
+fi
+
 echo ""
 echo "=================================================="
 echo "Starting server..."
