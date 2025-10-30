@@ -33,25 +33,31 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
     // Reset state when modal opens/closes
     useEffect(() => {
         if (isOpen) {
-            setCurrentIndex(initialIndex);
+            // Validate initialIndex is within bounds
+            const validIndex = Math.max(0, Math.min(initialIndex, images.length - 1));
+            setCurrentIndex(validIndex);
             setZoom(1);
             setPan({ x: 0, y: 0 });
         }
-    }, [isOpen, initialIndex]);
+    }, [isOpen, initialIndex, images.length]);
 
     // Handle keyboard shortcuts
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (!isOpen) return;
+        if (!isOpen || images.length === 0) return;
 
         switch (e.key) {
             case 'Escape':
                 onClose();
                 break;
             case 'ArrowLeft':
-                setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+                if (images.length > 1) {
+                    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+                }
                 break;
             case 'ArrowRight':
-                setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+                if (images.length > 1) {
+                    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+                }
                 break;
             case '+':
             case '=':
@@ -102,15 +108,19 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
     };
 
     const handleNext = () => {
-        setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
+        if (images.length > 1) {
+            setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+        }
     };
 
     const handlePrevious = () => {
-        setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
+        if (images.length > 1) {
+            setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+        }
     };
 
     const handleZoomIn = () => {
@@ -126,7 +136,11 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
         setPan({ x: 0, y: 0 });
     };
 
-    if (!isOpen) return null;
+    // Don't render if not open or no images
+    if (!isOpen || images.length === 0) return null;
+
+    // Ensure currentIndex is valid (defensive programming)
+    const safeIndex = Math.max(0, Math.min(currentIndex, images.length - 1));
 
     return (
         <div
@@ -188,7 +202,7 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
                 {/* Image Counter */}
                 {images.length > 1 && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-zinc-800 rounded-lg px-4 py-2 text-white text-sm z-10">
-                        {currentIndex + 1} / {images.length}
+                        {safeIndex + 1} / {images.length}
                     </div>
                 )}
 
@@ -203,8 +217,8 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
                 >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src={images[currentIndex]}
-                        alt={`Image ${currentIndex + 1}`}
+                        src={images[safeIndex]}
+                        alt={`Image ${safeIndex + 1}`}
                         className="max-w-full max-h-full object-contain select-none"
                         style={{
                             transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
@@ -212,6 +226,16 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
                             cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
                         }}
                         draggable={false}
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const container = e.currentTarget.parentElement;
+                            if (container) {
+                                const errorMsg = document.createElement('div');
+                                errorMsg.className = 'text-red-400 text-center p-8';
+                                errorMsg.textContent = `⚠️ Failed to load image: ${images[safeIndex]}`;
+                                container.appendChild(errorMsg);
+                            }
+                        }}
                     />
                 </div>
 
