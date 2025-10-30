@@ -58,6 +58,10 @@ export function ChatInterface() {
     const [toolOutputsMessageId, setToolOutputsMessageId] = useState<string | null>(null);
     const [isToolOutputsSidebarOpen, setIsToolOutputsSidebarOpen] = useState(false);
 
+    // Store abort function for ongoing stream
+    const abortStreamRef = useRef<(() => void) | null>(null);
+    const currentStreamChatIdRef = useRef<string | null>(null);
+
     // Suggested questions (for now, hardcoded defaults)
     const [suggestedQuestions] = useState<SuggestedQuestion[]>([
         { id: '1', doctorId: '', question: 'Is there pneumonia?', isDefault: true, displayOrder: 1, createdAt: '' },
@@ -100,6 +104,15 @@ export function ChatInterface() {
     };
 
     useEffect(() => {
+        // Abort any ongoing stream when switching chats
+        if (abortStreamRef.current && currentStreamChatIdRef.current !== selectedChatId) {
+            console.log('🛑 Aborting stream due to chat switch');
+            abortStreamRef.current();
+            abortStreamRef.current = null;
+            currentStreamChatIdRef.current = null;
+            setSendingMessage(false);
+        }
+
         if (selectedChatId) {
             loadChatData(selectedChatId);
         } else {
@@ -109,8 +122,22 @@ export function ChatInterface() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedChatId]);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (abortStreamRef.current) {
+                console.log('🛑 Aborting stream on unmount');
+                abortStreamRef.current();
+            }
+        };
+    }, []);
+
     const handleSendMessage = async (content: string, scanIds?: string[]) => {
         if (!selectedChatId) return;
+
+        // Store the chatId at the start of this request
+        const requestChatId = selectedChatId;
+        currentStreamChatIdRef.current = requestChatId;
 
         setSendingMessage(true);
         setError(null);
@@ -118,34 +145,48 @@ export function ChatInterface() {
         // Add user message optimistically
         const tempUserMessage: MessageWithDetails = {
             id: `temp-${Date.now()}`,
-            chatId: selectedChatId,
+            chatId: requestChatId,
             role: 'user',
             content,
             createdAt: new Date().toISOString(),
             attachedScans: [],
             toolExecutions: [],
         };
-        addMessage(selectedChatId, tempUserMessage);
+        addMessage(requestChatId, tempUserMessage);
 
         // Add assistant message placeholder for real-time updates
         const tempAssistantMessage: MessageWithDetails = {
             id: `temp-assistant-${Date.now()}`,
-            chatId: selectedChatId,
+            chatId: requestChatId,
             role: 'assistant',
             content: '',
             createdAt: new Date().toISOString(),
             attachedScans: [],
             toolExecutions: [],
         };
-        addMessage(selectedChatId, tempAssistantMessage);
+        addMessage(requestChatId, tempAssistantMessage);
 
         let assistantContent = '';
 
-        // Stream response
-        streamChatResponse(
-            selectedChatId,
+        // Helper to clean up temp messages
+        const cleanupTempMessages = () => {
+            const currentMessages = messages[requestChatId] || [];
+            const filteredMessages = currentMessages.filter(
+                msg => msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id
+            );
+            setMessages(requestChatId, filteredMessages);
+        };
+
+        // Stream response and store abort function
+        const abortFn = streamChatResponse(
+            requestChatId,
             content,
             (event) => {
+                // Ignore events if chat has switched
+                if (currentStreamChatIdRef.current !== requestChatId) {
+                    return;
+                }
+
                 // Handle streaming events
                 if (event.type === 'message_start') {
                     console.log('Message started:', event.data.messageId);
@@ -153,13 +194,13 @@ export function ChatInterface() {
                     // Update assistant message content in real-time
                     assistantContent += event.data.content || '';
                     // Update the temp message
-                    const currentMessages = messages[selectedChatId] || [];
+                    const currentMessages = messages[requestChatId] || [];
                     const updatedMessages = currentMessages.map(msg =>
                         msg.id === tempAssistantMessage.id
                             ? { ...msg, content: assistantContent }
                             : msg
                     );
-                    setMessages(selectedChatId, updatedMessages);
+                    setMessages(requestChatId, updatedMessages);
                 } else if (event.type === 'tool_start') {
                     console.log('Tool started:', event.data);
                 } else if (event.type === 'tool_done') {
@@ -168,19 +209,36 @@ export function ChatInterface() {
             },
             () => {
                 // On complete - reload to get final state with all tool executions
+                abortStreamRef.current = null;
+                currentStreamChatIdRef.current = null;
                 setSendingMessage(false);
-                // Small delay to ensure DB commits are complete
-                setTimeout(() => {
-                    loadChatData(selectedChatId);
-                }, 500);
+
+                // Only reload if we're still on the same chat
+                if (selectedChatId === requestChatId) {
+                    // Small delay to ensure DB commits are complete
+                    setTimeout(() => {
+                        loadChatData(requestChatId);
+                    }, 500);
+                } else {
+                    // Clean up temp messages if chat has switched
+                    cleanupTempMessages();
+                }
             },
             (err) => {
                 // On error
+                abortStreamRef.current = null;
+                currentStreamChatIdRef.current = null;
                 setError(err.message || 'Failed to send message');
                 setSendingMessage(false);
+
+                // Clean up temp messages on error
+                cleanupTempMessages();
             },
             scanIds
         );
+
+        // Store the abort function
+        abortStreamRef.current = abortFn;
     };
 
     const handleQuestionClick = (question: string) => {
