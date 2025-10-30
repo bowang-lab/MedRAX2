@@ -45,16 +45,6 @@ interface BackendToolExecutionDetail {
 }
 
 /**
- * Get tool executions for a message
- */
-export async function getToolExecutions(messageId: string): Promise<ToolExecution[]> {
-    const response = await apiClient.get<{ executions: ToolExecution[] }>(
-        API_ENDPOINTS.MESSAGE_EXECUTIONS(messageId)
-    );
-    return response.data.executions;
-}
-
-/**
  * Get detailed tool execution data (logs + result)
  */
 export async function getToolExecutionDetail(executionId: string): Promise<{
