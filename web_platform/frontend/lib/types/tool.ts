@@ -28,23 +28,22 @@ export interface ToolExecutionWithDetails extends ToolExecution {
 }
 
 export interface ToolExecutionLog {
-    id: number;
+    id: string;  // Fixed: Backend returns UUID string, not number
     executionId: string;
     logLevel: ToolLogLevel;
     message: string;
-    createdAt: string;
+    timestamp: string;  // Fixed: Backend uses 'timestamp', not 'createdAt'
 }
 
 export interface ToolExecutionResult {
-    id: number;
+    id: string;  // Fixed: Backend returns UUID string, not number
     executionId: string;
     // Tool results have dynamic structures that vary by tool type (classification, segmentation, VQA, etc.)
-    // Each tool returns different JSON structures, so we use 'any' here
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resultData: any;
+    // Each tool returns different JSON structures (Record<string, unknown> is more type-safe than 'any')
+    resultData: Record<string, unknown>;
     // Optional metadata can contain various tool-specific information
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    metadata: any | null;
+    resultMetadata: Record<string, unknown> | null;  // Fixed: Backend uses 'result_metadata' which becomes 'resultMetadata'
+    createdAt: string;  // Added: Backend returns this field
 }
 
 // Tool Management

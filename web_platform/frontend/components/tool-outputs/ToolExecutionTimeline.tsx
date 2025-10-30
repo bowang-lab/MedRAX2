@@ -63,7 +63,7 @@ export function ToolExecutionTimeline({ logs }: ToolExecutionTimelineProps) {
                                     {log.logLevel}
                                 </span>
                                 <span className="text-xs text-zinc-500">
-                                    {formatDateTime(log.createdAt)}
+                                    {formatDateTime(log.timestamp)}
                                 </span>
                             </div>
                             <p className="text-sm text-zinc-300 whitespace-pre-wrap">{log.message}</p>
