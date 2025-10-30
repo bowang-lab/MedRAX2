@@ -514,14 +514,18 @@ export function ChatInterface() {
                     </div>
                 ) : memoryStats ? (
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <div className="bg-zinc-800 rounded-lg p-4">
                                 <div className="text-xs text-zinc-500 mb-1">Messages</div>
                                 <div className="text-2xl font-semibold text-white">{memoryStats.messageCount}</div>
                             </div>
                             <div className="bg-zinc-800 rounded-lg p-4">
-                                <div className="text-xs text-zinc-500 mb-1">Characters</div>
-                                <div className="text-2xl font-semibold text-white">{memoryStats.totalCharacters.toLocaleString()}</div>
+                                <div className="text-xs text-zinc-500 mb-1">Scans</div>
+                                <div className="text-2xl font-semibold text-white">{memoryStats.scanCount}</div>
+                            </div>
+                            <div className="bg-zinc-800 rounded-lg p-4">
+                                <div className="text-xs text-zinc-500 mb-1">Tool Runs</div>
+                                <div className="text-2xl font-semibold text-white">{memoryStats.toolExecutionCount}</div>
                             </div>
                         </div>
                         <div className="bg-zinc-800 rounded-lg p-4">

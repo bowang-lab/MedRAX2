@@ -10,7 +10,8 @@ import { API_ENDPOINTS } from '../config/api';
 export interface MemoryStats {
     chatId: string;
     messageCount: number;
-    totalCharacters: number;
+    scanCount: number;
+    toolExecutionCount: number;
     hasContext: boolean;
 }
 
@@ -55,14 +56,16 @@ export async function getChatMemoryStats(chatId: string): Promise<MemoryStats> {
     const response = await apiClient.get<{
         chat_id: string;
         message_count: number;
-        total_characters: number;
+        scan_count: number;
+        tool_execution_count: number;
         has_context: boolean;
     }>(API_ENDPOINTS.CHAT_MEMORY_STATS(chatId));
 
     return {
         chatId: response.data.chat_id,
         messageCount: response.data.message_count,
-        totalCharacters: response.data.total_characters,
+        scanCount: response.data.scan_count,
+        toolExecutionCount: response.data.tool_execution_count,
         hasContext: response.data.has_context,
     };
 }
