@@ -53,60 +53,71 @@ export function MessageActivity({ executions, onShowDetails }: MessageActivityPr
             </div>
 
             <div className="space-y-2">
-                {(executions || []).map((execution, index) => (
-                    <div
-                        key={execution.id}
-                        className="w-full flex items-center justify-between p-2 rounded"
-                    >
-                        <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            {/* Execution order number */}
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-700 text-zinc-300 text-[10px] font-semibold flex items-center justify-center">
-                                {index + 1}
-                            </span>
+                {executions.map((execution, index) => {
+                    // Determine icon based on status
+                    const getStatusIcon = () => {
+                        switch (execution.status) {
+                            case 'completed':
+                                return <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" />;
+                            case 'failed':
+                                return <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />;
+                            case 'running':
+                                return <Loader2 className="h-4 w-4 text-blue-400 flex-shrink-0 animate-spin" />;
+                            case 'pending':
+                                return <Loader2 className="h-4 w-4 text-zinc-500 flex-shrink-0" />;
+                            default:
+                                return <Wrench className="h-4 w-4 text-zinc-500 flex-shrink-0" />;
+                        }
+                    };
 
-                            {execution.status === 'completed' && (
-                                <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                            )}
-                            {execution.status === 'failed' && (
-                                <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                            )}
-                            {execution.status === 'running' && (
-                                <Loader2 className="h-4 w-4 text-blue-400 flex-shrink-0 animate-spin" />
-                            )}
-                            {execution.status === 'pending' && (
-                                <Loader2 className="h-4 w-4 text-zinc-500 flex-shrink-0" />
-                            )}
+                    // Determine badge variant
+                    const getBadgeVariant = () => {
+                        switch (execution.status) {
+                            case 'completed':
+                                return 'success' as const;
+                            case 'failed':
+                                return 'error' as const;
+                            case 'running':
+                                return 'info' as const;
+                            default:
+                                return 'default' as const;
+                        }
+                    };
 
-                            <span className="text-sm text-zinc-300 truncate">
-                                {execution.toolDisplayName}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                            {execution.executionTimeMs && (
-                                <span className="text-xs text-zinc-500">
-                                    {(execution.executionTimeMs / 1000).toFixed(1)}s
+                    return (
+                        <div
+                            key={execution.id}
+                            className="w-full flex items-center justify-between p-2 rounded"
+                        >
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                {/* Execution order number */}
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-700 text-zinc-300 text-[10px] font-semibold flex items-center justify-center">
+                                    {index + 1}
                                 </span>
-                            )}
-                            <Badge
-                                variant={
-                                    execution.status === 'completed'
-                                        ? 'success'
-                                        : execution.status === 'failed'
-                                            ? 'error'
-                                            : execution.status === 'running'
-                                                ? 'info'
-                                                : 'default'
-                                }
-                            >
-                                {execution.status}
-                            </Badge>
+
+                                {getStatusIcon()}
+
+                                <span className="text-sm text-zinc-300 truncate">
+                                    {execution.toolDisplayName}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                {execution.executionTimeMs != null && (
+                                    <span className="text-xs text-zinc-500">
+                                        {(execution.executionTimeMs / 1000).toFixed(1)}s
+                                    </span>
+                                )}
+                                <Badge variant={getBadgeVariant()}>
+                                    {execution.status}
+                                </Badge>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
-            {onShowDetails && executions && executions.length > 0 && (
+            {onShowDetails && (
                 <button
                     onClick={onShowDetails}
                     className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
