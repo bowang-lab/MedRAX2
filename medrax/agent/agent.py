@@ -80,8 +80,14 @@ class Agent:
             Dict[str, List[AnyMessage]]: A dictionary containing the model's response.
         """
         messages = state["messages"]
-        if self.system_prompt:
+        
+        # Only add system prompt if:
+        # 1. We have a system prompt to add
+        # 2. The first message is not already a SystemMessage
+        # This prevents duplicate system messages when the workflow loops (agent -> tools -> agent)
+        if self.system_prompt and (not messages or not isinstance(messages[0], SystemMessage)):
             messages = [SystemMessage(content=self.system_prompt)] + messages
+        
         response = self.model.invoke(messages)
         return {"messages": [response]}
 

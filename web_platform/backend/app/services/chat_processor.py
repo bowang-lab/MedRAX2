@@ -88,8 +88,10 @@ class ChatProcessor:
             scan_paths = [scan.file_path for scan in scans]
             
             # Create a clear message about available images
+            # Note: Using "user" role instead of "system" to avoid conflicts with
+            # Google Gemini's requirement that SystemMessage only appear at position 0
             image_context = (
-                f"The user has uploaded {len(scans)} medical image(s). "
+                f"[Image Context] The user has uploaded {len(scans)} medical image(s). "
                 f"When using tools that require an image_path parameter, use these file paths:\n"
             )
             for i, scan in enumerate(scans, 1):
@@ -99,7 +101,7 @@ class ChatProcessor:
             logger.debug(f"image_context_message: {image_context.strip()}")
             
             agent_messages.append({
-                "role": "system",
+                "role": "user",
                 "content": image_context.strip()
             })
             
