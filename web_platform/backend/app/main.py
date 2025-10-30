@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pathlib import Path
 import time
 
@@ -18,6 +19,14 @@ from .services.tool_manager import tool_manager
 from .database import engine, Base
 from .utils.logging_config import logger
 
+# Custom JSONResponse that uses aliases (camelCase) for Pydantic models
+class CamelCaseJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        # Use by_alias=True to convert snake_case to camelCase
+        return super().render(
+            jsonable_encoder(content, by_alias=True)
+        )
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.APP_NAME,
@@ -25,6 +34,7 @@ app = FastAPI(
     debug=settings.DEBUG,
     docs_url="/docs",
     redoc_url="/redoc",
+    default_response_class=CamelCaseJSONResponse  # Use camelCase for all responses
 )
 
 # CORS middleware

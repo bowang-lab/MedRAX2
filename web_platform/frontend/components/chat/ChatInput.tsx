@@ -201,27 +201,37 @@ export function ChatInput({
                             </button>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {uploadedScans.map((scan) => (
+                            {uploadedScans.map((scan) => {
+                                const imageUrl = getImageUrl(scan.displayPath);
+                                return (
                                 <div
                                     key={scan.id}
                                     className="relative group"
                                 >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={getImageUrl(scan.displayPath)}
-                                        alt="Uploaded scan"
-                                        className="h-20 w-20 object-cover rounded-lg border border-zinc-700 bg-zinc-800"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            const container = e.currentTarget.parentElement;
-                                            if (container) {
-                                                const errorMsg = document.createElement('div');
-                                                errorMsg.className = 'h-20 w-20 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-xs p-1 text-center';
-                                                errorMsg.textContent = 'Failed to load';
-                                                container.insertBefore(errorMsg, e.currentTarget);
-                                            }
-                                        }}
-                                    />
+                                    {imageUrl ? (
+                                        <>
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={imageUrl}
+                                                alt="Uploaded scan"
+                                                className="h-20 w-20 object-cover rounded-lg border border-zinc-700 bg-zinc-800"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    const container = e.currentTarget.parentElement;
+                                                    if (container) {
+                                                        const errorMsg = document.createElement('div');
+                                                        errorMsg.className = 'h-20 w-20 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-xs p-1 text-center';
+                                                        errorMsg.textContent = 'Failed to load';
+                                                        container.insertBefore(errorMsg, e.currentTarget);
+                                                    }
+                                                }}
+                                            />
+                                        </>
+                                    ) : (
+                                        <div className="h-20 w-20 flex items-center justify-center bg-yellow-900/20 border border-yellow-800 rounded-lg text-yellow-400 text-xs p-1 text-center">
+                                            No preview
+                                        </div>
+                                    )}
                                     <button
                                         onClick={() => handleRemoveScan(scan.id)}
                                         disabled={isSending}
@@ -231,7 +241,8 @@ export function ChatInput({
                                         <X className="h-3 w-3" />
                                     </button>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

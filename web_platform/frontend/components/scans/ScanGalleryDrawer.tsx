@@ -95,7 +95,9 @@ export function ScanGalleryDrawer({
                 <div className="space-y-4">
                     {/* Scan Grid */}
                     <div className="grid grid-cols-2 gap-4">
-                        {scans.map((scan) => (
+                        {scans.map((scan) => {
+                            const imageUrl = getImageUrl(scan.displayPath);
+                            return (
                             <div
                                 key={scan.id}
                                 className={classNames(
@@ -106,17 +108,17 @@ export function ScanGalleryDrawer({
                                 )}
                                 onClick={() => setSelectedScan(scan)}
                             >
-                                {failedImages.has(getImageUrl(scan.displayPath)) ? (
+                                {!imageUrl || failedImages.has(imageUrl) ? (
                                     <div className="w-full h-48 flex items-center justify-center bg-red-900/20 border border-red-800 text-red-400 text-xs p-4 text-center">
                                         ⚠️ Failed to load scan
                                     </div>
                                 ) : (
                                     /* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */
                                     <img
-                                        src={getImageUrl(scan.displayPath)}
+                                        src={imageUrl}
                                         alt="Scan"
                                         className="w-full h-48 object-cover"
-                                        onError={() => handleImageError(getImageUrl(scan.displayPath))}
+                                        onError={() => handleImageError(imageUrl)}
                                     />
                                 )}
 
@@ -152,11 +154,14 @@ export function ScanGalleryDrawer({
                                     <p className="text-xs text-zinc-500">{scan.fileType.toUpperCase()}</p>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Selected Scan Detail */}
-                    {selectedScan && (
+                    {selectedScan && (() => {
+                        const selectedImageUrl = getImageUrl(selectedScan.displayPath);
+                        return (
                         <div className="mt-6 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-white">Scan Details</h3>
@@ -168,17 +173,17 @@ export function ScanGalleryDrawer({
                                 </button>
                             </div>
 
-                            {failedImages.has(getImageUrl(selectedScan.displayPath)) ? (
+                            {!selectedImageUrl || failedImages.has(selectedImageUrl) ? (
                                 <div className="w-full h-64 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-sm p-4 mb-3">
                                     ⚠️ Failed to load scan image
                                 </div>
                             ) : (
                                 /* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */
                                 <img
-                                    src={getImageUrl(selectedScan.displayPath)}
+                                    src={selectedImageUrl}
                                     alt="Selected Scan"
                                     className="w-full rounded-lg mb-3"
-                                    onError={() => handleImageError(getImageUrl(selectedScan.displayPath))}
+                                    onError={() => handleImageError(selectedImageUrl)}
                                 />
                             )}
 
@@ -201,9 +206,10 @@ export function ScanGalleryDrawer({
 
                             <div className="mt-4 flex items-center space-x-2">
                                 <a
-                                    href={getImageUrl(selectedScan.displayPath)}
+                                    href={selectedImageUrl || '#'}
                                     download
                                     className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium text-center transition-colors"
+                                    {...(!selectedImageUrl && { onClick: (e) => e.preventDefault() })}
                                 >
                                     <Download className="inline h-4 w-4 mr-2" />
                                     Download
@@ -217,7 +223,8 @@ export function ScanGalleryDrawer({
                                 </button>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">

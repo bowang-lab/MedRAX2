@@ -7,6 +7,7 @@ Endpoints for medical image/scan management.
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 
 from ..database import get_db
 from ..models import Doctor, Patient, Chat, Scan
@@ -16,6 +17,7 @@ from ..utils.file_utils import save_upload_file, delete_file, is_allowed_file, g
 from ..config import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/patients/{patient_id}/scans", response_model=List[ScanResponse])
@@ -95,8 +97,19 @@ async def upload_scans(
     
     try:
         for file in files:
+            logger.info(f"Processing upload: filename={file.filename}, size={file.size}, content_type={file.content_type}")
+            
+            # Validate filename exists
+            if not file.filename:
+                logger.error("Upload failed: File has no filename")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="File must have a valid filename"
+                )
+            
             # Validate file type
             if not is_allowed_file(file.filename):
+                logger.warning(f"Upload rejected: Invalid file type for {file.filename}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"File type not allowed: {file.filename}"
@@ -105,6 +118,7 @@ async def upload_scans(
             # Validate file size (CRITICAL: prevent large file DoS attacks)
             if file.size and file.size > settings.MAX_UPLOAD_SIZE:
                 max_size_mb = settings.MAX_UPLOAD_SIZE / (1024 * 1024)
+                logger.warning(f"Upload rejected: File too large - {file.size / (1024 * 1024):.1f}MB")
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                     detail=f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size ({max_size_mb:.0f}MB)"
@@ -113,6 +127,13 @@ async def upload_scans(
             # Save file
             file_path, display_path = await save_upload_file(file, f"chats/{chat_id}")
             saved_files.append(file_path)  # Track for cleanup
+            
+            logger.info(f"File saved: path={file_path}, display_path={display_path}")
+            
+            # Validate that display_path was generated
+            if not display_path:
+                logger.error(f"Failed to generate display path for file: {file.filename}")
+                raise ValueError(f"Failed to generate display path for file: {file.filename}")
             
             # Create scan record
             scan = Scan(
@@ -124,14 +145,24 @@ async def upload_scans(
             )
             db.add(scan)
             uploaded_scans.append(scan)
+            logger.debug(f"Scan record created: id={scan.id}, display_path={scan.display_path}")
         
         db.commit()
         
         # Refresh all scans
         for scan in uploaded_scans:
             db.refresh(scan)
+            logger.debug(f"Refreshed scan: id={scan.id}, display_path={scan.display_path}")
         
-        return [ScanResponse.model_validate(scan) for scan in uploaded_scans]
+        # Validate and return scans
+        responses = [ScanResponse.model_validate(scan) for scan in uploaded_scans]
+        logger.info(f"Successfully uploaded {len(responses)} scan(s) to chat {chat_id}")
+        
+        # Debug: Log what we're actually returning
+        for resp in responses:
+            logger.debug(f"Returning scan: id={resp.id}, displayPath={resp.display_path}")
+        
+        return responses
     
     except Exception as e:
         # Rollback database changes

@@ -13,7 +13,7 @@ import uuid
 from ..config import settings
 
 
-def get_file_extension(filename: str) -> str:
+def get_file_extension(filename: str | None) -> str:
     """
     Get file extension from filename.
     
@@ -21,8 +21,10 @@ def get_file_extension(filename: str) -> str:
         filename: The filename
         
     Returns:
-        File extension without dot
+        File extension without dot (empty string if no extension or None filename)
     """
+    if not filename:
+        return ''
     return Path(filename).suffix.lstrip('.').lower()
 
 
@@ -50,7 +52,14 @@ async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[st
         
     Returns:
         Tuple of (file_path, display_path)
+        
+    Raises:
+        ValueError: If filename is None or empty
     """
+    # Validate filename
+    if not file.filename:
+        raise ValueError("File must have a valid filename")
+    
     # Create upload directory if it doesn't exist
     upload_path = Path(settings.UPLOAD_DIR)
     if subdirectory:
@@ -59,7 +68,12 @@ async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[st
     
     # Generate unique filename
     ext = get_file_extension(file.filename)
-    unique_filename = f"{uuid.uuid4()}.{ext}"
+    if ext:
+        unique_filename = f"{uuid.uuid4()}.{ext}"
+    else:
+        # If no extension, just use UUID (shouldn't happen with validation, but defensive)
+        unique_filename = str(uuid.uuid4())
+    
     file_path = upload_path / unique_filename
     
     # Save file

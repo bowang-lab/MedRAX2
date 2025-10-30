@@ -9,30 +9,36 @@ import { API_ENDPOINTS } from '../config/api';
 import type { Scan } from '../types/scan';
 
 /**
- * Backend scan response interface (snake_case)
+ * Backend scan response interface (camelCase - backend uses serialization_alias)
  */
 interface ScanAPIResponse {
     id: string;
-    chat_id: string;
-    file_path: string;
-    display_path: string;
-    file_type: string;
-    file_size: number;
-    uploaded_at: string;
+    chatId: string;
+    filePath: string;
+    displayPath: string;
+    fileType: string;
+    fileSize: number;
+    uploadedAt: string;
 }
 
 /**
  * Map backend scan response to frontend Scan type
+ * Backend now sends camelCase directly, so this is a simple passthrough
  */
 function mapScanResponse(data: ScanAPIResponse): Scan {
+    // Debug: Log the raw response to help track down any issues
+    if (!data.displayPath) {
+        console.error('⚠️ Scan response missing displayPath:', data);
+    }
+    
     return {
         id: data.id,
-        chatId: data.chat_id,
-        filePath: data.file_path,
-        displayPath: data.display_path,
-        fileType: data.file_type as any,
-        fileSize: data.file_size,
-        uploadedAt: data.uploaded_at,
+        chatId: data.chatId,
+        filePath: data.filePath,
+        displayPath: data.displayPath,
+        fileType: data.fileType as any,
+        fileSize: data.fileSize,
+        uploadedAt: data.uploadedAt,
     };
 }
 
@@ -63,6 +69,8 @@ export async function uploadScans(
     chatId: string,
     files: File[]
 ): Promise<Scan[]> {
+    console.log(`📤 Uploading ${files.length} file(s) to chat ${chatId}:`, files.map(f => ({ name: f.name, size: f.size })));
+    
     const formData = new FormData();
     files.forEach((file) => {
         formData.append('files', file);
@@ -78,7 +86,12 @@ export async function uploadScans(
         }
     );
 
-    return response.data.map(mapScanResponse);
+    console.log(`📥 Received upload response:`, response.data);
+    
+    const scans = response.data.map(mapScanResponse);
+    console.log(`✅ Mapped scans:`, scans.map(s => ({ id: s.id, displayPath: s.displayPath })));
+    
+    return scans;
 }
 
 /**

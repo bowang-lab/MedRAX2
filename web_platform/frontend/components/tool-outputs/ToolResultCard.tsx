@@ -177,7 +177,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                     <div className="flex flex-wrap gap-3">
                         {imagePaths.map((imagePath, idx) => {
                             const imageUrl = getImageUrl(imagePath);
-                            const hasFailed = failedImages.has(imageUrl);
+                            const hasFailed = !imageUrl || failedImages.has(imageUrl);
 
                             return (
                                 <div key={idx} className="relative group">

@@ -126,7 +126,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                 <div className="flex flex-wrap gap-3">
                                     {message.attachedScans.map((scan, idx) => {
                                         const scanUrl = getImageUrl(scan.displayPath);
-                                        const hasFailed = failedImages.has(scanUrl);
+                                        const hasFailed = !scanUrl || failedImages.has(scanUrl);
 
                                         return (
                                             <div
@@ -136,9 +136,9 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                     hasFailed ? 'cursor-not-allowed' : 'cursor-pointer hover:border-blue-500'
                                                 )}
                                                 onClick={() => {
-                                                    if (!hasFailed) {
+                                                    if (!hasFailed && scanUrl) {
                                                         openImageModal(
-                                                            message.attachedScans!.map(s => getImageUrl(s.displayPath)),
+                                                            message.attachedScans!.map(s => getImageUrl(s.displayPath)).filter((url): url is string => url !== null),
                                                             idx
                                                         );
                                                     }
@@ -177,7 +177,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                 <div className="flex flex-wrap gap-3">
                                     {finalImages.map((imagePath, idx) => {
                                         const imageUrl = getImageUrl(imagePath);
-                                        const hasFailed = failedImages.has(imageUrl);
+                                        const hasFailed = !imageUrl || failedImages.has(imageUrl);
 
                                         return (
                                             <div
@@ -189,9 +189,9 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                         : 'border-blue-500 cursor-zoom-in hover:border-blue-400'
                                                 )}
                                                 onClick={() => {
-                                                    if (!hasFailed) {
+                                                    if (!hasFailed && imageUrl) {
                                                         openImageModal(
-                                                            finalImages.map(path => getImageUrl(path)),
+                                                            finalImages.map(path => getImageUrl(path)).filter((url): url is string => url !== null),
                                                             idx
                                                         );
                                                     }

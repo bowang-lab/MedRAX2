@@ -90,12 +90,22 @@ class ChatProcessor:
             # Create a clear message about available images
             # Note: Using "user" role instead of "system" to avoid conflicts with
             # Google Gemini's requirement that SystemMessage only appear at position 0
+            # 
+            # IMPORTANT: We use XML tags to prevent LLM transcription errors
+            # LLMs are very good at preserving content inside XML/code blocks
             image_context = (
                 f"[Image Context] The user has uploaded {len(scans)} medical image(s). "
-                f"When using tools that require an image_path parameter, use these file paths:\n"
+                f"For tools requiring an image_path parameter, use the EXACT path below:\n\n"
             )
             for i, scan in enumerate(scans, 1):
-                image_context += f"  {i}. {scan.file_path}\n"
+                # Use XML tags which LLMs preserve very accurately
+                image_context += f"<image_path id=\"{i}\">{scan.file_path}</image_path>\n"
+            
+            # Add explicit instructions
+            image_context += (
+                "\n⚠️ CRITICAL: When calling tools, copy the ENTIRE path from between the XML tags above. "
+                "Do not modify, abbreviate, or type from memory - use EXACT content from the tags."
+            )
             
             logger.info(f"adding_image_context scans_count={len(scans)}")
             logger.debug(f"image_context_message: {image_context.strip()}")
@@ -152,10 +162,25 @@ class ChatProcessor:
                         if messages and len(messages) > 0:
                             content = messages[-1].content
                             if content:
-                                yield {
-                                    "type": "content_chunk",
-                                    "data": {"content": content}
-                                }
+                                # Handle both string and list content
+                                # LangChain messages can have content as string or list of content blocks
+                                if isinstance(content, list):
+                                    # Extract text from content blocks
+                                    text_parts = []
+                                    for block in content:
+                                        if isinstance(block, dict) and block.get("type") == "text":
+                                            text_parts.append(block.get("text", ""))
+                                        elif isinstance(block, str):
+                                            text_parts.append(block)
+                                    content_str = "".join(text_parts)
+                                else:
+                                    content_str = str(content)
+                                
+                                if content_str:
+                                    yield {
+                                        "type": "content_chunk",
+                                        "data": {"content": content_str}
+                                    }
                     
                     elif "tools" in event:
                         for tool_message in event["tools"]["messages"]:

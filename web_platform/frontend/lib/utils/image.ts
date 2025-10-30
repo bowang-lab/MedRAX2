@@ -11,8 +11,8 @@ import { API_CONFIG } from '../config/api';
  * Backend returns paths like "/uploads/chats/xyz/file.jpg"
  * Frontend needs full URL like "http://localhost:8000/uploads/chats/xyz/file.jpg"
  */
-export function getImageUrl(displayPath: string | null | undefined): string {
-    if (!displayPath) return '';
+export function getImageUrl(displayPath: string | null | undefined): string | null {
+    if (!displayPath || displayPath.trim() === '') return null;
 
     // If already a full URL, return as-is
     if (displayPath.startsWith('http://') || displayPath.startsWith('https://')) {

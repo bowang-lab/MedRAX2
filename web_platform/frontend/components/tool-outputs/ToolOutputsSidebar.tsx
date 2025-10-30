@@ -259,10 +259,14 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
             }
             // Check if it's an image path
             if (value.includes('uploads/') || value.endsWith('.jpg') || value.endsWith('.png')) {
+                const imageUrl = getImageUrl(value);
+                if (!imageUrl) {
+                    return <span className="text-red-400 text-xs">⚠️ Invalid image path</span>;
+                }
                 return (
                     <div className="mt-2 text-xs">
                         <img
-                            src={getImageUrl(value)}
+                            src={imageUrl}
                             alt="Result"
                             className="max-w-full h-auto rounded border border-zinc-700"
                             onError={(e) => {
@@ -444,27 +448,36 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                         <h4 className="text-xs font-medium text-zinc-400 uppercase">Inputs</h4>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {execution.imagePaths.map((path, idx) => (
+                                                        {execution.imagePaths.map((path, idx) => {
+                                                            const imageUrl = getImageUrl(path);
+                                                            return (
                                                             <div key={idx} className="text-xs">
                                                                 <p className="text-zinc-500 mb-1">Image {idx + 1}:</p>
-                                                                <img
-                                                                    src={getImageUrl(path)}
-                                                                    alt={`Input ${idx + 1}`}
-                                                                    className="w-full h-auto rounded border border-zinc-700"
-                                                                    onError={(e) => {
-                                                                        const img = e.currentTarget;
-                                                                        img.style.display = 'none';
-                                                                        const errorDiv = document.createElement('div');
-                                                                        errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
-                                                                        errorDiv.textContent = '⚠️ Failed to load image';
-                                                                        img.parentElement?.insertBefore(errorDiv, img);
-                                                                    }}
-                                                                />
+                                                                {!imageUrl ? (
+                                                                    <div className="bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs">
+                                                                        ⚠️ Invalid image path
+                                                                    </div>
+                                                                ) : (
+                                                                    <img
+                                                                        src={imageUrl}
+                                                                        alt={`Input ${idx + 1}`}
+                                                                        className="w-full h-auto rounded border border-zinc-700"
+                                                                        onError={(e) => {
+                                                                            const img = e.currentTarget;
+                                                                            img.style.display = 'none';
+                                                                            const errorDiv = document.createElement('div');
+                                                                            errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
+                                                                            errorDiv.textContent = '⚠️ Failed to load image';
+                                                                            img.parentElement?.insertBefore(errorDiv, img);
+                                                                        }}
+                                                                    />
+                                                                )}
                                                                 <p className="text-zinc-600 font-mono text-[10px] mt-1 truncate">
                                                                     {path}
                                                                 </p>
                                                             </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
