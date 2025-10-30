@@ -40,6 +40,11 @@ export function ScanGalleryDrawer({
     const [isLoading, setIsLoading] = useState(false);
     const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+    const handleImageError = (imagePath: string) => {
+        setFailedImages(prev => new Set(prev).add(imagePath));
+    };
 
     const loadScans = async () => {
         if (!patientId) return;
@@ -101,12 +106,19 @@ export function ScanGalleryDrawer({
                                 )}
                                 onClick={() => setSelectedScan(scan)}
                             >
-                                {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
-                                <img
-                                    src={getImageUrl(scan.displayPath)}
-                                    alt="Scan"
-                                    className="w-full h-48 object-cover"
-                                />
+                                {failedImages.has(getImageUrl(scan.displayPath)) ? (
+                                    <div className="w-full h-48 flex items-center justify-center bg-red-900/20 border border-red-800 text-red-400 text-xs p-4 text-center">
+                                        ⚠️ Failed to load scan
+                                    </div>
+                                ) : (
+                                    /* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */
+                                    <img
+                                        src={getImageUrl(scan.displayPath)}
+                                        alt="Scan"
+                                        className="w-full h-48 object-cover"
+                                        onError={() => handleImageError(getImageUrl(scan.displayPath))}
+                                    />
+                                )}
 
                                 {/* Overlay on hover */}
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
@@ -156,12 +168,19 @@ export function ScanGalleryDrawer({
                                 </button>
                             </div>
 
-                            {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */}
-                            <img
-                                src={getImageUrl(selectedScan.displayPath)}
-                                alt="Selected Scan"
-                                className="w-full rounded-lg mb-3"
-                            />
+                            {failedImages.has(getImageUrl(selectedScan.displayPath)) ? (
+                                <div className="w-full h-64 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-sm p-4 mb-3">
+                                    ⚠️ Failed to load scan image
+                                </div>
+                            ) : (
+                                /* eslint-disable-next-line @next/next/no-img-element -- Dynamic medical images from backend */
+                                <img
+                                    src={getImageUrl(selectedScan.displayPath)}
+                                    alt="Selected Scan"
+                                    className="w-full rounded-lg mb-3"
+                                    onError={() => handleImageError(getImageUrl(selectedScan.displayPath))}
+                                />
+                            )}
 
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
