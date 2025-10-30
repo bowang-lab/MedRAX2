@@ -581,21 +581,49 @@ class ToolManager:
         # Signal shutdown to all background threads
         self._shutdown_event.set()
         
+        # Cancel all tool loads that might be in progress
+        for tool in self.tools.values():
+            if tool.cancel_event and tool.status == ToolStatus.LOADING:
+                try:
+                    tool.cancel_event.set()
+                    logger.debug(f"Cancelled load for {tool.name}")
+                except Exception as e:
+                    logger.debug(f"Error cancelling {tool.name}: {e}")
+        
         # Get snapshot of threads (thread-safe)
         with self._threads_lock:
             threads_snapshot = list(self._threads.items())
         
-        # Join all threads with timeout
+        # Join all threads with timeout, trying multiple times
         active_threads = []
         for tool_id, t in threads_snapshot:
             try:
                 logger.debug(f"Waiting for thread {tool_id} to complete...")
+                # First attempt with short timeout
                 t.join(timeout=2.0)
+                
+                # If still alive, try one more time with longer timeout
+                if t.is_alive():
+                    logger.debug(f"Thread {tool_id} still running, waiting longer...")
+                    t.join(timeout=5.0)
+                
                 if t.is_alive():
                     active_threads.append(tool_id)
                     logger.warning(f"Thread {tool_id} still active after shutdown timeout")
             except Exception as e:
                 logger.debug(f"Error joining thread {tool_id}: {e}")
+        
+        # Clear thread tracking (thread-safe)
+        with self._threads_lock:
+            self._threads.clear()
+        
+        # Unload all loaded tools to free resources
+        loaded_tools = [t.id for t in self.tools.values() if t.status == ToolStatus.LOADED]
+        for tool_id in loaded_tools:
+            try:
+                self.unload_tool(tool_id)
+            except Exception as e:
+                logger.debug(f"Error unloading tool {tool_id}: {e}")
         
         # Force-release semaphore to prevent leaks
         # Try to release as many times as max value to drain it
@@ -612,24 +640,44 @@ class ToolManager:
         if released_count > 0:
             logger.debug(f"Force-released semaphore {released_count} times")
         
-        # Clear thread tracking (thread-safe)
-        with self._threads_lock:
-            self._threads.clear()
+        # Explicitly delete threading primitives to clean up OS-level semaphores
+        # This is crucial for preventing semaphore leaks
+        primitives_to_cleanup = [
+            ('_load_semaphore', self._load_semaphore),
+            ('_shutdown_event', self._shutdown_event),
+            ('_threads_lock', self._threads_lock),
+            ('_tool_status_lock', self._tool_status_lock),
+            ('_agent_lock', self._agent_lock),
+            ('_checkpointer_lock', self._checkpointer_lock),
+        ]
         
-        # Unload all loaded tools to free resources
-        loaded_tools = [t.id for t in self.tools.values() if t.status == ToolStatus.LOADED]
-        for tool_id in loaded_tools:
+        for name, primitive in primitives_to_cleanup:
             try:
-                self.unload_tool(tool_id)
+                # For Events, explicitly clear them before deletion
+                if isinstance(primitive, threading.Event):
+                    primitive.clear()
+                delattr(self, name)
+                logger.debug(f"Cleaned up {name}")
             except Exception as e:
-                logger.debug(f"Error unloading tool {tool_id}: {e}")
+                logger.debug(f"Error cleaning up {name}: {e}")
         
-        # Final cleanup: explicitly delete semaphore reference
+        # Clean up tool cancel events
+        for tool in self.tools.values():
+            if tool.cancel_event:
+                try:
+                    tool.cancel_event.clear()
+                    tool.cancel_event = None
+                except Exception as e:
+                    logger.debug(f"Error cleaning up cancel event for {tool.name}: {e}")
+        
+        # Clean up global import lock (module-level)
+        # Safe to do now since all threads have been joined
+        global _import_lock
         try:
-            del self._load_semaphore
-            logger.debug("Semaphore deleted successfully")
+            del _import_lock
+            logger.debug("Cleaned up global _import_lock")
         except Exception as e:
-            logger.debug(f"Error deleting semaphore: {e}")
+            logger.debug(f"Error cleaning up _import_lock: {e}")
         
         if active_threads:
             logger.info(f"Shutdown complete ({len(active_threads)} background threads will terminate with process)")
