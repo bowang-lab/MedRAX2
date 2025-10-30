@@ -11,11 +11,13 @@
 
 'use client';
 
+import { useState } from 'react';
 import { User, Bot } from 'lucide-react';
 import type { MessageWithDetails } from '../../lib/types/message';
 import { MessageActivity } from './MessageActivity';
 import { classNames, formatDateTime } from '../../lib/utils';
 import { getImageUrl } from '../../lib/utils/image';
+import { ImageModal } from '../ui/ImageModal';
 
 /**
  * Extract the most relevant generated images from tool executions
@@ -52,8 +54,8 @@ function extractFinalImages(message: MessageWithDetails): string[] {
 interface MessageProps {
     /** The message to display with all its details (scans, tool executions) */
     message: MessageWithDetails;
-    /** Optional callback when user clicks to view tool execution details */
-    onShowToolDetails?: (executionId: string) => void;
+    /** Optional callback when user clicks to view tool execution details for this message */
+    onShowToolDetails?: () => void;
 }
 
 export function Message({ message, onShowToolDetails }: MessageProps) {
@@ -62,6 +64,17 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
 
     // Extract final generated images for assistant messages
     const finalImages = isAssistant ? extractFinalImages(message) : [];
+
+    // State for image modal
+    const [modalImages, setModalImages] = useState<string[]>([]);
+    const [modalInitialIndex, setModalInitialIndex] = useState(0);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const openImageModal = (images: string[], index: number = 0) => {
+        setModalImages(images);
+        setModalInitialIndex(index);
+        setIsModalOpen(true);
+    };
 
     return (
         <div
@@ -102,15 +115,35 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                             <div className="mt-3">
                                 <p className="text-xs text-zinc-500 mb-2">Attached Scans:</p>
                                 <div className="flex flex-wrap gap-3">
-                                    {message.attachedScans.map((scan) => (
-                                        <div key={scan.id} className="relative group">
+                                    {message.attachedScans.map((scan, idx) => (
+                                        <div
+                                            key={scan.id}
+                                            className="relative group"
+                                            onClick={() => openImageModal(
+                                                message.attachedScans!.map(s => getImageUrl(s.displayPath)),
+                                                idx
+                                            )}
+                                        >
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={getImageUrl(scan.displayPath)}
                                                 alt="Medical Scan"
                                                 className="h-32 w-auto object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-pointer"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    const container = e.currentTarget.parentElement;
+                                                    if (container) {
+                                                        const errorMsg = document.createElement('div');
+                                                        errorMsg.className = 'h-32 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg p-2 text-red-400 text-xs';
+                                                        errorMsg.textContent = '⚠️ Failed to load scan';
+                                                        container.insertBefore(errorMsg, e.currentTarget);
+                                                    }
+                                                }}
                                             />
                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                                Click to enlarge
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -123,14 +156,34 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                 <p className="text-xs text-zinc-500 mb-2">Generated Result:</p>
                                 <div className="flex flex-wrap gap-3">
                                     {finalImages.map((imagePath, idx) => (
-                                        <div key={idx} className="relative group">
+                                        <div
+                                            key={idx}
+                                            className="relative group"
+                                            onClick={() => openImageModal(
+                                                finalImages.map(path => getImageUrl(path)),
+                                                idx
+                                            )}
+                                        >
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={getImageUrl(imagePath)}
                                                 alt={`Generated result ${idx + 1}`}
                                                 className="h-48 w-auto max-w-full object-contain rounded-lg border border-blue-500 bg-zinc-900 hover:border-blue-400 transition-colors cursor-zoom-in"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    const container = e.currentTarget.parentElement;
+                                                    if (container) {
+                                                        const errorMsg = document.createElement('div');
+                                                        errorMsg.className = 'h-48 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg p-2 text-red-400 text-xs';
+                                                        errorMsg.textContent = '⚠️ Failed to load result image';
+                                                        container.insertBefore(errorMsg, e.currentTarget);
+                                                    }
+                                                }}
                                             />
                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                                Click to enlarge
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -157,6 +210,14 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Image Modal */}
+            <ImageModal
+                images={modalImages}
+                initialIndex={modalInitialIndex}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     );
 }

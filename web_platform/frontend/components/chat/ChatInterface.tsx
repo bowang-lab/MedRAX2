@@ -29,6 +29,7 @@ import { Spinner } from '../ui/Spinner';
 import { classNames } from '../../lib/utils';
 import type { Chat } from '../../lib/types/chat';
 import type { SuggestedQuestion } from '../../lib/types/question';
+import { ToolOutputsSidebar } from '../tool-outputs/ToolOutputsSidebar';
 
 export function ChatInterface() {
     const {
@@ -54,6 +55,8 @@ export function ChatInterface() {
     const [isLoadingStats, setIsLoadingStats] = useState(false);
     const [chatNameInput, setChatNameInput] = useState('');
     const [isRenamingChat, setIsRenamingChat] = useState(false);
+    const [toolOutputsMessageId, setToolOutputsMessageId] = useState<string | null>(null);
+    const [isToolOutputsSidebarOpen, setIsToolOutputsSidebarOpen] = useState(false);
 
     // Suggested questions (for now, hardcoded defaults)
     const [suggestedQuestions] = useState<SuggestedQuestion[]>([
@@ -186,8 +189,9 @@ export function ChatInterface() {
         }
     };
 
-    const handleShowToolDetails = (executionId: string) => {
-        openToolPanel(executionId);
+    const handleShowToolDetails = (messageId: string) => {
+        setToolOutputsMessageId(messageId);
+        setIsToolOutputsSidebarOpen(true);
     };
 
     const handleRenameChat = async () => {
@@ -413,7 +417,7 @@ export function ChatInterface() {
                                     <Message
                                         key={message.id}
                                         message={message}
-                                        onShowToolDetails={handleShowToolDetails}
+                                        onShowToolDetails={() => handleShowToolDetails(message.id)}
                                     />
                                 ))}
                                 <div ref={messagesEndRef} />
@@ -485,6 +489,16 @@ export function ChatInterface() {
                 isOpen={isScanGalleryOpen}
                 patientId={currentChat?.patientId || null}
                 onClose={() => setIsScanGalleryOpen(false)}
+            />
+
+            {/* Tool Outputs Sidebar */}
+            <ToolOutputsSidebar
+                messageId={toolOutputsMessageId}
+                isOpen={isToolOutputsSidebarOpen}
+                onClose={() => {
+                    setIsToolOutputsSidebarOpen(false);
+                    setToolOutputsMessageId(null);
+                }}
             />
 
             {/* Memory Stats Modal */}
