@@ -9,9 +9,8 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 from typing import List, Union
 
-
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Application settings loaded from environment variables"""
     
     model_config = ConfigDict(
         env_file=".env",
