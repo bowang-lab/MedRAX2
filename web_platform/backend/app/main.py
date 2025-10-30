@@ -57,6 +57,11 @@ async def validate_api_secret(request: Request, call_next):
         "/"                             # Root endpoint
     ]
     
+    # Allow /uploads/ paths for serving medical images
+    # Note: In production, consider using signed URLs or token-based auth
+    if request.url.path.startswith("/uploads/"):
+        return await call_next(request)
+    
     # Allow SSE endpoints - EventSource doesn't support custom headers
     # These endpoints use JWT token in query string for authentication instead
     # SECURITY: Use exact path matching to prevent bypass attacks
