@@ -30,7 +30,7 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-    // Reset state when modal opens/closes
+    // Reset state when modal opens/closes and lock body scroll
     useEffect(() => {
         if (isOpen) {
             // Validate initialIndex is within bounds
@@ -38,6 +38,14 @@ export function ImageModal({ images, initialIndex = 0, onClose, isOpen }: ImageM
             setCurrentIndex(validIndex);
             setZoom(1);
             setPan({ x: 0, y: 0 });
+
+            // Lock body scroll when modal is open
+            const originalOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+
+            return () => {
+                document.body.style.overflow = originalOverflow;
+            };
         }
     }, [isOpen, initialIndex, images.length]);
 

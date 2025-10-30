@@ -6,7 +6,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { cn, getInitials } from '../../lib/utils/helpers';
 
 /**
@@ -33,6 +33,8 @@ export function Avatar({
     size = 'md',
     className,
 }: AvatarProps) {
+    const [imageError, setImageError] = useState(false);
+
     const sizeStyles = {
         sm: 'w-8 h-8 text-xs',
         md: 'w-10 h-10 text-sm',
@@ -42,6 +44,9 @@ export function Avatar({
 
     const initials = getInitials(name);
 
+    // Show image if URL exists and no error, otherwise show initials
+    const shouldShowImage = imageUrl && !imageError;
+
     return (
         <div
             className={cn(
@@ -50,12 +55,13 @@ export function Avatar({
                 className
             )}
         >
-            {imageUrl ? (
+            {shouldShowImage ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Dynamic user-provided avatar URLs, not static assets
                 <img
                     src={imageUrl}
                     alt={name || 'Anonymous'}
                     className="w-full h-full object-cover"
+                    onError={() => setImageError(true)}
                 />
             ) : (
                 <span>{initials}</span>
