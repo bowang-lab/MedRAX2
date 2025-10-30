@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Send, Paperclip, Loader2, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -46,12 +46,24 @@ export function ChatInput({
     const [isSending, setIsSending] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [uploadedScans, setUploadedScans] = useState<Scan[]>([]);
+    const [sendError, setSendError] = useState<string | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const prevChatIdRef = useRef<string>(chatId);
+
+    // Clear uploaded scans when chatId changes (switching chats)
+    useEffect(() => {
+        if (prevChatIdRef.current !== chatId) {
+            setUploadedScans([]);
+            setSendError(null);
+            prevChatIdRef.current = chatId;
+        }
+    }, [chatId]);
 
     const handleSend = async () => {
         if (!content.trim() || isSending || disabled) return;
 
         setIsSending(true);
+        setSendError(null); // Clear previous errors
         const scanIdsToSend = uploadedScans.length > 0 ? uploadedScans.map(s => s.id) : undefined;
         console.log(`📤 Sending message with scan IDs:`, scanIdsToSend);
 
@@ -63,9 +75,14 @@ export function ChatInput({
             // Reset textarea height
             if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto';
+                textareaRef.current.focus(); // Return focus to input
             }
         } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
             console.error('❌ Failed to send message:', error);
+            setSendError(errorMsg);
+            // Focus textarea so user can try again
+            textareaRef.current?.focus();
         } finally {
             setIsSending(false);
         }
@@ -157,7 +174,14 @@ export function ChatInput({
                     </Button>
                 </div>
 
-                {/* Helper text */}
+                {/* Error Message */}
+                {sendError && (
+                    <div className="mt-2 p-2 bg-red-900/20 border border-red-800 rounded text-red-400 text-xs">
+                        {sendError}
+                    </div>
+                )}
+
+                {/* Helper text or Image Previews */}
                 {uploadedScans.length === 0 ? (
                     <p className="mt-2 text-xs text-zinc-500">
                         Press Enter to send, Shift+Enter for new line
@@ -170,7 +194,8 @@ export function ChatInput({
                             </p>
                             <button
                                 onClick={() => setUploadedScans([])}
-                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                disabled={isSending}
+                                className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Clear all
                             </button>
