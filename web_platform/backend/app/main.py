@@ -172,6 +172,28 @@ async def startup_event():
     logger.info(f"🗄️  Database: {settings.DATABASE_URL}")
     logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
 
+    # Eager-load all available tools except the problematic X-ray generation tool
+    try:
+        exclude_ids = {"xray_generator"}
+        all_tools = tool_manager.get_all_tools()
+        target_ids = [
+            t["id"]
+            for t in all_tools
+            if t.get("status") in ("available", "unloaded") and t["id"] not in exclude_ids
+        ]
+
+        if target_ids:
+            logger.info(
+                f"🔧 Eager-loading tools at startup (excluding: {', '.join(exclude_ids)}): {', '.join(target_ids)}"
+            )
+        else:
+            logger.info("🔧 No tools eligible for eager loading at startup")
+
+        for tool_id in target_ids:
+            tool_manager.start_background_load(tool_id)
+    except Exception as e:
+        logger.warning(f"Failed to eager-load tools at startup: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
