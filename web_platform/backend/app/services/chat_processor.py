@@ -148,12 +148,14 @@ class ChatProcessor:
             ):
                 if isinstance(event, dict):
                     if "agent" in event:
-                        content = event["agent"]["messages"][-1].content
-                        if content:
-                            yield {
-                                "type": "content_chunk",
-                                "data": {"content": content}
-                            }
+                        messages = event["agent"]["messages"]
+                        if messages and len(messages) > 0:
+                            content = messages[-1].content
+                            if content:
+                                yield {
+                                    "type": "content_chunk",
+                                    "data": {"content": content}
+                                }
                     
                     elif "tools" in event:
                         for tool_message in event["tools"]["messages"]:
