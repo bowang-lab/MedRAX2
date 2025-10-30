@@ -70,10 +70,19 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
     const [modalInitialIndex, setModalInitialIndex] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Track which images failed to load
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
     const openImageModal = (images: string[], index: number = 0) => {
+        // Only open modal if we have valid images
+        if (images.length === 0) return;
         setModalImages(images);
         setModalInitialIndex(index);
         setIsModalOpen(true);
+    };
+
+    const handleImageError = (imagePath: string) => {
+        setFailedImages(prev => new Set(prev).add(imagePath));
     };
 
     return (
@@ -115,34 +124,48 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                             <div className="mt-3">
                                 <p className="text-xs text-zinc-500 mb-2">Attached Scans:</p>
                                 <div className="flex flex-wrap gap-3">
-                                    {message.attachedScans.map((scan, idx) => (
-                                        <div
-                                            key={scan.id}
-                                            className="relative group w-32 h-32 bg-zinc-800/50 rounded-lg border border-zinc-700 overflow-hidden flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
-                                            onClick={() => openImageModal(
-                                                message.attachedScans!.map(s => getImageUrl(s.displayPath)),
-                                                idx
-                                            )}
-                                        >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={getImageUrl(scan.displayPath)}
-                                                alt="Medical Scan"
-                                                className="max-h-full max-w-full object-contain"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    const parent = e.currentTarget.parentElement;
-                                                    if (parent) {
-                                                        parent.innerHTML = '<div class="text-red-400 text-xs text-center p-2">⚠️ Failed to load</div>';
+                                    {message.attachedScans.map((scan, idx) => {
+                                        const scanUrl = getImageUrl(scan.displayPath);
+                                        const hasFailed = failedImages.has(scanUrl);
+
+                                        return (
+                                            <div
+                                                key={scan.id}
+                                                className={classNames(
+                                                    'relative group w-32 h-32 bg-zinc-800/50 rounded-lg border border-zinc-700 overflow-hidden flex items-center justify-center transition-colors',
+                                                    hasFailed ? 'cursor-not-allowed' : 'cursor-pointer hover:border-blue-500'
+                                                )}
+                                                onClick={() => {
+                                                    if (!hasFailed) {
+                                                        openImageModal(
+                                                            message.attachedScans!.map(s => getImageUrl(s.displayPath)),
+                                                            idx
+                                                        );
                                                     }
                                                 }}
-                                            />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
-                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Click to enlarge
+                                            >
+                                                {hasFailed ? (
+                                                    <div className="text-red-400 text-xs text-center p-2">
+                                                        ⚠️ Failed to load
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={scanUrl}
+                                                            alt="Medical Scan"
+                                                            className="max-h-full max-w-full object-contain"
+                                                            onError={() => handleImageError(scanUrl)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
+                                                        <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            Click to enlarge
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -152,34 +175,50 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                             <div className="mt-3">
                                 <p className="text-xs text-zinc-500 mb-2">Generated Result:</p>
                                 <div className="flex flex-wrap gap-3">
-                                    {finalImages.map((imagePath, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="relative group w-48 h-48 bg-zinc-800/50 rounded-lg border border-blue-500 overflow-hidden flex items-center justify-center cursor-zoom-in hover:border-blue-400 transition-colors"
-                                            onClick={() => openImageModal(
-                                                finalImages.map(path => getImageUrl(path)),
-                                                idx
-                                            )}
-                                        >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={getImageUrl(imagePath)}
-                                                alt={`Generated result ${idx + 1}`}
-                                                className="max-h-full max-w-full object-contain"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    const parent = e.currentTarget.parentElement;
-                                                    if (parent) {
-                                                        parent.innerHTML = '<div class="text-red-400 text-xs text-center p-2">⚠️ Failed to load</div>';
+                                    {finalImages.map((imagePath, idx) => {
+                                        const imageUrl = getImageUrl(imagePath);
+                                        const hasFailed = failedImages.has(imageUrl);
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={classNames(
+                                                    'relative group w-48 h-48 bg-zinc-800/50 rounded-lg border overflow-hidden flex items-center justify-center transition-colors',
+                                                    hasFailed
+                                                        ? 'border-red-800 cursor-not-allowed'
+                                                        : 'border-blue-500 cursor-zoom-in hover:border-blue-400'
+                                                )}
+                                                onClick={() => {
+                                                    if (!hasFailed) {
+                                                        openImageModal(
+                                                            finalImages.map(path => getImageUrl(path)),
+                                                            idx
+                                                        );
                                                     }
                                                 }}
-                                            />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
-                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Click to enlarge
+                                            >
+                                                {hasFailed ? (
+                                                    <div className="text-red-400 text-xs text-center p-2">
+                                                        ⚠️ Failed to load result
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={imageUrl}
+                                                            alt={`Generated result ${idx + 1}`}
+                                                            className="max-h-full max-w-full object-contain"
+                                                            onError={() => handleImageError(imageUrl)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
+                                                        <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            Click to enlarge
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
