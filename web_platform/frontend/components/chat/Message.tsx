@@ -118,7 +118,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                     {message.attachedScans.map((scan, idx) => (
                                         <div
                                             key={scan.id}
-                                            className="relative group"
+                                            className="relative group w-32 h-32 bg-zinc-800/50 rounded-lg border border-zinc-700 overflow-hidden flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
                                             onClick={() => openImageModal(
                                                 message.attachedScans!.map(s => getImageUrl(s.displayPath)),
                                                 idx
@@ -128,19 +128,16 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                             <img
                                                 src={getImageUrl(scan.displayPath)}
                                                 alt="Medical Scan"
-                                                className="h-32 w-auto object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-pointer"
+                                                className="max-h-full max-w-full object-contain"
                                                 onError={(e) => {
                                                     e.currentTarget.style.display = 'none';
-                                                    const container = e.currentTarget.parentElement;
-                                                    if (container) {
-                                                        const errorMsg = document.createElement('div');
-                                                        errorMsg.className = 'h-32 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg p-2 text-red-400 text-xs';
-                                                        errorMsg.textContent = '⚠️ Failed to load scan';
-                                                        container.insertBefore(errorMsg, e.currentTarget);
+                                                    const parent = e.currentTarget.parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = '<div class="text-red-400 text-xs text-center p-2">⚠️ Failed to load</div>';
                                                     }
                                                 }}
                                             />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
                                             <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                                 Click to enlarge
                                             </div>
@@ -158,7 +155,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                     {finalImages.map((imagePath, idx) => (
                                         <div
                                             key={idx}
-                                            className="relative group"
+                                            className="relative group w-48 h-48 bg-zinc-800/50 rounded-lg border border-blue-500 overflow-hidden flex items-center justify-center cursor-zoom-in hover:border-blue-400 transition-colors"
                                             onClick={() => openImageModal(
                                                 finalImages.map(path => getImageUrl(path)),
                                                 idx
@@ -168,19 +165,16 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                             <img
                                                 src={getImageUrl(imagePath)}
                                                 alt={`Generated result ${idx + 1}`}
-                                                className="h-48 w-auto max-w-full object-contain rounded-lg border border-blue-500 bg-zinc-900 hover:border-blue-400 transition-colors cursor-zoom-in"
+                                                className="max-h-full max-w-full object-contain"
                                                 onError={(e) => {
                                                     e.currentTarget.style.display = 'none';
-                                                    const container = e.currentTarget.parentElement;
-                                                    if (container) {
-                                                        const errorMsg = document.createElement('div');
-                                                        errorMsg.className = 'h-48 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg p-2 text-red-400 text-xs';
-                                                        errorMsg.textContent = '⚠️ Failed to load result image';
-                                                        container.insertBefore(errorMsg, e.currentTarget);
+                                                    const parent = e.currentTarget.parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = '<div class="text-red-400 text-xs text-center p-2">⚠️ Failed to load</div>';
                                                     }
                                                 }}
                                             />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
                                             <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                                 Click to enlarge
                                             </div>

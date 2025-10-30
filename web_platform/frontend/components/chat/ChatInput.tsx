@@ -10,11 +10,12 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Loader2, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { ScanUploadZone } from '../scans/ScanUploadZone';
 import { classNames } from '../../lib/utils';
+import { getImageUrl } from '../../lib/utils/image';
 import type { Scan } from '../../lib/types/scan';
 
 /**
@@ -44,21 +45,21 @@ export function ChatInput({
     const [content, setContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    const [uploadedScanIds, setUploadedScanIds] = useState<string[]>([]);
+    const [uploadedScans, setUploadedScans] = useState<Scan[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSend = async () => {
         if (!content.trim() || isSending || disabled) return;
 
         setIsSending(true);
-        const scanIdsToSend = uploadedScanIds.length > 0 ? uploadedScanIds : undefined;
+        const scanIdsToSend = uploadedScans.length > 0 ? uploadedScans.map(s => s.id) : undefined;
         console.log(`📤 Sending message with scan IDs:`, scanIdsToSend);
 
         try {
             // Pass uploaded scan IDs if any
             await onSend(content.trim(), scanIdsToSend);
             setContent('');
-            setUploadedScanIds([]); // Clear uploaded scans after sending
+            setUploadedScans([]); // Clear uploaded scans after sending
             // Reset textarea height
             if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto';
@@ -88,11 +89,15 @@ export function ChatInput({
 
     const handleUploadComplete = (scans: Scan[]) => {
         setIsUploadModalOpen(false);
-        // Store scan IDs to attach to next message
-        const scanIds = scans.map(s => s.id);
-        setUploadedScanIds(scanIds);
-        console.log(`✅ Scans uploaded successfully:`, scanIds);
+        // Store full scan objects to show preview and allow deletion
+        setUploadedScans(prev => [...prev, ...scans]);
+        console.log(`✅ Scans uploaded successfully:`, scans.map(s => s.id));
         console.log(`📎 Scans ready to attach:`, scans.map(s => ({ id: s.id, path: s.filePath })));
+    };
+
+    const handleRemoveScan = (scanId: string) => {
+        setUploadedScans(prev => prev.filter(s => s.id !== scanId));
+        console.log(`🗑️ Removed scan:`, scanId);
     };
 
     const handleUploadError = (error: string) => {
@@ -153,14 +158,58 @@ export function ChatInput({
                 </div>
 
                 {/* Helper text */}
-                <p className="mt-2 text-xs text-zinc-500">
-                    Press Enter to send, Shift+Enter for new line
-                    {uploadedScanIds.length > 0 && (
-                        <span className="ml-2 text-blue-400">
-                            • {uploadedScanIds.length} scan{uploadedScanIds.length > 1 ? 's' : ''} ready to attach
-                        </span>
-                    )}
-                </p>
+                {uploadedScans.length === 0 ? (
+                    <p className="mt-2 text-xs text-zinc-500">
+                        Press Enter to send, Shift+Enter for new line
+                    </p>
+                ) : (
+                    <div className="mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-zinc-400">
+                                {uploadedScans.length} scan{uploadedScans.length > 1 ? 's' : ''} ready to attach
+                            </p>
+                            <button
+                                onClick={() => setUploadedScans([])}
+                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                            >
+                                Clear all
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {uploadedScans.map((scan) => (
+                                <div
+                                    key={scan.id}
+                                    className="relative group"
+                                >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={getImageUrl(scan.displayPath)}
+                                        alt="Uploaded scan"
+                                        className="h-20 w-20 object-cover rounded-lg border border-zinc-700 bg-zinc-800"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            const container = e.currentTarget.parentElement;
+                                            if (container) {
+                                                const errorMsg = document.createElement('div');
+                                                errorMsg.className = 'h-20 w-20 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-xs p-1 text-center';
+                                                errorMsg.textContent = 'Failed to load';
+                                                container.insertBefore(errorMsg, e.currentTarget);
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => handleRemoveScan(scan.id)}
+                                        disabled={isSending}
+                                        className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                        title="Remove scan"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Upload Modal */}
