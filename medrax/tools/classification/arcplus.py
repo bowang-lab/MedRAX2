@@ -230,10 +230,7 @@ class ArcPlusClassifierTool(BaseTool):
         if cache_dir:
             model_path = os.path.join(cache_dir, "Ark6_swinLarge768_ep50.pth.tar")
             self._load_checkpoint(model_path)
-
-        self.model.eval()
         
-
         device_str = get_device(device)
         self.device = torch.device(device_str)
         
@@ -241,8 +238,19 @@ class ArcPlusClassifierTool(BaseTool):
         
         if device_str == "cpu":
             logger.warning("ArcPlus Classifier running on CPU. This will be significantly slower than GPU.")
-            
-        self.model = self.model.to(self.device)
+        
+        # Move model to device AFTER loading checkpoint (handles meta tensors properly)
+        try:
+            self.model = self.model.to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                # Use to_empty() for meta tensors, then load weights
+                self.model = self.model.to_empty(device=self.device)
+            else:
+                raise
+        
+        self.model.eval()
 
         # ImageNet normalization parameters for optimal performance
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -256,6 +264,8 @@ class ArcPlusClassifierTool(BaseTool):
         Args:
             model_path (str): Path to the model checkpoint file.
         """
+        logger.info(f"Loading checkpoint from: {model_path}")
+        
         # Load the checkpoint (set weights_only=False for PyTorch 2.6+ compatibility)
         checkpoint = torch.load(model_path, map_location=torch.device("cpu"), weights_only=False)
         state_dict = checkpoint["teacher"]  # Use 'teacher' key
@@ -264,8 +274,15 @@ class ArcPlusClassifierTool(BaseTool):
         if any([True if "module." in k else False for k in state_dict.keys()]):
             state_dict = {k.replace("module.", ""): v for k, v in state_dict.items() if k.startswith("module.")}
 
-        # Load the model weights
+        # Load the model weights (strict=False allows for missing/extra keys)
         msg = self.model.load_state_dict(state_dict, strict=False)
+        
+        if msg.missing_keys:
+            logger.debug(f"Missing keys in checkpoint: {msg.missing_keys[:5]}...")
+        if msg.unexpected_keys:
+            logger.debug(f"Unexpected keys in checkpoint: {msg.unexpected_keys[:5]}...")
+        
+        logger.info("Checkpoint loaded successfully")
 
     def _process_image(self, image_path: str) -> torch.Tensor:
         """

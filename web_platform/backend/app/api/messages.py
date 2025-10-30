@@ -178,12 +178,21 @@ async def stream_chat_response(
             db.add(user_message)
             db.flush()
             
-            # Attach scans
+            # Attach scans with comprehensive logging
+            logger.info(f"stream_request chat_id={chat_id[:8]} scan_ids={stream_data.scan_ids}")
             if stream_data.scan_ids:
+                attached_count = 0
                 for scan_id in stream_data.scan_ids:
                     scan = db.query(Scan).filter(Scan.id == scan_id, Scan.chat_id == chat_id).first()
                     if scan:
                         user_message.attached_scans.append(scan)
+                        attached_count += 1
+                        logger.info(f"attached_scan scan_id={scan.id[:8]} file_path={scan.file_path}")
+                    else:
+                        logger.warning(f"scan_not_found scan_id={scan_id} chat_id={chat_id[:8]}")
+                logger.info(f"attached_scans_total count={attached_count}/{len(stream_data.scan_ids)}")
+            else:
+                logger.info("no_scan_ids_provided")
             
             db.commit()
             db.refresh(user_message)

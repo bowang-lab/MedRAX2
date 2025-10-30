@@ -6,6 +6,7 @@ Provides graceful degradation when tools are not available.
 """
 
 import sys
+import importlib
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -13,6 +14,9 @@ from datetime import datetime
 from ..utils.logging_config import logger
 from ..config import settings
 import threading
+
+# Global lock for thread-safe imports to prevent Python import deadlocks
+_import_lock = threading.Lock()
 
 # Set PyTorch environment for better compatibility
 import os
@@ -658,9 +662,11 @@ class ToolManager:
             logger.debug(f"  HF Cache: {hf_cache}")
             logger.debug(f"  Torch Cache: {torch_cache}")
             
-            # Dynamic import
-            module = __import__(tool.module_path, fromlist=[tool.tool_class])
-            tool_class = getattr(module, tool.tool_class)
+            # Thread-safe dynamic import (prevents Python import deadlocks)
+            with _import_lock:
+                logger.debug(f"Importing {tool.module_path}.{tool.tool_class}")
+                module = importlib.import_module(tool.module_path)
+                tool_class = getattr(module, tool.tool_class)
             
             # Instantiate (models will be downloaded to cache on first use)
             logger.info(f"Instantiating {tool.tool_class}...")

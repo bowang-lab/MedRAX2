@@ -65,7 +65,7 @@ class ChatProcessor:
         message.request_id = self.request_id
         self.db.flush()
         
-        logger.info(f"processing_message message_id={message.id[:8]} request_id={self.request_id[:8]} chat_id={self.chat_id[:8]}")
+        logger.info(f"processing_message message_id={message.id[:8]} request_id={self.request_id[:8]} chat_id={self.chat_id[:8]} scan_ids={scan_ids}")
         
         # Get attached scans
         scans = []
@@ -74,6 +74,11 @@ class ChatProcessor:
                 Scan.id.in_(scan_ids),
                 Scan.chat_id == self.chat_id
             ).all()
+            logger.info(f"scans_retrieved count={len(scans)} requested={len(scan_ids)}")
+            for scan in scans:
+                logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
+        else:
+            logger.info("no_scan_ids_in_processor")
         
         # Build messages for agent
         agent_messages = []
@@ -90,16 +95,21 @@ class ChatProcessor:
             for i, scan in enumerate(scans, 1):
                 image_context += f"  {i}. {scan.file_path}\n"
             
+            logger.info(f"adding_image_context scans_count={len(scans)}")
+            logger.debug(f"image_context_message: {image_context.strip()}")
+            
             agent_messages.append({
                 "role": "system",
                 "content": image_context.strip()
             })
             
             # Also send the actual images for visual analysis
+            images_encoded = 0
             for scan in scans:
                 try:
                     with open(scan.file_path, "rb") as f:
-                        img_base64 = base64.b64encode(f.read()).decode("utf-8")
+                        img_bytes = f.read()
+                        img_base64 = base64.b64encode(img_bytes).decode("utf-8")
                     agent_messages.append({
                         "role": "user",
                         "content": [{
@@ -107,8 +117,13 @@ class ChatProcessor:
                             "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}
                         }]
                     })
+                    images_encoded += 1
+                    logger.info(f"image_encoded scan_id={scan.id[:8]} size_bytes={len(img_bytes)}")
                 except Exception as e:
-                    logger.error(f"image_encoding_error scan_id={scan.id} error={str(e)}")
+                    logger.error(f"image_encoding_error scan_id={scan.id} path={scan.file_path} error={str(e)}")
+            logger.info(f"images_encoded_total count={images_encoded}/{len(scans)}")
+        else:
+            logger.info("no_scans_to_attach_to_agent_messages")
         
         # Add user message
         agent_messages.append({

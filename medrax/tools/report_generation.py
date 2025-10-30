@@ -75,9 +75,10 @@ class ChestXRayReportGeneratorTool(BaseTool):
             logger.warning("Report Generator running on CPU. This will be significantly slower than GPU.")
 
         # Initialize findings model
+        logger.info("Loading findings model from HuggingFace...")
         self.findings_model = VisionEncoderDecoderModel.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-findings-baseline", cache_dir=cache_dir
-        ).eval()
+        )
         self.findings_tokenizer = BertTokenizer.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-findings-baseline", cache_dir=cache_dir
         )
@@ -86,9 +87,10 @@ class ChestXRayReportGeneratorTool(BaseTool):
         )
 
         # Initialize impression model
+        logger.info("Loading impression model from HuggingFace...")
         self.impression_model = VisionEncoderDecoderModel.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
-        ).eval()
+        )
         self.impression_tokenizer = BertTokenizer.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
         )
@@ -96,9 +98,22 @@ class ChestXRayReportGeneratorTool(BaseTool):
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
         )
 
-        # Move models to device
-        self.findings_model = self.findings_model.to(self.device)
-        self.impression_model = self.impression_model.to(self.device)
+        # Move models to device AFTER loading (handles meta tensors properly)
+        logger.info(f"Moving models to device: {device_str}")
+        try:
+            self.findings_model = self.findings_model.to(self.device)
+            self.impression_model = self.impression_model.to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.findings_model = self.findings_model.to_empty(device=self.device)
+                self.impression_model = self.impression_model.to_empty(device=self.device)
+            else:
+                raise
+        
+        # Set to eval mode AFTER moving to device
+        self.findings_model.eval()
+        self.impression_model.eval()
 
         # Default generation arguments
         self.generation_args = {

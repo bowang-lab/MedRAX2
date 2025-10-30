@@ -51,9 +51,12 @@ export function ChatInput({
         if (!content.trim() || isSending || disabled) return;
 
         setIsSending(true);
+        const scanIdsToSend = uploadedScanIds.length > 0 ? uploadedScanIds : undefined;
+        console.log(`📤 Sending message with scan IDs:`, scanIdsToSend);
+
         try {
             // Pass uploaded scan IDs if any
-            await onSend(content.trim(), uploadedScanIds.length > 0 ? uploadedScanIds : undefined);
+            await onSend(content.trim(), scanIdsToSend);
             setContent('');
             setUploadedScanIds([]); // Clear uploaded scans after sending
             // Reset textarea height
@@ -61,7 +64,7 @@ export function ChatInput({
                 textareaRef.current.style.height = 'auto';
             }
         } catch (error) {
-            console.error('Failed to send message:', error);
+            console.error('❌ Failed to send message:', error);
         } finally {
             setIsSending(false);
         }
@@ -86,7 +89,10 @@ export function ChatInput({
     const handleUploadComplete = (scans: Scan[]) => {
         setIsUploadModalOpen(false);
         // Store scan IDs to attach to next message
-        setUploadedScanIds(scans.map(s => s.id));
+        const scanIds = scans.map(s => s.id);
+        setUploadedScanIds(scanIds);
+        console.log(`✅ Scans uploaded successfully:`, scanIds);
+        console.log(`📎 Scans ready to attach:`, scans.map(s => ({ id: s.id, path: s.filePath })));
     };
 
     const handleUploadError = (error: string) => {

@@ -65,8 +65,34 @@ class ChestXRayGeneratorTool(BaseTool):
         if device_str == "cpu":
             logger.warning("Chest X-Ray Generator running on CPU. This will be slower than GPU.")
         
-        self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)
-        self.model = self.model.to(torch.float32).to(self.device)
+        # Load RoentGen model with proper error handling
+        try:
+            logger.info(f"Loading model from {model_path}...")
+            self.model = StableDiffusionPipeline.from_pretrained(
+                model_path, 
+                cache_dir=cache_dir,
+                local_files_only=False  # Allow downloading if not cached
+            )
+        except Exception as e:
+            error_msg = f"Cannot load model {model_path}: {str(e)}"
+            if "connection" in str(e).lower() or "fetch metadata" in str(e).lower():
+                error_msg += (
+                    " The model is not cached locally and cannot be downloaded. "
+                    "This tool requires internet access for first-time setup to download the RoentGen model (~5GB). "
+                    "Please ensure you have a stable internet connection and try again."
+                )
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        # Move to device with meta tensor handling
+        try:
+            self.model = self.model.to(torch.float32).to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.model = self.model.to_empty(device=self.device).to(torch.float32)
+            else:
+                raise
 
         self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
         self.temp_dir.mkdir(exist_ok=True)

@@ -98,8 +98,19 @@ class ChestXRaySegmentationTool(BaseTool):
         if device_str == "cpu":
             logger.warning("Chest X-Ray Segmentation running on CPU. This will be slower than GPU.")
         
+        # Initialize PSPNet model
         self.model = xrv.baseline_models.chestx_det.PSPNet()
-        self.model = self.model.to(self.device)
+        
+        # Move to device with meta tensor handling
+        try:
+            self.model = self.model.to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.model = self.model.to_empty(device=self.device)
+            else:
+                raise
+        
         self.model.eval()
         
         logger.info("Chest X-Ray Segmentation model loaded successfully")

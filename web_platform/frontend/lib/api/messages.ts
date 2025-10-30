@@ -117,6 +117,9 @@ export function streamChatResponse(
     const token = localStorage.getItem('medrax_auth_token');
     const apiSecret = API_SECRET_CONFIG.getSecret();
 
+    const requestBody = { content, scan_ids: scanIds };
+    console.log(`🌐 Streaming chat request:`, { url, scanIds });
+
     fetch(url, {
         method: 'POST',
         headers: {
@@ -124,7 +127,7 @@ export function streamChatResponse(
             Authorization: token ? `Bearer ${token}` : '',
             'X-API-Secret': apiSecret || '', // Include API secret for middleware
         },
-        body: JSON.stringify({ content, scanIds }),
+        body: JSON.stringify(requestBody),
         signal,
     })
         .then(async (response) => {
