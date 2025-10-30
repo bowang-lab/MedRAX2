@@ -88,7 +88,7 @@ export function ToolOutputPanel() {
                                 {execution.completedAt && (
                                     <p>Completed: <span className="text-zinc-300">{new Date(execution.completedAt).toLocaleString()}</span></p>
                                 )}
-                                {execution.executionTimeMs && (
+                                {execution.executionTimeMs != null && (
                                     <p>Duration: <span className="text-zinc-300">{(execution.executionTimeMs / 1000).toFixed(2)}s</span></p>
                                 )}
                             </div>

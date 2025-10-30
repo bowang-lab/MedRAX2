@@ -12,6 +12,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import type { ToolExecutionResult } from '../../lib/types/tool';
 import { getImageUrl } from '../../lib/utils/image';
 
@@ -28,7 +29,12 @@ interface ToolResultCardProps {
 }
 
 export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const data = result.resultData;
+
+    const handleImageError = (imagePath: string) => {
+        setFailedImages(prev => new Set(prev).add(imagePath));
+    };
 
     // Extract image paths from result data (generated images, visualizations, masks)
     const imagePaths: string[] = [];
@@ -169,17 +175,31 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                                 'Generated Images:'}
                     </h4>
                     <div className="flex flex-wrap gap-3">
-                        {imagePaths.map((imagePath, idx) => (
-                            <div key={idx} className="relative group">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={getImageUrl(imagePath)}
-                                    alt={`Tool output ${idx + 1}`}
-                                    className="h-48 w-auto max-w-full object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-zoom-in"
-                                />
-                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
-                            </div>
-                        ))}
+                        {imagePaths.map((imagePath, idx) => {
+                            const imageUrl = getImageUrl(imagePath);
+                            const hasFailed = failedImages.has(imageUrl);
+
+                            return (
+                                <div key={idx} className="relative group">
+                                    {hasFailed ? (
+                                        <div className="h-48 w-48 flex items-center justify-center bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-xs p-4 text-center">
+                                            ⚠️ Failed to load result image
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={imageUrl}
+                                                alt={`Tool output ${idx + 1}`}
+                                                className="h-48 w-auto max-w-full object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-zoom-in"
+                                                onError={() => handleImageError(imageUrl)}
+                                            />
+                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
