@@ -52,25 +52,26 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
 
     // Handle Escape key to close sidebar and prevent body scroll
     useEffect(() => {
-        if (isOpen) {
-            // Prevent body scroll when sidebar is open
-            const originalOverflow = document.body.style.overflow;
-            document.body.style.overflow = 'hidden';
+        if (!isOpen) return;
 
-            const handleEscape = (e: KeyboardEvent) => {
-                if (e.key === 'Escape') {
-                    onClose();
-                }
-            };
+        // Prevent body scroll when sidebar is open
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
 
-            document.addEventListener('keydown', handleEscape);
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
 
-            return () => {
-                document.body.style.overflow = originalOverflow;
-                document.removeEventListener('keydown', handleEscape);
-            };
-        }
-    }, [isOpen, onClose]);
+        document.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.body.style.overflow = originalOverflow;
+            document.removeEventListener('keydown', handleEscape);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); // onClose stable, don't need in deps
 
     // Load tool executions when sidebar opens
     useEffect(() => {
@@ -259,18 +260,19 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
             // Check if it's an image path
             if (value.includes('uploads/') || value.endsWith('.jpg') || value.endsWith('.png')) {
                 return (
-                    <div className="mt-2">
+                    <div className="mt-2 text-xs">
                         <img
                             src={getImageUrl(value)}
                             alt="Result"
                             className="max-w-full h-auto rounded border border-zinc-700"
                             onError={(e) => {
-                                // Hide broken image and show path instead
-                                e.currentTarget.style.display = 'none';
-                                const parent = e.currentTarget.parentElement;
-                                if (parent) {
-                                    parent.innerHTML = `<span class="text-red-400 text-xs">⚠️ Image not found: ${value}</span>`;
-                                }
+                                // Replace with error text using React-friendly approach
+                                const img = e.currentTarget;
+                                img.style.display = 'none';
+                                const errorSpan = document.createElement('span');
+                                errorSpan.className = 'text-red-400 text-xs';
+                                errorSpan.textContent = `⚠️ Image not found: ${value}`;
+                                img.parentElement?.appendChild(errorSpan);
                             }}
                         />
                     </div>
@@ -417,7 +419,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                     <Clock className="h-3 w-3" />
                                                     <span>{formatDate(execution.startedAt)}</span>
                                                 </div>
-                                                {execution.executionTimeMs && (
+                                                {execution.executionTimeMs != null && (
                                                     <span>{(execution.executionTimeMs / 1000).toFixed(2)}s</span>
                                                 )}
                                             </div>
@@ -450,14 +452,12 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                                     alt={`Input ${idx + 1}`}
                                                                     className="w-full h-auto rounded border border-zinc-700"
                                                                     onError={(e) => {
-                                                                        e.currentTarget.style.display = 'none';
-                                                                        const container = e.currentTarget.parentElement;
-                                                                        if (container) {
-                                                                            const errorMsg = document.createElement('div');
-                                                                            errorMsg.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
-                                                                            errorMsg.textContent = '⚠️ Failed to load image';
-                                                                            container.insertBefore(errorMsg, e.currentTarget);
-                                                                        }
+                                                                        const img = e.currentTarget;
+                                                                        img.style.display = 'none';
+                                                                        const errorDiv = document.createElement('div');
+                                                                        errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
+                                                                        errorDiv.textContent = '⚠️ Failed to load image';
+                                                                        img.parentElement?.insertBefore(errorDiv, img);
                                                                     }}
                                                                 />
                                                                 <p className="text-zinc-600 font-mono text-[10px] mt-1 truncate">
@@ -479,14 +479,16 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                     <div className="bg-zinc-900 rounded p-3 text-xs font-mono">
                                                         {renderJsonValue(detail.result.resultData)}
                                                     </div>
-                                                    {detail.result.resultMetadata && Object.keys(detail.result.resultMetadata).length > 0 && (
-                                                        <div className="mt-2">
-                                                            <h5 className="text-xs text-zinc-500 mb-1">Metadata:</h5>
-                                                            <div className="bg-zinc-900 rounded p-3 text-xs font-mono">
-                                                                {renderJsonValue(detail.result.resultMetadata)}
+                                                    {detail.result.resultMetadata &&
+                                                        typeof detail.result.resultMetadata === 'object' &&
+                                                        Object.keys(detail.result.resultMetadata).length > 0 && (
+                                                            <div className="mt-2">
+                                                                <h5 className="text-xs text-zinc-500 mb-1">Metadata:</h5>
+                                                                <div className="bg-zinc-900 rounded p-3 text-xs font-mono">
+                                                                    {renderJsonValue(detail.result.resultMetadata)}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
                                                 </div>
                                             )}
 
