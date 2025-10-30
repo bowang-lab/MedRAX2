@@ -101,5 +101,10 @@ class Agent:
         Returns:
             bool: True if tool calls exist, False otherwise.
         """
-        response = state["messages"][-1]
-        return len(response.tool_calls) > 0
+        messages = state["messages"]
+        if not messages:
+            return False
+        
+        response = messages[-1]
+        # Safely check for tool_calls attribute
+        return hasattr(response, 'tool_calls') and len(response.tool_calls) > 0
