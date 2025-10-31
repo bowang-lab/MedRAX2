@@ -30,7 +30,19 @@ interface ToolResultCardProps {
 
 export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-    const data = result.resultData;
+    const [showRawData, setShowRawData] = useState(false);
+    
+    // Parse result data if it's stringified JSON in 'raw' field
+    let data = result.resultData;
+    if (data && typeof data === 'object' && 'raw' in data && typeof data.raw === 'string') {
+        try {
+            const parsed = JSON.parse(data.raw);
+            // If parsed is an array, use the first item or the whole array
+            data = Array.isArray(parsed) ? (parsed.length === 1 ? parsed[0] : { results: parsed }) : parsed;
+        } catch {
+            // Keep original data if parsing fails
+        }
+    }
 
     const handleImageError = (imagePath: string) => {
         setFailedImages(prev => new Set(prev).add(imagePath));
@@ -72,6 +84,10 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const isReportTool = toolName.includes('report');
 
     const isGroundingTool = toolName.includes('grounding');
+    
+    const isSearchTool = toolName.includes('duckduckgo') ||
+        toolName.includes('web_browser') ||
+        toolName.includes('search');
 
     // Render classification results in a formatted way
     const renderClassificationResults = () => {
@@ -163,12 +179,75 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         );
     };
 
+    // Render search results (DuckDuckGo, Web Browser)
+    const renderSearchResults = () => {
+        if (!isSearchTool || !data) return null;
+
+        // Handle error state
+        if (data.error || data.error_details) {
+            const errorMsg = data.error || data.error_details;
+            return (
+                <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-red-400 mb-2">❌ Search Failed</h4>
+                    <p className="text-sm text-red-300">{typeof errorMsg === 'string' ? errorMsg : 'An error occurred during search'}</p>
+                    {data.query && <p className="text-xs text-red-400 mt-2">Query: {data.query}</p>}
+                </div>
+            );
+        }
+
+        // Extract results array
+        const results = data.results || [];
+        if (!Array.isArray(results) || results.length === 0) {
+            return (
+                <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3">
+                    <p className="text-sm text-zinc-400">No search results found.</p>
+                    {data.query && <p className="text-xs text-zinc-500 mt-2">Query: {data.query}</p>}
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-3">
+                <h4 className="text-sm font-medium text-zinc-300">
+                    🔍 Search Results {data.message && <span className="text-zinc-500 font-normal text-xs">({data.message})</span>}
+                </h4>
+                <div className="space-y-2">
+                    {results.map((result: any, idx: number) => (
+                        <div key={idx} className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-blue-600 transition-colors">
+                            <a 
+                                href={result.link || result.url || '#'} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block space-y-1"
+                            >
+                                <h5 className="text-sm font-medium text-blue-400 hover:text-blue-300">
+                                    {result.title || 'Untitled'}
+                                </h5>
+                                {result.snippet && (
+                                    <p className="text-xs text-zinc-400 leading-relaxed">
+                                        {result.snippet}
+                                    </p>
+                                )}
+                                {(result.link || result.url) && (
+                                    <p className="text-xs text-zinc-600 truncate">
+                                        {result.source || new URL(result.link || result.url).hostname}
+                                    </p>
+                                )}
+                            </a>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-4">
             {/* Tool-specific formatted results */}
             {renderClassificationResults()}
             {renderVQAAnswer()}
             {renderReport()}
+            {renderSearchResults()}
 
             {/* Generated Images / Visualizations */}
             {imagePaths.length > 0 && (
@@ -210,16 +289,21 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
 
             {/* Raw Result Data (collapsible for debugging) */}
             {data && (
-                <details className="space-y-2">
-                    <summary className="text-sm font-medium text-zinc-400 cursor-pointer hover:text-zinc-300">
-                        Raw Data (click to expand)
-                    </summary>
-                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
-                        <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
-                            {JSON.stringify(data, null, 2)}
-                        </pre>
-                    </div>
-                </details>
+                <div className="space-y-2">
+                    <button
+                        onClick={() => setShowRawData(!showRawData)}
+                        className="text-xs font-medium text-zinc-500 hover:text-zinc-300 underline decoration-dotted"
+                    >
+                        {showRawData ? '▼ Hide Raw Data' : '▶ Show Raw Data (for debugging)'}
+                    </button>
+                    {showRawData && (
+                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
+                            <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
+                                {JSON.stringify(result.resultData, null, 2)}
+                            </pre>
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

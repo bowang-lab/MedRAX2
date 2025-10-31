@@ -8,13 +8,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, ChevronRight, Clock, Image as ImageIcon, Code, FileText } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, Clock, Image as ImageIcon, FileText } from 'lucide-react';
 import { getToolExecutionsByMessage } from '@/lib/api/toolHistory';
 import { getToolExecutionDetail } from '@/lib/api/tools';
 import { Spinner } from '../ui/Spinner';
 import { Badge } from '../ui/Badge';
 import type { ToolExecution, ToolExecutionLog, ToolExecutionResult } from '@/lib/types/tool';
 import { getImageUrl } from '@/lib/utils/image';
+import { ToolResultCard } from './ToolResultCard';
 
 interface ToolOutputsSidebarProps {
     messageId: string | null;
@@ -424,7 +425,11 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                     <span>{formatDate(execution.startedAt)}</span>
                                                 </div>
                                                 {execution.executionTimeMs != null && (
-                                                    <span>{(execution.executionTimeMs / 1000).toFixed(2)}s</span>
+                                                    <span>
+                                                        {execution.executionTimeMs < 1000 
+                                                            ? `${execution.executionTimeMs}ms`
+                                                            : `${(execution.executionTimeMs / 1000).toFixed(2)}s`}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -482,26 +487,14 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                 </div>
                                             )}
 
-                                            {/* Tool Result */}
+                                            {/* Tool Result - Beautiful Formatted Output */}
                                             {detail?.result && (
                                                 <div>
-                                                    <div className="flex items-center space-x-2 mb-2">
-                                                        <Code className="h-4 w-4 text-zinc-400" />
-                                                        <h4 className="text-xs font-medium text-zinc-400 uppercase">Output</h4>
-                                                    </div>
-                                                    <div className="bg-zinc-900 rounded p-3 text-xs font-mono">
-                                                        {renderJsonValue(detail.result.resultData)}
-                                                    </div>
-                                                    {detail.result.resultMetadata &&
-                                                        typeof detail.result.resultMetadata === 'object' &&
-                                                        Object.keys(detail.result.resultMetadata).length > 0 && (
-                                                            <div className="mt-2">
-                                                                <h5 className="text-xs text-zinc-500 mb-1">Metadata:</h5>
-                                                                <div className="bg-zinc-900 rounded p-3 text-xs font-mono">
-                                                                    {renderJsonValue(detail.result.resultMetadata)}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                    <h4 className="text-xs font-medium text-zinc-400 uppercase mb-3">Output</h4>
+                                                    <ToolResultCard 
+                                                        toolName={execution.toolName}
+                                                        result={detail.result}
+                                                    />
                                                 </div>
                                             )}
 
