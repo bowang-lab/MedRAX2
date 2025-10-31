@@ -101,17 +101,27 @@ def find_tool_input_schemas(tools_dir: Path) -> List[tuple]:
     """
     schemas = []
     
+    # Add medrax parent (project root) to path for imports
+    # Tools import as "from medrax.X import Y" so we need the project root
+    medrax_dir = tools_dir.parent  # This is medrax/
+    project_root = medrax_dir.parent  # This is the project root containing medrax/
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    
     # Walk through tools directory
+    files_scanned = 0
     for root, dirs, files in os.walk(tools_dir):
-        # Skip __pycache__
-        dirs[:] = [d for d in dirs if not d.startswith('__')]
+        # Skip __pycache__ and excluded dirs
+        dirs[:] = [d for d in dirs if not d.startswith('__') and d not in ['validate_schemas.py']]
         
         for file in files:
-            if file.endswith('.py') and not file.startswith('__'):
+            if file.endswith('.py') and not file.startswith('__') and file != 'validate_schemas.py':
+                files_scanned += 1
                 filepath = Path(root) / file
                 
-                # Convert to module path
-                rel_path = filepath.relative_to(tools_dir.parent)
+                # Convert to module path relative to project root
+                # e.g., medrax/tools/classification/torchxrayvision.py -> medrax.tools.classification.torchxrayvision
+                rel_path = filepath.relative_to(project_root)
                 module_path = str(rel_path.with_suffix('')).replace(os.sep, '.')
                 
                 try:
@@ -121,10 +131,13 @@ def find_tool_input_schemas(tools_dir: Path) -> List[tuple]:
                     # Find input schema classes
                     for name, obj in inspect.getmembers(module, inspect.isclass):
                         if 'Input' in name and hasattr(obj, 'model_json_schema'):
-                            schemas.append((module_path, name, obj))
+                            # Check if defined in this module
+                            if obj.__module__ == module_path:
+                                schemas.append((module_path, name, obj))
                 
                 except Exception as e:
                     # Skip files that can't be imported
+                    # Uncomment for debugging: print(f"  [SKIP] {module_path}: {str(e)[:80]}")
                     pass
     
     return schemas
