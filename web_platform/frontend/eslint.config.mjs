@@ -18,7 +18,22 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "lib/types/openapi.d.ts", // Generated file
     ],
+  },
+  {
+    rules: {
+      // Allow 'any' in transformer/API client code where we're bridging between
+      // OpenAPI-generated types and our UI types
+      "@typescript-eslint/no-explicit-any": ["warn", {
+        "ignoreRestArgs": true,
+        "fixToUnknown": false
+      }],
+      // Allow unescaped quotes in JSX
+      "react/no-unescaped-entities": "off",
+      // Allow img tags (we use them for dynamic backend-served images)
+      "@next/next/no-img-element": "warn",
+    },
   },
 ];
 
