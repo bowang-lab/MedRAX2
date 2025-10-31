@@ -43,107 +43,112 @@ export function streamChatResponse(
     onComplete: () => void,
     onError: (error: Error) => void
 ): () => void {
-    const url = new URL(`${API_CONFIG.baseURL}${API_ENDPOINTS.CHAT_STREAM(chatId)}`);
-    
-    // Add auth headers as query params for SSE (EventSource doesn't support custom headers)
-    const token = localStorage.getItem('medrax_auth_token');
-    const apiSecret = API_SECRET_CONFIG.getSecret();
-    
-    if (token) {
-        url.searchParams.append('token', token);
-    }
-    if (apiSecret) {
-        url.searchParams.append('api_secret', apiSecret);
-    }
-
-    const eventSource = new EventSource(url.toString());
+    let abortController = new AbortController();
     let hasReceivedData = false;
 
-    eventSource.addEventListener('message_start', (e) => {
-        hasReceivedData = true;
+    // Use fetch with streaming to handle POST SSE properly
+    const startStream = async () => {
         try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'message_start', data });
+            const response = await fetch(`${API_CONFIG.baseURL}${API_ENDPOINTS.CHAT_STREAM(chatId)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders(),
+                },
+                body: JSON.stringify({
+                    content,
+                    scan_ids: scanIds,
+                }),
+                signal: abortController.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            if (!response.body) {
+                throw new Error('Response body is null');
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let currentEvent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                    break;
+                }
+
+                // Decode the chunk and add to buffer
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete SSE messages in the buffer
+                // SSE format: "event: eventType\ndata: jsonData\n\n"
+                const messages = buffer.split('\n\n');
+                buffer = messages.pop() || ''; // Keep incomplete message in buffer
+
+                for (const message of messages) {
+                    if (!message.trim()) continue;
+
+                    const lines = message.split('\n');
+                    let eventType = '';
+                    let eventData: any = {};
+
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) {
+                            eventType = line.slice(6).trim();
+                        } else if (line.startsWith('data:')) {
+                            const jsonData = line.slice(5).trim();
+                            try {
+                                eventData = JSON.parse(jsonData);
+                            } catch (err) {
+                                console.error('Failed to parse SSE data:', jsonData, err);
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (eventType) {
+                        hasReceivedData = true;
+                        onEvent({ type: eventType as SSEEvent['type'], data: eventData });
+
+                        // Check if this is the completion event
+                        if (eventType === 'message_done') {
+                            onComplete();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Stream ended without message_done
+            if (hasReceivedData) {
+                onComplete();
+            } else {
+                onError(new Error('Stream ended without receiving data'));
+            }
+
         } catch (err) {
-            console.error('Failed to parse message_start:', err);
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Stream was aborted by user - this is normal
+                return;
+            }
+            
+            console.error('Stream error:', err);
+            if (!hasReceivedData) {
+                onError(err instanceof Error ? err : new Error('Stream connection failed'));
+            }
         }
-    });
+    };
 
-    eventSource.addEventListener('content_chunk', (e) => {
-        hasReceivedData = true;
-        try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'content_chunk', data });
-        } catch (err) {
-            console.error('Failed to parse content_chunk:', err);
-        }
-    });
-
-    eventSource.addEventListener('tool_start', (e) => {
-        hasReceivedData = true;
-        try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'tool_start', data });
-        } catch (err) {
-            console.error('Failed to parse tool_start:', err);
-        }
-    });
-
-    eventSource.addEventListener('tool_done', (e) => {
-        hasReceivedData = true;
-        try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'tool_done', data });
-        } catch (err) {
-            console.error('Failed to parse tool_done:', err);
-        }
-    });
-
-    eventSource.addEventListener('message_done', (e) => {
-        hasReceivedData = true;
-        try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'message_done', data });
-        } catch (err) {
-            console.error('Failed to parse message_done:', err);
-        }
-        eventSource.close();
-        onComplete();
-    });
-
-    eventSource.addEventListener('error', (e) => {
-        console.error('SSE Error:', e);
-        
-        // Only call onError if we haven't received any data yet
-        // (after data is received, errors are usually just connection cleanup)
-        if (!hasReceivedData) {
-            const errorEvent = e as ErrorEvent;
-            const errorMessage = errorEvent.message || 'Stream connection failed';
-            onError(new Error(errorMessage));
-        }
-        
-        eventSource.close();
-    });
-
-    // Send the message to start the stream
-    fetch(`${API_CONFIG.baseURL}${API_ENDPOINTS.CHAT_STREAM(chatId)}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders(),
-        },
-        body: JSON.stringify({
-            content,
-            scan_ids: scanIds,
-        }),
-    }).catch((err) => {
-        console.error('Failed to start stream:', err);
-        onError(err instanceof Error ? err : new Error('Failed to start stream'));
-        eventSource.close();
-    });
+    // Start the stream
+    startStream();
 
     // Return cleanup function
     return () => {
-        eventSource.close();
+        abortController.abort();
     };
 }
