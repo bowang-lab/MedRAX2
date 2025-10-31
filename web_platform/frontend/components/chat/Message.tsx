@@ -23,6 +23,18 @@ import { ImageModal } from '../ui/ImageModal';
  * Extract the most relevant generated images from tool executions
  * Prioritizes: segmentation masks, grounding visualizations, generated x-rays
  */
+/**
+ * Extract final generated images from tool executions to display in the message.
+ * 
+ * Strategy:
+ * 1. Backend appends generated images to image_paths: [input_images, ...generated_images]
+ * 2. Generated images are typically in temp/ folder (segmentation, visualization, etc.)
+ * 3. Input images are typically in uploads/ folder or have "input" in the name
+ * 4. We want to show only the FINAL OUTPUT images (not inputs, not intermediate)
+ * 
+ * @param message - The message with tool executions
+ * @returns Array of image paths to display (up to 3 most recent)
+ */
 function extractFinalImages(message: MessageWithDetails): string[] {
     if (!message.toolExecutions || message.toolExecutions.length === 0) {
         return [];
@@ -30,12 +42,30 @@ function extractFinalImages(message: MessageWithDetails): string[] {
 
     const finalImages: string[] = [];
 
-    // Look through tool executions for image_paths (generated images)
+    // Look through tool executions for generated images
     message.toolExecutions.forEach((execution) => {
         if (execution.imagePaths && Array.isArray(execution.imagePaths)) {
-            // Add all non-input images
             execution.imagePaths.forEach((path) => {
-                if (path && typeof path === 'string' && !path.toLowerCase().includes('input')) {
+                if (!path || typeof path !== 'string') return;
+                
+                const lowerPath = path.toLowerCase();
+                
+                // Exclude input images (typically in uploads/ or have "input" in name)
+                if (lowerPath.includes('uploads/') || lowerPath.includes('input')) {
+                    return;
+                }
+                
+                // Include generated images (temp/, segmentation, visualization, etc.)
+                // These are the final outputs we want to show
+                if (
+                    lowerPath.includes('temp/') ||
+                    lowerPath.includes('segmentation') ||
+                    lowerPath.includes('visualization') ||
+                    lowerPath.includes('mask') ||
+                    lowerPath.includes('output') ||
+                    lowerPath.includes('grounding') ||
+                    lowerPath.includes('generation')
+                ) {
                     finalImages.push(path);
                 }
             });
@@ -43,6 +73,7 @@ function extractFinalImages(message: MessageWithDetails): string[] {
     });
 
     // Return unique images, limited to 3 most recent
+    // This ensures we show the latest outputs without overwhelming the message
     return [...new Set(finalImages)].slice(-3);
 }
 

@@ -37,8 +37,9 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     if (data && typeof data === 'object' && 'raw' in data && typeof data.raw === 'string') {
         try {
             const parsed = JSON.parse(data.raw);
-            // If parsed is an array, use the first item or the whole array
-            data = Array.isArray(parsed) ? (parsed.length === 1 ? parsed[0] : { results: parsed }) : parsed;
+            // If parsed is an array, use the first item (which typically has the main results)
+            // Backend often returns [actual_results, metadata], we want the first item
+            data = Array.isArray(parsed) ? parsed[0] : parsed;
         } catch {
             // Keep original data if parsing fails
         }
@@ -93,14 +94,25 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const renderClassificationResults = () => {
         if (!isClassificationTool || !data) return null;
 
-        const predictions = data.predictions || data.pathology_predictions || data.results;
+        // Classification tools return the predictions directly as the data object
+        // Format: { "Atelectasis": 0.123, "Cardiomegaly": 0.456, ... }
+        const predictions = data.predictions || data.pathology_predictions || data;
+        
+        // Check if this looks like classification data (object with numeric values)
         if (!predictions || typeof predictions !== 'object') return null;
+        
+        // Filter to only numeric probability values
+        const pathologies = Object.entries(predictions).filter(([key, value]) => 
+            typeof value === 'number' && !key.includes('_') && key !== 'error' && key !== 'image_path'
+        );
+        
+        if (pathologies.length === 0) return null;
 
         return (
             <div className="space-y-2">
                 <h4 className="text-sm font-medium text-zinc-300">Pathology Predictions:</h4>
                 <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 space-y-2">
-                    {Object.entries(predictions).map(([pathology, probability]) => {
+                    {pathologies.map(([pathology, probability]) => {
                         const prob = typeof probability === 'number' ? probability : 0;
                         const percentage = (prob * 100).toFixed(1);
                         const isHighProbability = prob > 0.5;
