@@ -224,8 +224,8 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                         )}
                     </div>
 
-                    {/* Tool Activity (for assistant messages) */}
-                    {isAssistant && message.toolExecutions && message.toolExecutions.length > 0 && (
+                    {/* Tool Activity */}
+                    {message.toolExecutions && message.toolExecutions.length > 0 && (
                         <MessageActivity
                             executions={message.toolExecutions}
                             onShowDetails={onShowToolDetails}

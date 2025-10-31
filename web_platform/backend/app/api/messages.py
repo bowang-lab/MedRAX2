@@ -223,7 +223,8 @@ async def stream_chat_response(
                 return
             
             # 5. Create chat processor and process message
-            processor = ChatProcessor(agent, db, chat_id)
+            # Attach tool executions to the assistant message for more intuitive UI grouping
+            processor = ChatProcessor(agent, db, chat_id, tool_target_message_id=assistant_message.id)
             
             async for event in processor.process_message(
                 user_message,

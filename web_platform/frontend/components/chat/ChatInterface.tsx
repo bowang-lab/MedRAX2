@@ -61,6 +61,8 @@ export function ChatInterface() {
     // Store abort function for ongoing stream
     const abortStreamRef = useRef<(() => void) | null>(null);
     const currentStreamChatIdRef = useRef<string | null>(null);
+    const lastStreamUserMessageIdRef = useRef<string | null>(null);
+    const openedToolSidebarForThisStreamRef = useRef<boolean>(false);
 
     // Suggested questions (for now, hardcoded defaults)
     const [suggestedQuestions] = useState<SuggestedQuestion[]>([
@@ -138,6 +140,8 @@ export function ChatInterface() {
         // Store the chatId at the start of this request
         const requestChatId = selectedChatId;
         currentStreamChatIdRef.current = requestChatId;
+        lastStreamUserMessageIdRef.current = null;
+        openedToolSidebarForThisStreamRef.current = false;
 
         setSendingMessage(true);
         setError(null);
@@ -190,6 +194,8 @@ export function ChatInterface() {
                 // Handle streaming events
                 if (event.type === 'message_start') {
                     console.log('Message started:', event.data.messageId);
+                    // Track the user message id for this stream
+                    lastStreamUserMessageIdRef.current = event.data.messageId;
                 } else if (event.type === 'content_chunk') {
                     // Update assistant message content in real-time
                     assistantContent += event.data.content || '';
@@ -203,6 +209,13 @@ export function ChatInterface() {
                     setMessages(requestChatId, updatedMessages);
                 } else if (event.type === 'tool_start') {
                     console.log('Tool started:', event.data);
+                    // Auto-open the tool outputs sidebar the first time a tool runs for this stream
+                    const targetMessageId = (event.data && (event.data.messageId || event.data.message_id)) || lastStreamUserMessageIdRef.current;
+                    if (!openedToolSidebarForThisStreamRef.current && targetMessageId) {
+                        setToolOutputsMessageId(targetMessageId);
+                        setIsToolOutputsSidebarOpen(true);
+                        openedToolSidebarForThisStreamRef.current = true;
+                    }
                 } else if (event.type === 'tool_done') {
                     console.log('Tool completed:', event.data);
                 }
@@ -211,6 +224,8 @@ export function ChatInterface() {
                 // On complete - reload to get final state with all tool executions
                 abortStreamRef.current = null;
                 currentStreamChatIdRef.current = null;
+                lastStreamUserMessageIdRef.current = null;
+                openedToolSidebarForThisStreamRef.current = false;
                 setSendingMessage(false);
 
                 // Only reload if we're still on the same chat
@@ -228,6 +243,8 @@ export function ChatInterface() {
                 // On error
                 abortStreamRef.current = null;
                 currentStreamChatIdRef.current = null;
+                lastStreamUserMessageIdRef.current = null;
+                openedToolSidebarForThisStreamRef.current = false;
                 setError(err.message || 'Failed to send message');
                 setSendingMessage(false);
 

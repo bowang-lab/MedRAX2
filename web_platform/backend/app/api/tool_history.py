@@ -36,7 +36,8 @@ def enrich_tool_execution(execution: ToolExecution) -> dict:
         from ..services.tool_manager import tool_manager
         tool_info = tool_manager.get_tool(execution.tool_name)
         if tool_info:
-            tool_display_name = tool_info.display_name
+            # Normalize to .name across APIs for consistency
+            tool_display_name = tool_info.name
     except:
         pass
     

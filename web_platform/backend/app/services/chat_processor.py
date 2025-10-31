@@ -31,7 +31,7 @@ class ChatProcessor:
     - Real-time SSE event streaming
     """
     
-    def __init__(self, agent, db: Session, chat_id: str):
+    def __init__(self, agent, db: Session, chat_id: str, tool_target_message_id: str | None = None):
         """
         Initialize chat processor.
         
@@ -44,6 +44,8 @@ class ChatProcessor:
         self.db = db
         self.chat_id = chat_id
         self.request_id = None  # Set when processing message
+        # If provided, all tool executions will be attached to this message id instead of the triggering user message
+        self.tool_target_message_id = tool_target_message_id
         
     async def process_message(
         self,
@@ -222,9 +224,9 @@ class ChatProcessor:
         """
         tool_name = tool_message.name
         
-        # Create tool execution record
+        # Create tool execution record; attach to explicit target message if provided (typically the assistant message)
         execution = ToolExecution(
-            message_id=message.id,
+            message_id=self.tool_target_message_id or message.id,
             request_id=self.request_id,
             tool_name=tool_name,
             status="running",
@@ -232,13 +234,20 @@ class ChatProcessor:
         )
         self.db.add(execution)
         self.db.flush()
+        # Commit early so other API requests (sidebar fetch) can see the running execution
+        try:
+            self.db.commit()
+        except Exception:
+            # In streaming contexts, commit may fail transiently; safe to proceed, later calls will attempt again
+            self.db.rollback()
         
         # Yield tool start event
         yield {
             "type": "tool_start",
             "data": {
                 "tool_name": tool_name,
-                "execution_id": execution.id
+                "execution_id": execution.id,
+                "message_id": execution.message_id,
             }
         }
         
@@ -284,13 +293,18 @@ class ChatProcessor:
             execution.status = "completed"
             execution.completed_at = datetime.utcnow()
             self.db.flush()
+            try:
+                self.db.commit()
+            except Exception:
+                self.db.rollback()
             
             # Yield tool completion
             yield {
                 "type": "tool_done",
                 "data": {
                     "tool_name": tool_name,
-                    "execution_id": execution.id
+                    "execution_id": execution.id,
+                    "message_id": execution.message_id,
                 }
             }
             
@@ -309,6 +323,10 @@ class ChatProcessor:
             )
             self.db.add(log)
             self.db.flush()
+            try:
+                self.db.commit()
+            except Exception:
+                self.db.rollback()
             
             # Yield error event
             yield {
@@ -316,6 +334,7 @@ class ChatProcessor:
                 "data": {
                     "tool_name": tool_name,
                     "execution_id": execution.id,
+                    "message_id": execution.message_id,
                     "error": str(e)
                 }
             }
