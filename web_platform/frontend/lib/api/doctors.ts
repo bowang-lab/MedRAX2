@@ -4,31 +4,37 @@
  * API calls for updating doctor profile.
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
 import type { Doctor } from '../types/doctor';
+import type { ApiDoctorResponse } from '../types/api';
+import { toUiDoctor } from '../openapi/transformers';
 
 /**
  * Update doctor profile (name)
+ * 
+ * Note: Backend endpoint uses PATCH /api/auth/me which returns DoctorResponse directly
+ * (verified in backend/app/api/auth.py line 90: response_model=DoctorResponse)
  */
-export async function updateDoctor(
-    id: string,
-    data: { name: string }
-): Promise<Doctor> {
-    const response = await apiClient.patch<{ doctor: Doctor }>(
-        API_ENDPOINTS.AUTH_ME, // Assuming profile update uses the same endpoint
-        data
-    );
-    return response.data.doctor;
+export async function updateDoctor(data: { name: string }): Promise<Doctor> {
+    const { data: response, error } = await openapiClient.PATCH('/api/auth/me', {
+        body: { name: data.name },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!response) throw new Error('Failed to update doctor');
+    
+    return toUiDoctor(response as ApiDoctorResponse);
 }
 
 /**
  * Update password
+ * 
+ * TODO: Backend does not currently have a password update endpoint.
+ * Need to add PATCH /api/auth/me/password endpoint to backend API.
  */
-export async function updatePassword(
-    id: string,
-    data: { currentPassword: string; newPassword: string }
-): Promise<void> {
-    await apiClient.post(`${API_ENDPOINTS.AUTH_ME}/password`, data);
+export async function updatePassword(_data: { 
+    currentPassword: string; 
+    newPassword: string 
+}): Promise<void> {
+    throw new Error('Password update not yet implemented in backend API');
 }
-

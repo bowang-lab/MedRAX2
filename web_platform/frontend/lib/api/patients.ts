@@ -4,59 +4,39 @@
  * API calls for patient management.
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
 import type { PatientWithStats } from '../types/patient';
+import type { ApiPatientWithStats, ApiPatientCreate, ApiPatientUpdate } from '../types/api';
+import { toUiPatientWithStats } from '../openapi/transformers';
 
 /**
  * Get all patients for current doctor
+ * Backend always returns List[PatientWithStats] (never null)
  */
-interface PatientAPIResponse {
-    id: string;
-    name: string | null;
-    doctor_id: string;
-    created_at: string;
-    last_activity_at: string | null;
-    total_chats: number;
-    total_scans: number;
-}
-
 export async function getPatients(): Promise<PatientWithStats[]> {
-    const response = await apiClient.get<PatientAPIResponse[]>(
-        API_ENDPOINTS.PATIENTS
-    );
-    // Map backend fields to frontend fields
-    return response.data.map(patient => ({
-        id: patient.id,
-        name: patient.name,
-        doctorId: patient.doctor_id,
-        createdAt: patient.created_at,
-        lastActivityAt: patient.last_activity_at,
-        chatCount: patient.total_chats || 0,
-        scanCount: patient.total_scans || 0,
-    }));
+    const { data, error } = await openapiClient.GET('/api/patients', {
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
+    return data.map((patient: ApiPatientWithStats) => toUiPatientWithStats(patient));
 }
 
 /**
  * Create new patient
  */
-export async function createPatient(data: {
-    name?: string | null;
-}): Promise<PatientWithStats> {
-    const response = await apiClient.post<PatientAPIResponse>(
-        API_ENDPOINTS.PATIENTS,
-        data
-    );
-    const patient = response.data;
-    return {
-        id: patient.id,
-        name: patient.name,
-        doctorId: patient.doctor_id,
-        createdAt: patient.created_at,
-        lastActivityAt: patient.last_activity_at,
-        chatCount: patient.total_chats || 0,
-        scanCount: patient.total_scans || 0,
+export async function createPatient(data: { name?: string | null }): Promise<PatientWithStats> {
+    const requestBody: ApiPatientCreate = {
+        name: data.name ?? null,
     };
+    
+    const { data: response, error } = await openapiClient.POST('/api/patients', {
+        body: requestBody,
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!response) throw new Error('Failed to create patient');
+    return toUiPatientWithStats(response);
 }
 
 /**
@@ -66,26 +46,27 @@ export async function updatePatient(
     id: string,
     data: { name?: string | null }
 ): Promise<PatientWithStats> {
-    const response = await apiClient.patch<PatientAPIResponse>(
-        API_ENDPOINTS.PATIENT_DETAIL(id),
-        data
-    );
-    const patient = response.data;
-    return {
-        id: patient.id,
-        name: patient.name,
-        doctorId: patient.doctor_id,
-        createdAt: patient.created_at,
-        lastActivityAt: patient.last_activity_at,
-        chatCount: patient.total_chats || 0,
-        scanCount: patient.total_scans || 0,
+    const requestBody: ApiPatientUpdate = {
+        name: data.name ?? null,
     };
+    
+    const { data: response, error } = await openapiClient.PATCH('/api/patients/{patient_id}', {
+        params: { path: { patient_id: id } },
+        body: requestBody,
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!response) throw new Error('Failed to update patient');
+    return toUiPatientWithStats(response);
 }
 
 /**
  * Delete patient
  */
 export async function deletePatient(id: string): Promise<void> {
-    await apiClient.delete(API_ENDPOINTS.PATIENT_DETAIL(id));
+    const { error } = await openapiClient.DELETE('/api/patients/{patient_id}', {
+        params: { path: { patient_id: id } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
 }
-

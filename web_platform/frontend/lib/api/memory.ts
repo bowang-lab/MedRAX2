@@ -4,8 +4,9 @@
  * API calls for managing chat memory and conversation context.
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
+import { toUiMemoryStats, toUiClearMemoryResponse, toUiSystemCleanupStats } from '../openapi/transformers';
+import type { ApiMemoryStatsResponse, ApiClearMemoryResponse, ApiSystemCleanupStatsResponse } from '../types/api';
 
 export interface MemoryStats {
     chatId: string;
@@ -35,17 +36,14 @@ export interface SystemCleanupStats {
  * Resets the LangGraph checkpointer state, effectively starting a new conversation context.
  */
 export async function clearChatMemory(chatId: string): Promise<ClearMemoryResponse> {
-    const response = await apiClient.post<{
-        success: boolean;
-        message: string;
-        chat_id: string;
-    }>(API_ENDPOINTS.CHAT_MEMORY_CLEAR(chatId));
+    const { data, error } = await openapiClient.POST('/api/chats/{chat_id}/memory/clear', {
+        params: { path: { chat_id: chatId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
 
-    return {
-        success: response.data.success,
-        message: response.data.message,
-        chatId: response.data.chat_id,
-    };
+    return toUiClearMemoryResponse(data as ApiClearMemoryResponse);
 }
 
 /**
@@ -53,21 +51,14 @@ export async function clearChatMemory(chatId: string): Promise<ClearMemoryRespon
  * Shows how much context/memory is being used.
  */
 export async function getChatMemoryStats(chatId: string): Promise<MemoryStats> {
-    const response = await apiClient.get<{
-        chat_id: string;
-        message_count: number;
-        scan_count: number;
-        tool_execution_count: number;
-        has_context: boolean;
-    }>(API_ENDPOINTS.CHAT_MEMORY_STATS(chatId));
+    const { data, error } = await openapiClient.GET('/api/chats/{chat_id}/memory/stats', {
+        params: { path: { chat_id: chatId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
 
-    return {
-        chatId: response.data.chat_id,
-        messageCount: response.data.message_count,
-        scanCount: response.data.scan_count,
-        toolExecutionCount: response.data.tool_execution_count,
-        hasContext: response.data.has_context,
-    };
+    return toUiMemoryStats(data as ApiMemoryStatsResponse);
 }
 
 /**
@@ -75,22 +66,11 @@ export async function getChatMemoryStats(chatId: string): Promise<MemoryStats> {
  * Clears old checkpointer states and performs garbage collection.
  */
 export async function cleanupSystemMemory(): Promise<SystemCleanupStats> {
-    const response = await apiClient.post<{
-        success: boolean;
-        message: string;
-        stats: {
-            checkpoints_cleared: number;
-            memory_freed_mb: number;
-        };
-    }>(API_ENDPOINTS.SYSTEM_MEMORY_CLEANUP);
+    const { data, error } = await openapiClient.POST('/api/system/memory/cleanup', {
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
 
-    return {
-        success: response.data.success,
-        message: response.data.message,
-        stats: {
-            checkpointsCleared: response.data.stats.checkpoints_cleared,
-            memoryFreedMb: response.data.stats.memory_freed_mb,
-        },
-    };
+    return toUiSystemCleanupStats(data as ApiSystemCleanupStatsResponse);
 }
-

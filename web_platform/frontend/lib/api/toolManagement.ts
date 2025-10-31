@@ -4,8 +4,9 @@
  * API calls for managing tool loading/unloading.
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
+import { toUiTool } from '../openapi/transformers';
+import type { ApiToolBulkLoadRequest, ApiToolBulkLoadResponse, ApiToolInfo } from '../types/api';
 
 export interface Tool {
     id: string;
@@ -20,43 +21,76 @@ export interface Tool {
     error_message?: string;
 }
 
+export interface ToolBulkLoadResult {
+    id: string;
+    success: boolean;
+    status: string;
+    message?: string;
+}
+
 /**
  * Get all available tools
  */
 export async function getTools(): Promise<Tool[]> {
-    const response = await apiClient.get<Tool[]>(
-        API_ENDPOINTS.TOOLS
-    );
-    return response.data;
+    const { data, error } = await openapiClient.GET('/api/tools', {
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
+    
+    return (data as ApiToolInfo[]).map(toUiTool);
 }
 
 /**
  * Load a tool
  */
 export async function loadTool(toolId: string): Promise<void> {
-    await apiClient.post(API_ENDPOINTS.TOOL_LOAD(toolId));
+    const { error } = await openapiClient.POST('/api/tools/{tool_id}/load', {
+        params: { path: { tool_id: toolId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
 }
 
 /**
  * Unload a tool
  */
 export async function unloadTool(toolId: string): Promise<void> {
-    await apiClient.post(API_ENDPOINTS.TOOL_UNLOAD(toolId));
+    const { error } = await openapiClient.POST('/api/tools/{tool_id}/unload', {
+        params: { path: { tool_id: toolId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
 }
 
 /**
  * Bulk load tools
  */
-export async function bulkLoadTools(params: { toolIds?: string[]; loadAll?: boolean }): Promise<{
-    results: { id: string; success: boolean; status: string; message?: string }[];
+export async function bulkLoadTools(params: { 
+    toolIds?: string[]; 
+    loadAll?: boolean;
+}): Promise<{
+    results: ToolBulkLoadResult[];
 }> {
-    const response = await apiClient.post(
-        API_ENDPOINTS.TOOLS_BULK_LOAD,
-        {
-            tool_ids: params.toolIds,
-            load_all: params.loadAll ?? false,
-        }
-    );
-    return response.data;
+    const requestBody: ApiToolBulkLoadRequest = {
+        tool_ids: params.toolIds ?? null,
+        load_all: params.loadAll ?? false,
+    };
+    
+    const { data, error } = await openapiClient.POST('/api/tools/bulk-load', {
+        body: requestBody,
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Failed to bulk load tools');
+    
+    const response = data as ApiToolBulkLoadResponse;
+    return {
+        results: response.results.map(result => ({
+            id: result.id,
+            success: result.success,
+            status: result.status,
+            message: result.message ?? undefined,
+        })),
+    };
 }
-

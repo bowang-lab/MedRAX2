@@ -4,14 +4,15 @@
  * API calls for authentication (login, register, logout).
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
 import type {
     Doctor,
     DoctorRegistration,
     DoctorLogin,
     AuthSession,
 } from '../types/doctor';
+import type { ApiTokenResponse, ApiDoctorResponse } from '../types/api';
+import { toAuthSession, toUiDoctor } from '../openapi/transformers';
 
 /**
  * Register a new doctor
@@ -19,50 +20,42 @@ import type {
 export async function registerDoctor(
     data: DoctorRegistration
 ): Promise<AuthSession> {
-    const response = await apiClient.post<{
-        doctor: Doctor;
-        access_token: string;
-        token_type: string;
-    }>(API_ENDPOINTS.AUTH_REGISTER, data);
-
-    return {
-        doctor: response.data.doctor,
-        token: response.data.access_token, // Fixed: use access_token from backend
-        expiresAt: '', // Backend doesn't provide this, can be calculated if needed
-    };
+    const { data: response, error } = await openapiClient.POST('/api/auth/register', {
+        body: { name: data.name, password: data.password },
+    });
+    if (error) throw error;
+    if (!response) throw new Error('Failed to register');
+    return toAuthSession(response as ApiTokenResponse);
 }
 
 /**
  * Login doctor
  */
 export async function loginDoctor(data: DoctorLogin): Promise<AuthSession> {
-    const response = await apiClient.post<{
-        doctor: Doctor;
-        access_token: string;
-        token_type: string;
-    }>(API_ENDPOINTS.AUTH_LOGIN, data);
-
-    return {
-        doctor: response.data.doctor,
-        token: response.data.access_token, // Fixed: use access_token from backend
-        expiresAt: '', // Backend doesn't provide this, can be calculated if needed
-    };
+    const { data: response, error } = await openapiClient.POST('/api/auth/login', {
+        body: { name: data.name, password: data.password },
+    });
+    if (error) throw error;
+    if (!response) throw new Error('Failed to login');
+    return toAuthSession(response as ApiTokenResponse);
 }
 
 /**
  * Logout doctor
  */
 export async function logoutDoctor(): Promise<void> {
-    await apiClient.post(API_ENDPOINTS.AUTH_LOGOUT);
+    const { error } = await openapiClient.POST('/api/auth/logout', {});
+    if (error) throw error;
 }
 
 /**
  * Get current doctor info
  */
 export async function getCurrentDoctor(): Promise<Doctor> {
-    const response = await apiClient.get<Doctor>(
-        API_ENDPOINTS.AUTH_ME
-    );
-    return response.data; // Backend returns doctor directly, not wrapped
+    const { data, error } = await openapiClient.GET('/api/auth/me', {
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Failed to get doctor info');
+    return toUiDoctor(data as ApiDoctorResponse);
 }
-

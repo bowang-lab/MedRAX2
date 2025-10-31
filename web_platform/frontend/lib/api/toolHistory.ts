@@ -1,87 +1,56 @@
 /**
- * Tool History API Client
+ * Tool History API Functions
  * 
- * API functions for fetching tool execution history.
+ * API calls for tool execution history.
  */
 
-import apiClient from './client';
+import { openapiClient, authHeaders } from '../openapi/client';
 import type { ToolExecution } from '../types/tool';
-
-// Backend response types (snake_case from API)
-interface BackendToolExecution {
-    id: string;
-    message_id: string;
-    request_id: string | null;
-    tool_name: string;
-    tool_display_name: string;
-    status: string;
-    started_at: string;
-    completed_at: string | null;
-    execution_time_ms: number | null;
-    image_paths: string[] | null;
-}
-
-/**
- * Transform backend tool execution to frontend format
- * (snake_case to camelCase)
- */
-function transformToolExecution(backendExecution: BackendToolExecution): ToolExecution {
-    return {
-        id: backendExecution.id,
-        messageId: backendExecution.message_id,
-        requestId: backendExecution.request_id,
-        toolName: backendExecution.tool_name,
-        toolDisplayName: backendExecution.tool_display_name,
-        status: backendExecution.status,
-        startedAt: backendExecution.started_at,
-        completedAt: backendExecution.completed_at,
-        executionTimeMs: backendExecution.execution_time_ms,
-        imagePaths: backendExecution.image_paths,
-    };
-}
-
-/**
- * Get tool execution history for a chat.
- */
-export async function getChatToolHistory(
-    chatId: string,
-    filters?: {
-        filterByRequest?: string;
-        filterByTool?: string;
-        latestOnly?: boolean;
-    }
-): Promise<ToolExecution[]> {
-    const params = new URLSearchParams();
-    if (filters?.filterByRequest) params.append('filter_by_request', filters.filterByRequest);
-    if (filters?.filterByTool) params.append('filter_by_tool', filters.filterByTool);
-    if (filters?.latestOnly) params.append('latest_only', 'true');
-
-    const url = `/chats/${chatId}/tool-history${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await apiClient.get<BackendToolExecution[]>(url);
-
-    // Transform snake_case from backend to camelCase for frontend
-    return response.data.map(transformToolExecution);
-}
+import type { ApiToolExecutionResponse } from '../types/api';
+import { toUiToolExecution } from '../openapi/transformers';
 
 /**
  * Get tool execution history for a specific message.
- * 
- * This is the key feature for "show me tool history for this message".
+ * Returns all tool executions associated with that message.
+ * Backend always returns List[ToolExecutionResponse] (never null)
  */
-export async function getMessageToolHistory(messageId: string): Promise<ToolExecution[]> {
-    const response = await apiClient.get<BackendToolExecution[]>(`/messages/${messageId}/tool-history`);
-
-    // Transform snake_case from backend to camelCase for frontend
-    return response.data.map(transformToolExecution);
+export async function getToolExecutionsByMessage(messageId: string): Promise<ToolExecution[]> {
+    const { data, error } = await openapiClient.GET('/api/messages/{message_id}/tool-history', {
+        params: { path: { message_id: messageId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
+    return data.map((exec: ApiToolExecutionResponse) => toUiToolExecution(exec));
 }
 
 /**
- * Get detailed information about a specific tool execution.
+ * Get all tool executions for a chat (across all messages).
+ * 
+ * @param chatId - The chat ID to get tool history for
+ * @param filterByRequest - Optional request ID filter
+ * @param filterByTool - Optional tool name filter
+ * @param latestOnly - Only return latest execution per tool (default: false)
  */
-export async function getToolExecution(executionId: string): Promise<ToolExecution> {
-    const response = await apiClient.get<BackendToolExecution>(`/tool-executions/${executionId}`);
-
-    // Transform snake_case from backend to camelCase for frontend
-    return transformToolExecution(response.data);
+export async function getToolExecutionsByChat(
+    chatId: string,
+    filterByRequest?: string,
+    filterByTool?: string,
+    latestOnly?: boolean
+): Promise<ToolExecution[]> {
+    const { data, error } = await openapiClient.GET('/api/chats/{chat_id}/tool-history', {
+        params: { 
+            path: { chat_id: chatId },
+            query: {
+                filter_by_request: filterByRequest ?? null,
+                filter_by_tool: filterByTool ?? null,
+                latest_only: latestOnly ?? false,
+            },
+        },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    // Backend always returns List[ToolExecutionResponse] (never null)
+    if (!data) throw new Error('No data returned from server');
+    return data.map((exec: ApiToolExecutionResponse) => toUiToolExecution(exec));
 }
-

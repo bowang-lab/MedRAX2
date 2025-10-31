@@ -4,58 +4,36 @@
  * API calls for chat management.
  */
 
-import apiClient from './client';
-import { API_ENDPOINTS } from '../config/api';
+import { openapiClient, authHeaders } from '../openapi/client';
 import type { Chat } from '../types/chat';
-
-/**
- * Backend chat response interface (snake_case)
- */
-interface ChatAPIResponse {
-    id: string;
-    patient_id: string;
-    name: string;
-    created_at: string;
-    updated_at: string;
-    last_message_at: string | null;
-    message_count: number;
-    scan_count: number;
-}
-
-/**
- * Map backend chat response to frontend Chat type
- */
-function mapChatResponse(data: ChatAPIResponse): Chat {
-    return {
-        id: data.id,
-        patientId: data.patient_id,
-        name: data.name,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        lastMessageAt: data.last_message_at,
-        messageCount: data.message_count,
-        scanCount: data.scan_count,
-    };
-}
+import type { ApiChatResponse, ApiChatCreate, ApiChatUpdate } from '../types/api';
+import { toUiChat } from '../openapi/transformers';
 
 /**
  * Get all chats for a patient
+ * Backend always returns List[ChatResponse] (never null)
  */
 export async function getChats(patientId: string): Promise<Chat[]> {
-    const response = await apiClient.get<ChatAPIResponse[]>(
-        API_ENDPOINTS.PATIENT_CHATS(patientId)
-    );
-    return response.data.map(mapChatResponse);
+    const { data, error } = await openapiClient.GET('/api/patients/{patient_id}/chats', {
+        params: { path: { patient_id: patientId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from server');
+    return data.map((chat: ApiChatResponse) => toUiChat(chat));
 }
 
 /**
  * Get single chat by ID
  */
 export async function getChat(chatId: string): Promise<Chat> {
-    const response = await apiClient.get<ChatAPIResponse>(
-        API_ENDPOINTS.CHAT_DETAIL(chatId)
-    );
-    return mapChatResponse(response.data);
+    const { data, error } = await openapiClient.GET('/api/chats/{chat_id}', {
+        params: { path: { chat_id: chatId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Chat not found');
+    return toUiChat(data);
 }
 
 /**
@@ -63,13 +41,20 @@ export async function getChat(chatId: string): Promise<Chat> {
  */
 export async function createChat(
     patientId: string,
-    data: { name?: string }
+    payload: { name?: string }
 ): Promise<Chat> {
-    const response = await apiClient.post<ChatAPIResponse>(
-        API_ENDPOINTS.PATIENT_CHATS(patientId),
-        data
-    );
-    return mapChatResponse(response.data);
+    const requestBody: ApiChatCreate = {
+        name: payload.name ?? null,
+    };
+    
+    const { data, error } = await openapiClient.POST('/api/patients/{patient_id}/chats', {
+        params: { path: { patient_id: patientId } },
+        body: requestBody,
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Failed to create chat');
+    return toUiChat(data);
 }
 
 /**
@@ -77,19 +62,29 @@ export async function createChat(
  */
 export async function updateChat(
     chatId: string,
-    data: { name: string }
+    payload: { name: string }
 ): Promise<Chat> {
-    const response = await apiClient.patch<ChatAPIResponse>(
-        API_ENDPOINTS.CHAT_DETAIL(chatId),
-        data
-    );
-    return mapChatResponse(response.data);
+    const requestBody: ApiChatUpdate = {
+        name: payload.name,
+    };
+    
+    const { data, error } = await openapiClient.PATCH('/api/chats/{chat_id}', {
+        params: { path: { chat_id: chatId } },
+        body: requestBody,
+        headers: authHeaders(),
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Failed to update chat');
+    return toUiChat(data);
 }
 
 /**
  * Delete chat
  */
 export async function deleteChat(chatId: string): Promise<void> {
-    await apiClient.delete(API_ENDPOINTS.CHAT_DETAIL(chatId));
+    const { error } = await openapiClient.DELETE('/api/chats/{chat_id}', {
+        params: { path: { chat_id: chatId } },
+        headers: authHeaders(),
+    });
+    if (error) throw error;
 }
-
