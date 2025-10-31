@@ -2,10 +2,11 @@
  * Scan (Medical Image) Types
  * 
  * Scans can be attached to specific messages or belong to the chat generally.
- * Supports DICOM, JPG, and PNG formats.
+ * Supported formats match backend ALLOWED_EXTENSIONS in config.py:
+ * jpg, jpeg, png, gif, dcm, dicom
  */
 
-export type ScanFileType = 'dicom' | 'jpg' | 'png';
+export type ScanFileType = 'jpg' | 'jpeg' | 'png' | 'gif' | 'dcm' | 'dicom';
 
 export interface Scan {
     id: string;

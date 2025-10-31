@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, ChevronDown, ChevronRight, Clock, Image as ImageIcon, Code, FileText } from 'lucide-react';
-import { getMessageToolHistory } from '@/lib/api/toolHistory';
+import { getToolExecutionsByMessage } from '@/lib/api/toolHistory';
 import { getToolExecutionDetail } from '@/lib/api/tools';
 import { Spinner } from '../ui/Spinner';
 import { Badge } from '../ui/Badge';
@@ -83,7 +83,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
             setLoading(true);
             setError(null);
             try {
-                const history = await getMessageToolHistory(messageId);
+                const history = await getToolExecutionsByMessage(messageId);
                 if (cancelled) return; // Don't update state if component unmounted
 
                 setExecutions(history);

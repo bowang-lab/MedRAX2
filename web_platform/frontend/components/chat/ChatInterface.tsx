@@ -37,10 +37,8 @@ export function ChatInterface() {
         messages,
         setMessages,
         addMessage,
-        openToolPanel,
         isSendingMessage,
         setSendingMessage,
-        chats,
         updateChat: updateChatInStore,
         removeChat,
     } = useAppStore();
@@ -185,6 +183,7 @@ export function ChatInterface() {
         const abortFn = streamChatResponse(
             requestChatId,
             content,
+            scanIds || [],
             (event) => {
                 // Ignore events if chat has switched
                 if (currentStreamChatIdRef.current !== requestChatId) {
@@ -195,7 +194,7 @@ export function ChatInterface() {
                 if (event.type === 'message_start') {
                     console.log('Message started:', event.data.messageId);
                     // Track the user message id for this stream
-                    lastStreamUserMessageIdRef.current = event.data.messageId;
+                    lastStreamUserMessageIdRef.current = event.data.messageId || null;
                 } else if (event.type === 'content_chunk') {
                     // Update assistant message content in real-time
                     assistantContent += event.data.content || '';
@@ -210,7 +209,12 @@ export function ChatInterface() {
                 } else if (event.type === 'tool_start') {
                     console.log('Tool started:', event.data);
                     // Auto-open the tool outputs sidebar the first time a tool runs for this stream
-                    const targetMessageId = (event.data && (event.data.messageId || event.data.message_id)) || lastStreamUserMessageIdRef.current;
+                    // SSE events may have messageId or message_id (backend uses snake_case)
+                    // The [key: string]: unknown in SSEEvent.data allows for both formats
+                    const msgIdFromEvent = event.data.messageId || event.data.message_id;
+                    const targetMessageId: string | null = 
+                        (typeof msgIdFromEvent === 'string' ? msgIdFromEvent : null) || 
+                        lastStreamUserMessageIdRef.current;
                     if (!openedToolSidebarForThisStreamRef.current && targetMessageId) {
                         setToolOutputsMessageId(targetMessageId);
                         setIsToolOutputsSidebarOpen(true);
@@ -250,8 +254,7 @@ export function ChatInterface() {
 
                 // Clean up temp messages on error
                 cleanupTempMessages();
-            },
-            scanIds
+            }
         );
 
         // Store the abort function

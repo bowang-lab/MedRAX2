@@ -136,9 +136,9 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                     hasFailed ? 'cursor-not-allowed' : 'cursor-pointer hover:border-blue-500'
                                                 )}
                                                 onClick={() => {
-                                                    if (!hasFailed && scanUrl) {
+                                                    if (!hasFailed && scanUrl && message.attachedScans) {
                                                         openImageModal(
-                                                            message.attachedScans!.map(s => getImageUrl(s.displayPath)).filter((url): url is string => url !== null),
+                                                            message.attachedScans.map(s => getImageUrl(s.displayPath)).filter((url): url is string => url !== null),
                                                             idx
                                                         );
                                                     }

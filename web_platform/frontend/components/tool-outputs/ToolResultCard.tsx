@@ -132,8 +132,12 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const renderReport = () => {
         if (!isReportTool || !data) return null;
 
-        const findings = data.findings || data.Findings;
-        const impression = data.impression || data.Impression;
+        const findingsRaw = data.findings || data.Findings;
+        const impressionRaw = data.impression || data.Impression;
+
+        // Convert to strings safely
+        const findings = typeof findingsRaw === 'string' ? findingsRaw : null;
+        const impression = typeof impressionRaw === 'string' ? impressionRaw : null;
 
         if (!findings && !impression) return null;
 

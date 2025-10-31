@@ -48,7 +48,7 @@ export function ProfileSettings() {
 
         setIsUpdatingName(true);
         try {
-            const updatedDoctor = await updateDoctor(doctor.id, { name });
+            const updatedDoctor = await updateDoctor({ name });
             setAuth(updatedDoctor, localStorage.getItem('medrax_auth_token') || '');
             setNameSuccess(true);
             setTimeout(() => setNameSuccess(false), 3000);
@@ -86,7 +86,7 @@ export function ProfileSettings() {
 
         setIsUpdatingPassword(true);
         try {
-            await updatePassword(doctor.id, { currentPassword, newPassword });
+            await updatePassword({ currentPassword, newPassword });
             setPasswordSuccess(true);
             setCurrentPassword('');
             setNewPassword('');
