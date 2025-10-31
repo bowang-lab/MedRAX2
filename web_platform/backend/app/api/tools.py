@@ -11,6 +11,7 @@ from typing import List
 from ..database import get_db
 from ..models import Doctor, Patient, Chat, Message, ToolExecution, ToolExecutionLog, ToolExecutionResult
 from ..schemas.tool import (
+    ToolInfo,
     ToolExecutionDetailResponse,
     ToolExecutionResponse,
     ToolExecutionLogResponse,
@@ -59,14 +60,16 @@ def enrich_tool_execution(execution: ToolExecution) -> dict:
     }
 
 
-@router.get("")
-def list_tools(current_doctor: Doctor = Depends(get_current_doctor)):
+@router.get("", response_model=List[ToolInfo])
+def list_tools(current_doctor: Doctor = Depends(get_current_doctor)) -> List[ToolInfo]:
     """List all available tools with their current status."""
     logger.debug(f"Doctor {current_doctor.id} requesting tool list")
-    tools = tool_manager.get_all_tools()
-    available_count = sum(1 for t in tools if t.get('status') == 'available')
-    logger.info(f"Returning {len(tools)} tools ({available_count} available)")
-    return tools
+    tools_data = tool_manager.get_all_tools()
+    available_count = sum(1 for t in tools_data if t.get('status') == 'available')
+    logger.info(f"Returning {len(tools_data)} tools ({available_count} available)")
+    
+    # Convert to Pydantic models for proper validation
+    return [ToolInfo(**tool_dict) for tool_dict in tools_data]
 
 
 @router.post("/{tool_id}/load")

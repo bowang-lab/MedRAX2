@@ -58,12 +58,16 @@ class ToolExecutionDetailResponse(BaseModel):
 
 
 class ToolInfo(BaseModel):
-    """Schema for tool information."""
+    """Schema for tool information from tool_manager.get_all_tools()."""
     id: str
     name: str
     description: str
-    status: str  # 'loaded', 'unloaded'
+    category: str
+    status: str  # 'available', 'unavailable', 'loaded', 'unloaded', 'error', 'loading'
     dependencies: List[str] = []
+    requires_gpu: bool
+    error_message: Optional[str] = None
+    loaded_at: Optional[str] = None  # ISO format datetime string
 
 
 class ToolLoadRequest(BaseModel):

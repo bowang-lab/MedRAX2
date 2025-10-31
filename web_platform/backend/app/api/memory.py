@@ -12,18 +12,24 @@ from ..dependencies import get_current_doctor
 from ..models.doctor import Doctor
 from ..models.patient import Patient
 from ..models.chat import Chat
+from ..schemas.memory import (
+    MemoryStatsResponse,
+    ClearMemoryResponse,
+    SystemCleanupStatsResponse,
+    SystemCleanupStatsData,
+)
 from ..utils.logging_config import logger
 
 
 router = APIRouter()
 
 
-@router.post("/chats/{chat_id}/memory/clear")
+@router.post("/chats/{chat_id}/memory/clear", response_model=ClearMemoryResponse)
 async def clear_chat_memory(
     chat_id: str,
     current_doctor: Doctor = Depends(get_current_doctor),
     db: Session = Depends(get_db)
-):
+) -> ClearMemoryResponse:
     """
     Clear conversation memory for a chat.
     
@@ -34,7 +40,7 @@ async def clear_chat_memory(
         chat_id: Chat ID to clear memory for
         
     Returns:
-        Success message
+        Success message with operation status
     """
     # Verify chat belongs to doctor
     chat = db.query(Chat).join(Patient).filter(
@@ -54,19 +60,19 @@ async def clear_chat_memory(
     
     logger.info(f"chat_memory_cleared chat_id={chat_id[:8]} success={success}")
     
-    return {
-        "success": success,
-        "message": f"Memory cleared for chat {chat_id}" if success else "Failed to clear memory",
-        "chat_id": chat_id
-    }
+    return ClearMemoryResponse(
+        success=success,
+        message=f"Memory cleared for chat {chat_id}" if success else "Failed to clear memory",
+        chat_id=chat_id
+    )
 
 
-@router.get("/chats/{chat_id}/memory/stats")
+@router.get("/chats/{chat_id}/memory/stats", response_model=MemoryStatsResponse)
 async def get_chat_memory_stats(
     chat_id: str,
     current_doctor: Doctor = Depends(get_current_doctor),
     db: Session = Depends(get_db)
-):
+) -> MemoryStatsResponse:
     """
     Get memory statistics for a chat.
     
@@ -77,7 +83,7 @@ async def get_chat_memory_stats(
         chat_id: Chat ID
         
     Returns:
-        Memory statistics
+        Memory statistics including message, scan, and tool execution counts
     """
     # Verify chat belongs to doctor
     chat = db.query(Chat).join(Patient).filter(
@@ -107,19 +113,19 @@ async def get_chat_memory_stats(
     
     logger.info(f"chat_memory_stats_fetched chat_id={chat_id[:8]} messages={message_count} scans={scan_count} executions={tool_execution_count}")
     
-    return {
-        "chat_id": chat_id,
-        "message_count": message_count,
-        "scan_count": scan_count,
-        "tool_execution_count": tool_execution_count,
-        "has_context": message_count > 0
-    }
+    return MemoryStatsResponse(
+        chat_id=chat_id,
+        message_count=message_count,
+        scan_count=scan_count,
+        tool_execution_count=tool_execution_count,
+        has_context=message_count > 0
+    )
 
 
-@router.post("/system/memory/cleanup")
+@router.post("/system/memory/cleanup", response_model=SystemCleanupStatsResponse)
 async def cleanup_system_memory(
     current_doctor: Doctor = Depends(get_current_doctor)
-):
+) -> SystemCleanupStatsResponse:
     """
     Trigger system-wide memory cleanup.
     
@@ -127,7 +133,7 @@ async def cleanup_system_memory(
     and performs garbage collection.
     
     Returns:
-        Cleanup statistics
+        Cleanup statistics including memory freed and checkpoints cleared
     """
     import gc
     import os
@@ -172,23 +178,23 @@ async def cleanup_system_memory(
         
         logger.info(f"system_memory_cleanup_completed checkpoints_cleared={checkpoints_cleared} memory_freed_mb={memory_freed:.2f}")
         
-        return {
-            "success": True,
-            "message": f"System memory cleanup completed. Cleared {checkpoints_cleared} checkpoints.",
-            "stats": {
-                "checkpoints_cleared": checkpoints_cleared,
-                "memory_freed_mb": round(memory_freed, 2)
-            }
-        }
+        return SystemCleanupStatsResponse(
+            success=True,
+            message=f"System memory cleanup completed. Cleared {checkpoints_cleared} checkpoints.",
+            stats=SystemCleanupStatsData(
+                checkpoints_cleared=checkpoints_cleared,
+                memory_freed_mb=round(memory_freed, 2)
+            )
+        )
         
     except Exception as e:
         logger.error(f"system_memory_cleanup_error error={str(e)}")
-        return {
-            "success": False,
-            "message": f"Cleanup completed with errors: {str(e)}",
-            "stats": {
-                "checkpoints_cleared": checkpoints_cleared,
-                "memory_freed_mb": 0
-            }
-        }
+        return SystemCleanupStatsResponse(
+            success=False,
+            message=f"Cleanup completed with errors: {str(e)}",
+            stats=SystemCleanupStatsData(
+                checkpoints_cleared=checkpoints_cleared,
+                memory_freed_mb=0
+            )
+        )
 
