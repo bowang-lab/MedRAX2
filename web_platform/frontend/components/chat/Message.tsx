@@ -48,14 +48,14 @@ function extractFinalImages(message: MessageWithDetails): string[] {
         if (execution.imagePaths && Array.isArray(execution.imagePaths)) {
             execution.imagePaths.forEach((path) => {
                 if (!path || typeof path !== 'string') return;
-                
+
                 const lowerPath = path.toLowerCase();
-                
+
                 // Exclude input images (typically in uploads/ or have "input" in name)
                 if (lowerPath.includes('uploads/') || lowerPath.includes('input')) {
                     return;
                 }
-                
+
                 // Include generated images (temp/, segmentation, visualization, etc.)
                 // These are the final outputs we want to show
                 if (
