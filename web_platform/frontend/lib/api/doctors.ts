@@ -32,9 +32,12 @@ export async function updateDoctor(data: { name: string }): Promise<Doctor> {
  * TODO: Backend does not currently have a password update endpoint.
  * Need to add PATCH /api/auth/me/password endpoint to backend API.
  */
-export async function updatePassword(_data: { 
+export async function updatePassword(data: { 
     currentPassword: string; 
     newPassword: string 
 }): Promise<void> {
+    // TODO: Backend does not currently have a password update endpoint
+    // When implemented, use: await apiClient.PATCH('/api/auth/me/password', { body: { ... } })
+    console.warn('Password update attempted but not yet implemented:', { hasData: !!data });
     throw new Error('Password update not yet implemented in backend API');
 }

@@ -222,136 +222,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
         });
     };
 
-    const renderJsonValue = (value: unknown, key?: string, depth: number = 0): React.ReactNode => {
-        // Prevent infinite recursion on circular references or too deep nesting
-        if (depth > 10) {
-            return <span className="text-orange-400">[Too deeply nested]</span>;
-        }
-        if (value === null || value === undefined) {
-            return <span className="text-zinc-600">null</span>;
-        }
-
-        if (typeof value === 'boolean') {
-            return <span className="text-blue-400">{value.toString()}</span>;
-        }
-
-        if (typeof value === 'number') {
-            // Handle special number values
-            if (Number.isNaN(value)) {
-                return <span className="text-orange-400">NaN</span>;
-            }
-            if (value === Infinity) {
-                return <span className="text-orange-400">Infinity</span>;
-            }
-            if (value === -Infinity) {
-                return <span className="text-orange-400">-Infinity</span>;
-            }
-            // Format probabilities nicely
-            if (key && (key.toLowerCase().includes('prob') || key.toLowerCase().includes('score'))) {
-                return <span className="text-green-400">{(value * 100).toFixed(2)}%</span>;
-            }
-            return <span className="text-green-400">{value}</span>;
-        }
-
-        if (typeof value === 'string') {
-            // Handle empty strings
-            if (value === '') {
-                return <span className="text-zinc-600">"" (empty)</span>;
-            }
-            // Check if it's an image path
-            if (value.includes('uploads/') || value.endsWith('.jpg') || value.endsWith('.png')) {
-                const imageUrl = getImageUrl(value);
-                if (!imageUrl) {
-                    return <span className="text-red-400 text-xs">⚠️ Invalid image path</span>;
-                }
-                return (
-                    <div className="mt-2 text-xs">
-                        <img
-                            src={imageUrl}
-                            alt="Result"
-                            className="max-w-full h-auto rounded border border-zinc-700"
-                            onError={(e) => {
-                                // Replace with error text using React-friendly approach
-                                const img = e.currentTarget;
-                                img.style.display = 'none';
-                                const errorSpan = document.createElement('span');
-                                errorSpan.className = 'text-red-400 text-xs';
-                                errorSpan.textContent = `⚠️ Image not found: ${value}`;
-                                img.parentElement?.appendChild(errorSpan);
-                            }}
-                        />
-                    </div>
-                );
-            }
-            return <span className="text-yellow-400">"{value}"</span>;
-        }
-
-        if (Array.isArray(value)) {
-            if (value.length === 0) {
-                return <span className="text-zinc-600">[]</span>;
-            }
-            // Limit array rendering to prevent performance issues
-            const maxItems = 100;
-            const displayItems = value.slice(0, maxItems);
-            const hasMore = value.length > maxItems;
-
-            return (
-                <div className="ml-4 mt-1 space-y-1">
-                    {displayItems.map((item, idx) => (
-                        <div key={idx} className="text-sm">
-                            <span className="text-zinc-600">[{idx}]:</span> {renderJsonValue(item, undefined, depth + 1)}
-                        </div>
-                    ))}
-                    {hasMore && (
-                        <div className="text-xs text-orange-400 italic">
-                            ... and {value.length - maxItems} more items
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // typeof null === 'object' in JavaScript, so we need explicit null check
-        if (typeof value === 'object' && value !== null) {
-            const entries = Object.entries(value);
-            if (entries.length === 0) {
-                return <span className="text-zinc-600">{'{}'}</span>;
-            }
-            // Limit object properties to prevent performance issues
-            const maxProps = 50;
-            const displayEntries = entries.slice(0, maxProps);
-            const hasMore = entries.length > maxProps;
-
-            return (
-                <div className="ml-4 mt-1 space-y-1">
-                    {displayEntries.map(([k, v]) => (
-                        <div key={k} className="text-sm">
-                            <span className="text-cyan-400">{k}:</span> {renderJsonValue(v, k, depth + 1)}
-                        </div>
-                    ))}
-                    {hasMore && (
-                        <div className="text-xs text-orange-400 italic">
-                            ... and {entries.length - maxProps} more properties
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // Handle unexpected types (function, symbol, bigint)
-        if (typeof value === 'function') {
-            return <span className="text-purple-400">[Function]</span>;
-        }
-        if (typeof value === 'symbol') {
-            return <span className="text-purple-400">[Symbol]</span>;
-        }
-        if (typeof value === 'bigint') {
-            return <span className="text-green-400">{value.toString()}n</span>;
-        }
-
-        // Fallback for any other type
-        return <span className="text-zinc-400">{String(value)}</span>;
-    };
+    // Note: renderJsonValue function removed as we now use ToolResultCard for all formatted outputs
 
     if (!isOpen) return null;
 
@@ -426,7 +297,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                 </div>
                                                 {execution.executionTimeMs != null && (
                                                     <span>
-                                                        {execution.executionTimeMs < 1000 
+                                                        {execution.executionTimeMs < 1000
                                                             ? `${execution.executionTimeMs}ms`
                                                             : `${(execution.executionTimeMs / 1000).toFixed(2)}s`}
                                                     </span>
@@ -456,31 +327,31 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                         {execution.imagePaths.map((path, idx) => {
                                                             const imageUrl = getImageUrl(path);
                                                             return (
-                                                            <div key={idx} className="text-xs">
-                                                                <p className="text-zinc-500 mb-1">Image {idx + 1}:</p>
-                                                                {!imageUrl ? (
-                                                                    <div className="bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs">
-                                                                        ⚠️ Invalid image path
-                                                                    </div>
-                                                                ) : (
-                                                                    <img
-                                                                        src={imageUrl}
-                                                                        alt={`Input ${idx + 1}`}
-                                                                        className="w-full h-auto rounded border border-zinc-700"
-                                                                        onError={(e) => {
-                                                                            const img = e.currentTarget;
-                                                                            img.style.display = 'none';
-                                                                            const errorDiv = document.createElement('div');
-                                                                            errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
-                                                                            errorDiv.textContent = '⚠️ Failed to load image';
-                                                                            img.parentElement?.insertBefore(errorDiv, img);
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                                <p className="text-zinc-600 font-mono text-[10px] mt-1 truncate">
-                                                                    {path}
-                                                                </p>
-                                                            </div>
+                                                                <div key={idx} className="text-xs">
+                                                                    <p className="text-zinc-500 mb-1">Image {idx + 1}:</p>
+                                                                    {!imageUrl ? (
+                                                                        <div className="bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs">
+                                                                            ⚠️ Invalid image path
+                                                                        </div>
+                                                                    ) : (
+                                                                        <img
+                                                                            src={imageUrl}
+                                                                            alt={`Input ${idx + 1}`}
+                                                                            className="w-full h-auto rounded border border-zinc-700"
+                                                                            onError={(e) => {
+                                                                                const img = e.currentTarget;
+                                                                                img.style.display = 'none';
+                                                                                const errorDiv = document.createElement('div');
+                                                                                errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
+                                                                                errorDiv.textContent = '⚠️ Failed to load image';
+                                                                                img.parentElement?.insertBefore(errorDiv, img);
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    <p className="text-zinc-600 font-mono text-[10px] mt-1 truncate">
+                                                                        {path}
+                                                                    </p>
+                                                                </div>
                                                             );
                                                         })}
                                                     </div>
@@ -491,7 +362,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                             {detail?.result && (
                                                 <div>
                                                     <h4 className="text-xs font-medium text-zinc-400 uppercase mb-3">Output</h4>
-                                                    <ToolResultCard 
+                                                    <ToolResultCard
                                                         toolName={execution.toolName}
                                                         result={detail.result}
                                                     />

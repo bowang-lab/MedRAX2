@@ -198,11 +198,12 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         // Handle error state
         if (data.error || data.error_details) {
             const errorMsg = data.error || data.error_details;
+            const queryText = typeof data.query === 'string' ? data.query : '';
             return (
                 <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
                     <h4 className="text-sm font-medium text-red-400 mb-2">❌ Search Failed</h4>
                     <p className="text-sm text-red-300">{typeof errorMsg === 'string' ? errorMsg : 'An error occurred during search'}</p>
-                    {data.query && <p className="text-xs text-red-400 mt-2">Query: {data.query}</p>}
+                    {queryText && <p className="text-xs text-red-400 mt-2">Query: {queryText}</p>}
                 </div>
             );
         }
@@ -210,21 +211,23 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         // Extract results array
         const results = data.results || [];
         if (!Array.isArray(results) || results.length === 0) {
+            const queryText = typeof data.query === 'string' ? data.query : '';
             return (
                 <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3">
                     <p className="text-sm text-zinc-400">No search results found.</p>
-                    {data.query && <p className="text-xs text-zinc-500 mt-2">Query: {data.query}</p>}
+                    {queryText && <p className="text-xs text-zinc-500 mt-2">Query: {queryText}</p>}
                 </div>
             );
         }
 
+        const messageText = typeof data.message === 'string' ? data.message : '';
         return (
             <div className="space-y-3">
                 <h4 className="text-sm font-medium text-zinc-300">
-                    🔍 Search Results {data.message && <span className="text-zinc-500 font-normal text-xs">({data.message})</span>}
+                    🔍 Search Results {messageText && <span className="text-zinc-500 font-normal text-xs">({messageText})</span>}
                 </h4>
                 <div className="space-y-2">
-                    {results.map((result: any, idx: number) => (
+                    {results.map((result: { title?: string; link?: string; url?: string; snippet?: string; source?: string }, idx: number) => (
                         <div key={idx} className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-blue-600 transition-colors">
                             <a 
                                 href={result.link || result.url || '#'} 
@@ -242,7 +245,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                                 )}
                                 {(result.link || result.url) && (
                                     <p className="text-xs text-zinc-600 truncate">
-                                        {result.source || new URL(result.link || result.url).hostname}
+                                        {result.source || (result.link || result.url ? new URL(result.link || result.url || '').hostname : '')}
                                     </p>
                                 )}
                             </a>

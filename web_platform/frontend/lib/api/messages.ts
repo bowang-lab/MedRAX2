@@ -5,7 +5,7 @@
  */
 
 import { openapiClient, authHeaders } from '../openapi/client';
-import { API_ENDPOINTS, API_SECRET_CONFIG, API_CONFIG } from '../config/api';
+import { API_ENDPOINTS, API_CONFIG } from '../config/api';
 import type { MessageWithDetails, SSEEvent } from '../types/message';
 import type { ApiMessageWithDetails } from '../types/api';
 import { toUiMessage } from '../openapi/transformers';
@@ -21,7 +21,7 @@ export async function getMessages(chatId: string): Promise<MessageWithDetails[]>
     });
     if (error) throw error;
     if (!data) throw new Error('No data returned from server');
-    
+
     return data.map((msg: ApiMessageWithDetails) => toUiMessage(msg));
 }
 
@@ -43,7 +43,7 @@ export function streamChatResponse(
     onComplete: () => void,
     onError: (error: Error) => void
 ): () => void {
-    let abortController = new AbortController();
+    const abortController = new AbortController();
     let hasReceivedData = false;
 
     // Use fetch with streaming to handle POST SSE properly
@@ -73,11 +73,10 @@ export function streamChatResponse(
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let currentEvent = '';
 
             while (true) {
                 const { done, value } = await reader.read();
-                
+
                 if (done) {
                     break;
                 }
@@ -95,7 +94,7 @@ export function streamChatResponse(
 
                     const lines = message.split('\n');
                     let eventType = '';
-                    let eventData: any = {};
+                    let eventData: Record<string, unknown> = {};
 
                     for (const line of lines) {
                         if (line.startsWith('event:')) {
@@ -136,7 +135,7 @@ export function streamChatResponse(
                 // Stream was aborted by user - this is normal
                 return;
             }
-            
+
             console.error('Stream error:', err);
             if (!hasReceivedData) {
                 onError(err instanceof Error ? err : new Error('Stream connection failed'));
