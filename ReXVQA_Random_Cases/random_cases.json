@@ -1,0 +1,3100 @@
+{
+    "case_1": {
+        "image_path_list": [
+            "./images/case_0/image_0.png",
+            "./images/case_0/image_1.png"
+        ],
+        "context": "Age: 060Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most likely finding related to pleural effusion on this chest X-ray?",
+        "options": [
+            "A. Large pleural effusion",
+            "B. Probable small pleural effusion",
+            "C. No pleural effusion",
+            "D. Bilateral pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_2": {
+        "image_path_list": [
+            "./images/case_1/image_0.png"
+        ],
+        "context": "Age: 042Y Gender: M",
+        "category": "Diaphragm",
+        "question": "What specific finding is observed in the diaphragm on this chest X-ray?",
+        "options": [
+            "A. Right hemidiaphragm elevation",
+            "B. Left hemidiaphragm elevation",
+            "C. Diaphragmatic hernia",
+            "D. Diaphragmatic rupture"
+        ],
+        "correct_answer": "A"
+    },
+    "case_3": {
+        "image_path_list": [
+            "./images/case_2/image_0.png",
+            "./images/case_2/image_1.png"
+        ],
+        "context": "Age: 011Y Gender: M",
+        "category": "Pulmonary Vascularity",
+        "question": "Which of the following findings is noted regarding the pulmonary vascularity on this chest X-ray?",
+        "options": [
+            "A. Prominence of central bronchovascular markings",
+            "B. Softening of central bronchovascular markings",
+            "C. Thickening of central bronchovascular markings",
+            "D. Absence of central bronchovascular markings"
+        ],
+        "correct_answer": "A"
+    },
+    "case_4": {
+        "image_path_list": [
+            "./images/case_3/image_0.png",
+            "./images/case_3/image_1.png"
+        ],
+        "context": "Age: 017Y Gender: M",
+        "category": "Mediastinum",
+        "question": "What specific finding is observed in the mediastinum on this chest X-ray?",
+        "options": [
+            "A. Mediastinal mass",
+            "B. Pneumomediastinum",
+            "C. Enlarged heart",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_5": {
+        "image_path_list": [
+            "./images/case_4/image_0.png"
+        ],
+        "context": "Age: 063Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is observed in the lower lung zones, particularly the lingula, on this chest X-ray?",
+        "options": [
+            "A. Decreased lung markings",
+            "B. Accentuated lung markings",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_6": {
+        "image_path_list": [
+            "./images/case_5/image_0.png"
+        ],
+        "context": "Age: 018Y Gender: F",
+        "category": "Exam/Patient Information",
+        "question": "What is the age group of the patient based on the provided information?",
+        "options": [
+            "A. Child",
+            "B. Adolescent",
+            "C. Middle-aged",
+            "D. Elderly"
+        ],
+        "correct_answer": "B"
+    },
+    "case_7": {
+        "image_path_list": [
+            "./images/case_6/image_0.png",
+            "./images/case_6/image_1.png"
+        ],
+        "context": "Age: 074Y Gender: F",
+        "category": "Diaphragm",
+        "question": "Which of the following best describes the appearance of the diaphragm on this chest X-ray?",
+        "options": [
+            "A. Flattened diaphragm",
+            "B. Lobulated right diaphragm",
+            "C. Elevated left diaphragm",
+            "D. Normal diaphragm contour"
+        ],
+        "correct_answer": "B"
+    },
+    "case_8": {
+        "image_path_list": [
+            "./images/case_7/image_0.png",
+            "./images/case_7/image_1.png"
+        ],
+        "context": "Age: 088Y Gender: M",
+        "category": "Heart",
+        "question": "What is the observed condition of the heart on this chest X-ray?",
+        "options": [
+            "A. Normal heart size",
+            "B. Mildly enlarged heart",
+            "C. Severely enlarged heart",
+            "D. Heart with pericardial effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_9": {
+        "image_path_list": [
+            "./images/case_8/image_0.png"
+        ],
+        "context": "Age: 047Y Gender: F",
+        "category": "Quality of Exams",
+        "question": "What external artifact is visible on the chest X-ray image?",
+        "options": [
+            "A. Endotracheal tube",
+            "B. Telemetry leads",
+            "C. Central venous catheter",
+            "D. Nasogastric tube"
+        ],
+        "correct_answer": "B"
+    },
+    "case_10": {
+        "image_path_list": [
+            "./images/case_9/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: F",
+        "category": "Diaphragm",
+        "question": "What specific finding is observed in the diaphragm region on this chest X-ray?",
+        "options": [
+            "A. Diaphragmatic rupture",
+            "B. Large hiatal hernia",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_11": {
+        "image_path_list": [
+            "./images/case_10/image_0.png",
+            "./images/case_10/image_1.png"
+        ],
+        "context": "Age: 055Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the interstitial findings on this chest X-ray?",
+        "options": [
+            "A. Diffuse alveolar opacities",
+            "B. Faint interstitial opacities",
+            "C. Large nodular opacities",
+            "D. No interstitial opacities"
+        ],
+        "correct_answer": "B"
+    },
+    "case_12": {
+        "image_path_list": [
+            "./images/case_11/image_0.png"
+        ],
+        "context": "Age: 057Y Gender: M",
+        "category": "Quality of Exams",
+        "question": "What is the quality of lung volumes observed on this chest X-ray?",
+        "options": [
+            "A. Normal lung volumes",
+            "B. High lung volumes",
+            "C. Low lung volumes",
+            "D. Overinflated lung volumes"
+        ],
+        "correct_answer": "C"
+    },
+    "case_13": {
+        "image_path_list": [
+            "./images/case_12/image_0.png"
+        ],
+        "context": "Age: 074Y Gender: M",
+        "category": "Quality of Exams",
+        "question": "What specific positioning is noted on this chest X-ray image?",
+        "options": [
+            "A. Supine positioning",
+            "B. Lordotic positioning",
+            "C. Prone positioning",
+            "D. Lateral decubitus positioning"
+        ],
+        "correct_answer": "B"
+    },
+    "case_14": {
+        "image_path_list": [
+            "./images/case_13/image_0.png"
+        ],
+        "context": "Age: 064Y Gender: M",
+        "category": "Lung and Pleural Lucency",
+        "question": "What specific finding is observed on the right side of the chest X-ray?",
+        "options": [
+            "A. Right-sided pleural effusion",
+            "B. Right-sided hydropneumothorax",
+            "C. Right-sided pulmonary nodule",
+            "D. Right-sided pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_15": {
+        "image_path_list": [
+            "./images/case_14/image_0.png",
+            "./images/case_14/image_1.png"
+        ],
+        "context": "Age: 064Y Gender: O",
+        "category": "Pulmonary Vascularity",
+        "question": "What finding related to pulmonary vasculature is observed on this chest X-ray?",
+        "options": [
+            "A. Normal pulmonary vasculature",
+            "B. Prominent pulmonary vasculature",
+            "C. Pulmonary embolism",
+            "D. Pulmonary oligemia"
+        ],
+        "correct_answer": "B"
+    },
+    "case_16": {
+        "image_path_list": [
+            "./images/case_15/image_0.png",
+            "./images/case_15/image_1.png"
+        ],
+        "context": "Age: 003Y Gender: M",
+        "category": "Lung and Pleural Lucency",
+        "question": "What is the most prominent finding related to lung volume on this chest X-ray?",
+        "options": [
+            "A. Pulmonary consolidation",
+            "B. Pulmonary hyperinflation",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_17": {
+        "image_path_list": [
+            "./images/case_16/image_0.png",
+            "./images/case_16/image_1.png",
+            "./images/case_16/image_2.png"
+        ],
+        "context": "Age: 053Y Gender: M",
+        "category": "Diaphragm",
+        "question": "What is the most notable finding regarding the diaphragm on this chest X-ray?",
+        "options": [
+            "A. Flattening of both hemidiaphragms",
+            "B. Elevation of both hemidiaphragms",
+            "C. Elevation of the right hemidiaphragm only",
+            "D. Elevation of the left hemidiaphragm only"
+        ],
+        "correct_answer": "B"
+    },
+    "case_18": {
+        "image_path_list": [
+            "./images/case_17/image_0.png"
+        ],
+        "context": "Age: 020Y Gender: F",
+        "category": "Quality of Exams",
+        "question": "What is the quality of the inspiratory effort observed in this chest X-ray?",
+        "options": [
+            "A. Poor inspiratory effort",
+            "B. Moderate inspiratory effort",
+            "C. Excellent inspiratory effort",
+            "D. No inspiratory effort"
+        ],
+        "correct_answer": "C"
+    },
+    "case_19": {
+        "image_path_list": [
+            "./images/case_18/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: F",
+        "category": "Aorta",
+        "question": "Which of the following findings is observed in the aorta on this chest X-ray?",
+        "options": [
+            "A. Aortic dissection",
+            "B. Aortic aneurysm",
+            "C. Aortic calcification",
+            "D. Normal aorta"
+        ],
+        "correct_answer": "C"
+    },
+    "case_20": {
+        "image_path_list": [
+            "./images/case_19/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: O",
+        "category": "Lung and Pleural Opacity",
+        "question": "What specific finding is observed in the interstitial markings on this chest X-ray?",
+        "options": [
+            "A. Thickening of interstitial markings",
+            "B. Normal interstitial markings",
+            "C. Reticulonodular pattern",
+            "D. Ground-glass opacity"
+        ],
+        "correct_answer": "A"
+    },
+    "case_21": {
+        "image_path_list": [
+            "./images/case_20/image_0.png",
+            "./images/case_20/image_1.png"
+        ],
+        "context": "Age: 003Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most likely finding related to the pleural space on this chest X-ray?",
+        "options": [
+            "A. Large pleural effusions",
+            "B. Small pleural effusions may be present",
+            "C. No pleural effusions",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_22": {
+        "image_path_list": [
+            "./images/case_21/image_0.png"
+        ],
+        "context": "Age: 080Y Gender: F",
+        "category": "Heart",
+        "question": "What is the most appropriate finding regarding the heart size on this chest X-ray image?",
+        "options": [
+            "A. Cardiomegaly",
+            "B. Normal heart size",
+            "C. Cardiopericardial silhouette at upper limits of normal",
+            "D. Small heart size"
+        ],
+        "correct_answer": "C"
+    },
+    "case_23": {
+        "image_path_list": [
+            "./images/case_22/image_0.png",
+            "./images/case_22/image_1.png"
+        ],
+        "context": "Age: 039Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What specific finding is observed in the left lung on this chest X-ray?",
+        "options": [
+            "A. Large pleural effusion",
+            "B. Mild left basilar airspace opacity",
+            "C. Right upper lobe consolidation",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_24": {
+        "image_path_list": [
+            "./images/case_23/image_0.png"
+        ],
+        "context": "Age: 000D Gender: M",
+        "category": "Quality of Exams",
+        "question": "What is the most notable finding regarding lung volumes on this chest X-ray?",
+        "options": [
+            "A. Normal lung volumes",
+            "B. Low lung volumes",
+            "C. Hyperinflated lungs",
+            "D. Collapsed lung"
+        ],
+        "correct_answer": "B"
+    },
+    "case_25": {
+        "image_path_list": [
+            "./images/case_24/image_0.png"
+        ],
+        "context": "Age: 077Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What type of lung process is observed on this chest X-ray?",
+        "options": [
+            "A. Focal consolidation",
+            "B. Diffuse bilateral mixed interstitial and airspace process",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_26": {
+        "image_path_list": [
+            "./images/case_25/image_0.png",
+            "./images/case_25/image_1.png"
+        ],
+        "context": "Age: 005M Gender: M",
+        "category": "Lung Volume",
+        "question": "What is the most appropriate finding related to lung volume on this chest X-ray?",
+        "options": [
+            "A. Normal lung volumes",
+            "B. Pulmonary hyperinflation",
+            "C. Pulmonary volume loss",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_27": {
+        "image_path_list": [
+            "./images/case_26/image_0.png"
+        ],
+        "context": "Age: 081Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What lung finding is observed on this chest X-ray?",
+        "options": [
+            "A. Pulmonary edema",
+            "B. Large pleural effusion",
+            "C. Retrocardiac atelectasis",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "C"
+    },
+    "case_28": {
+        "image_path_list": [
+            "./images/case_27/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: F",
+        "category": "Heart",
+        "question": "What is the most notable finding related to the cardiac silhouette on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly",
+            "B. Pericardial effusion",
+            "C. Prominence of the cardiac silhouette",
+            "D. Pneumopericardium"
+        ],
+        "correct_answer": "C"
+    },
+    "case_29": {
+        "image_path_list": [
+            "./images/case_28/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: F",
+        "category": "Exam/Patient Information",
+        "question": "What is the age group of the patient based on the provided information?",
+        "options": [
+            "A. Children",
+            "B. Youth",
+            "C. Middle-aged",
+            "D. Elderly"
+        ],
+        "correct_answer": "D"
+    },
+    "case_30": {
+        "image_path_list": [
+            "./images/case_29/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: O",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube as seen on the chest X-ray?",
+        "options": [
+            "A. Malpositioned in the right main bronchus",
+            "B. Malpositioned in the esophagus",
+            "C. In good anatomic position",
+            "D. Dislodged from the trachea"
+        ],
+        "correct_answer": "C"
+    },
+    "case_31": {
+        "image_path_list": [
+            "./images/case_30/image_0.png",
+            "./images/case_30/image_1.png"
+        ],
+        "context": "Age: 080Y Gender: M",
+        "category": "Lung Volume",
+        "question": "What is the most prominent finding related to lung volume on this chest X-ray?",
+        "options": [
+            "A. Pulmonary hyperinflation",
+            "B. Pleural effusion",
+            "C. Focal consolidation",
+            "D. Pulmonary edema"
+        ],
+        "correct_answer": "A"
+    },
+    "case_32": {
+        "image_path_list": [
+            "./images/case_31/image_0.png",
+            "./images/case_31/image_1.png"
+        ],
+        "context": "Age: 051D Gender: M",
+        "category": "Quality of Exams",
+        "question": "What is the most notable finding regarding the quality of the chest X-ray?",
+        "options": [
+            "A. Adequate inspiration",
+            "B. Shallow inspiration",
+            "C. Overexposure",
+            "D. Underexposure"
+        ],
+        "correct_answer": "B"
+    },
+    "case_33": {
+        "image_path_list": [
+            "./images/case_32/image_0.png",
+            "./images/case_32/image_1.png"
+        ],
+        "context": "Age: 087Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What pleural finding is visible on the chest X-ray?",
+        "options": [
+            "A. Large unilateral pleural effusion",
+            "B. Small to moderate bilateral pleural effusions",
+            "C. No pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_34": {
+        "image_path_list": [
+            "./images/case_33/image_0.png"
+        ],
+        "context": "Age: 057Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What specific finding related to medical devices is visible on this chest X-ray?",
+        "options": [
+            "A. Right IJ line with tip in the right atrium",
+            "B. Left IJ line with tip over the superior vena cava",
+            "C. Tracheal tube malpositioned",
+            "D. No central line present"
+        ],
+        "correct_answer": "B"
+    },
+    "case_35": {
+        "image_path_list": [
+            "./images/case_34/image_0.png",
+            "./images/case_34/image_1.png"
+        ],
+        "context": "Age: 057Y Gender: F",
+        "category": "Diaphragm",
+        "question": "What specific finding is observed in the diaphragm on the lateral chest X-ray?",
+        "options": [
+            "A. Elevation of the hemidiaphragms",
+            "B. Flattening of the hemidiaphragms",
+            "C. Diaphragmatic hernia",
+            "D. Eventration of the diaphragm"
+        ],
+        "correct_answer": "B"
+    },
+    "case_36": {
+        "image_path_list": [
+            "./images/case_35/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the likely pleural finding on this chest X-ray?",
+        "options": [
+            "A. Large pleural effusions",
+            "B. Probable small pleural effusions",
+            "C. No pleural effusions",
+            "D. Tension pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_37": {
+        "image_path_list": [
+            "./images/case_36/image_0.png"
+        ],
+        "context": "Age: 058Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube as seen on the chest X-ray?",
+        "options": [
+            "A. The tube is malpositioned in the esophagus.",
+            "B. The tube is positioned with the distal tip approximately 1.5 cm above the carina.",
+            "C. The tube is positioned in the right main bronchus.",
+            "D. The tube is positioned in the left main bronchus."
+        ],
+        "correct_answer": "B"
+    },
+    "case_38": {
+        "image_path_list": [
+            "./images/case_37/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip on this chest X-ray?",
+        "options": [
+            "A. At the carina",
+            "B. Just below the clavicular heads",
+            "C. In the right main bronchus",
+            "D. In the esophagus"
+        ],
+        "correct_answer": "B"
+    },
+    "case_39": {
+        "image_path_list": [
+            "./images/case_38/image_0.png"
+        ],
+        "context": "Age: 038Y Gender: M",
+        "category": "Quality of Exams",
+        "question": "What external device is visible on the chest X-ray?",
+        "options": [
+            "A. Pacemaker",
+            "B. Monitor leads",
+            "C. External defibrillator pads",
+            "D. Oxygen mask"
+        ],
+        "correct_answer": "B"
+    },
+    "case_40": {
+        "image_path_list": [
+            "./images/case_39/image_0.png",
+            "./images/case_39/image_1.png"
+        ],
+        "context": "Age: 076Y Gender: F",
+        "category": "Heart",
+        "question": "What cardiac finding is observed on this chest X-ray?",
+        "options": [
+            "A. Normal heart size",
+            "B. Mild cardiomegaly",
+            "C. Severe cardiomegaly",
+            "D. Pericardial effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_41": {
+        "image_path_list": [
+            "./images/case_40/image_0.png",
+            "./images/case_40/image_1.png"
+        ],
+        "context": "Age: 067Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Acute cardiopulmonary abnormality",
+            "B. Pneumonia",
+            "C. No acute cardiopulmonary abnormality",
+            "D. Pulmonary edema"
+        ],
+        "correct_answer": "C"
+    },
+    "case_42": {
+        "image_path_list": [
+            "./images/case_41/image_0.png"
+        ],
+        "context": "Age: 018Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Tuberculosis",
+            "B. Pneumonia",
+            "C. Normal chest X-ray",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "C"
+    },
+    "case_43": {
+        "image_path_list": [
+            "./images/case_42/image_0.png",
+            "./images/case_42/image_1.png"
+        ],
+        "context": "Age: 051Y Gender: M",
+        "category": "Infectious Disease",
+        "question": "Based on the chest X-ray images, what is the most likely clinical diagnosis?",
+        "options": [
+            "A. Atypical infection",
+            "B. Pulmonary edema",
+            "C. Lung cancer",
+            "D. Pneumonia"
+        ],
+        "correct_answer": "A"
+    },
+    "case_44": {
+        "image_path_list": [
+            "./images/case_43/image_0.png",
+            "./images/case_43/image_1.png"
+        ],
+        "context": "Age: 045Y Gender: F",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. Active cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_45": {
+        "image_path_list": [
+            "./images/case_44/image_0.png",
+            "./images/case_44/image_1.png"
+        ],
+        "context": "Age: 054Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary embolism",
+            "C. Acute cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_46": {
+        "image_path_list": [
+            "./images/case_45/image_0.png",
+            "./images/case_45/image_1.png"
+        ],
+        "context": "Age: 009M Gender: M",
+        "category": "Infectious Disease",
+        "question": "Given the chest X-ray images and clinical history of low-grade fever, cough, and congestion, what is the most likely diagnosis?",
+        "options": [
+            "A. Chronic atelectasis",
+            "B. Recurrent lower lobe bronchopneumonia",
+            "C. Pulmonary edema",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_47": {
+        "image_path_list": [
+            "./images/case_46/image_0.png",
+            "./images/case_46/image_1.png"
+        ],
+        "context": "Age: 021Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. No active cardiopulmonary disease",
+            "D. Pulmonary edema"
+        ],
+        "correct_answer": "C"
+    },
+    "case_48": {
+        "image_path_list": [
+            "./images/case_47/image_0.png",
+            "./images/case_47/image_1.png"
+        ],
+        "context": "Age: 032Y Gender: F",
+        "category": "Infectious Disease",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis for the left lower lobe consolidation?",
+        "options": [
+            "A. Pulmonary edema",
+            "B. Pneumonia",
+            "C. Lung cancer",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "B"
+    },
+    "case_49": {
+        "image_path_list": [
+            "./images/case_48/image_0.png",
+            "./images/case_48/image_1.png"
+        ],
+        "context": "Age: 070Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. No active cardiopulmonary disease",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "C"
+    },
+    "case_50": {
+        "image_path_list": [
+            "./images/case_49/image_0.png"
+        ],
+        "context": "Age: 003Y Gender: M",
+        "category": "Infectious Disease",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pulmonary edema",
+            "B. Multifocal pneumonia",
+            "C. Lung cancer",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_51": {
+        "image_path_list": [
+            "./images/case_50/image_0.png",
+            "./images/case_50/image_1.png"
+        ],
+        "context": "Age: 065Y Gender: F",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Based on the chest X-ray images, what is the most likely clinical diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Bronchitis or reactive airways disease",
+            "C. Pulmonary edema",
+            "D. Lung cancer"
+        ],
+        "correct_answer": "B"
+    },
+    "case_52": {
+        "image_path_list": [
+            "./images/case_51/image_0.png",
+            "./images/case_51/image_1.png"
+        ],
+        "context": "Age: 026Y Gender: F",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. No significant pulmonary disease",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "C"
+    },
+    "case_53": {
+        "image_path_list": [
+            "./images/case_52/image_0.png",
+            "./images/case_52/image_1.png"
+        ],
+        "context": "Age: 065Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. No active cardiopulmonary disease",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "C"
+    },
+    "case_54": {
+        "image_path_list": [
+            "./images/case_53/image_0.png",
+            "./images/case_53/image_1.png"
+        ],
+        "context": "Age: 024Y Gender: M",
+        "category": "Negation",
+        "question": "Given the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Acute rib fracture",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_55": {
+        "image_path_list": [
+            "./images/case_54/image_0.png"
+        ],
+        "context": "Age: 067Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. Acute respiratory distress syndrome",
+            "D. No acute disease"
+        ],
+        "correct_answer": "D"
+    },
+    "case_56": {
+        "image_path_list": [
+            "./images/case_55/image_0.png",
+            "./images/case_55/image_1.png"
+        ],
+        "context": "Age: 030Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Active cardiopulmonary disease",
+            "D. No active cardiopulmonary disease"
+        ],
+        "correct_answer": "D"
+    },
+    "case_57": {
+        "image_path_list": [
+            "./images/case_56/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Acute cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_58": {
+        "image_path_list": [
+            "./images/case_57/image_0.png",
+            "./images/case_57/image_1.png"
+        ],
+        "context": "Age: 067Y Gender: F",
+        "category": "Pulmonary Neoplasm",
+        "question": "Given the presence of a 1 cm nodule in the left lower lobe, what is the most likely diagnosis?",
+        "options": [
+            "A. Primary lung cancer",
+            "B. Pulmonary metastases",
+            "C. Benign lung nodule",
+            "D. Infectious granuloma"
+        ],
+        "correct_answer": "B"
+    },
+    "case_59": {
+        "image_path_list": [
+            "./images/case_58/image_0.png",
+            "./images/case_58/image_1.png"
+        ],
+        "context": "Age: 025Y Gender: F",
+        "category": "Negation",
+        "question": "Given the normal findings on the chest X-ray, what is the most likely diagnosis for the patient's symptoms?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary embolism",
+            "C. Normal chest X-ray with no radiographic evidence of disease",
+            "D. Congestive heart failure"
+        ],
+        "correct_answer": "C"
+    },
+    "case_60": {
+        "image_path_list": [
+            "./images/case_59/image_0.png",
+            "./images/case_59/image_1.png"
+        ],
+        "context": "Age: 033Y Gender: F",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Given the mild opacity in the lower anterior lung on the lateral view, what is a potential diagnosis?",
+        "options": [
+            "A. Pulmonary embolism",
+            "B. Atelectasis",
+            "C. Pneumothorax",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_61": {
+        "image_path_list": [
+            "./images/case_60/image_0.png",
+            "./images/case_60/image_1.png"
+        ],
+        "context": "Age: 031M Gender: M",
+        "category": "Negation",
+        "question": "Given the chest X-ray images, what is the most likely conclusion regarding the patient's condition?",
+        "options": [
+            "A. Acute pneumonia",
+            "B. Pulmonary edema",
+            "C. Acute cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_62": {
+        "image_path_list": [
+            "./images/case_61/image_0.png",
+            "./images/case_61/image_1.png"
+        ],
+        "context": "Age: 041Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pleural effusion",
+            "C. Acute cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_63": {
+        "image_path_list": [
+            "./images/case_62/image_0.png",
+            "./images/case_62/image_1.png"
+        ],
+        "context": "Age: 052Y Gender: F",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Acute pneumonia",
+            "B. Pulmonary edema",
+            "C. No acute cardiopulmonary disease",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "C"
+    },
+    "case_64": {
+        "image_path_list": [
+            "./images/case_63/image_0.png",
+            "./images/case_63/image_1.png"
+        ],
+        "context": "Age: 051Y Gender: M",
+        "category": "Infectious Disease",
+        "question": "Given the presence of coarse lung markings in the left retrocardiac region and the clinical history of cough and fever, what is the most likely diagnosis?",
+        "options": [
+            "A. Pulmonary edema",
+            "B. Early pneumonia",
+            "C. Pulmonary embolism",
+            "D. Chronic obstructive pulmonary disease (COPD)"
+        ],
+        "correct_answer": "B"
+    },
+    "case_65": {
+        "image_path_list": [
+            "./images/case_64/image_0.png"
+        ],
+        "context": "Age: 074Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. No active disease",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "C"
+    },
+    "case_66": {
+        "image_path_list": [
+            "./images/case_65/image_0.png",
+            "./images/case_65/image_1.png"
+        ],
+        "context": "Age: 004Y Gender: F",
+        "category": "Infectious Disease",
+        "question": "Given the findings of central airway thickening and central interstitial prominence, what is the most likely clinical diagnosis?",
+        "options": [
+            "A. Bacterial pneumonia",
+            "B. Viral infection",
+            "C. Pulmonary embolism",
+            "D. Tuberculosis"
+        ],
+        "correct_answer": "B"
+    },
+    "case_67": {
+        "image_path_list": [
+            "./images/case_66/image_0.png",
+            "./images/case_66/image_1.png"
+        ],
+        "context": "Age: 004M Gender: M",
+        "category": "Negation",
+        "question": "Given the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. Asthma exacerbation",
+            "D. No acute abnormality"
+        ],
+        "correct_answer": "D"
+    },
+    "case_68": {
+        "image_path_list": [
+            "./images/case_67/image_0.png",
+            "./images/case_67/image_1.png"
+        ],
+        "context": "Age: 068Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Heart failure",
+            "C. Active cardiopulmonary disease",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_69": {
+        "image_path_list": [
+            "./images/case_68/image_0.png",
+            "./images/case_68/image_1.png"
+        ],
+        "context": "Age: 015Y Gender: M",
+        "category": "Infectious Disease",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pulmonary edema",
+            "B. Pneumonia",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_70": {
+        "image_path_list": [
+            "./images/case_69/image_0.png",
+            "./images/case_69/image_1.png"
+        ],
+        "context": "Age: 089D Gender: F",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Given the findings of central airway thickening and the clinical history of cough and wheezing, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Reactive airways disease",
+            "C. Pulmonary edema",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_71": {
+        "image_path_list": [
+            "./images/case_70/image_0.png",
+            "./images/case_70/image_1.png"
+        ],
+        "context": "Age: 046Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. No active cardiopulmonary disease",
+            "D. Pleural effusion"
+        ],
+        "correct_answer": "C"
+    },
+    "case_72": {
+        "image_path_list": [
+            "./images/case_71/image_0.png",
+            "./images/case_71/image_1.png"
+        ],
+        "context": "Age: 066Y Gender: F",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, which of the following conditions is least likely present?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Acute cardiopulmonary disease",
+            "D. All of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_73": {
+        "image_path_list": [
+            "./images/case_72/image_0.png",
+            "./images/case_72/image_1.png"
+        ],
+        "context": "Age: 070Y Gender: M",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Lung cancer",
+            "D. Tuberculosis"
+        ],
+        "correct_answer": "B"
+    },
+    "case_74": {
+        "image_path_list": [
+            "./images/case_73/image_0.png",
+            "./images/case_73/image_1.png"
+        ],
+        "context": "Age: 064Y Gender: F",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis related to the pulmonary vasculature?",
+        "options": [
+            "A. Severe pulmonary edema",
+            "B. Mild residual vascular congestion",
+            "C. Normal pulmonary vasculature",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "B"
+    },
+    "case_75": {
+        "image_path_list": [
+            "./images/case_74/image_0.png",
+            "./images/case_74/image_1.png"
+        ],
+        "context": "Age: 078Y Gender: F",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Congestive heart failure",
+            "C. No active cardiopulmonary disease",
+            "D. Pulmonary embolism"
+        ],
+        "correct_answer": "C"
+    },
+    "case_76": {
+        "image_path_list": [
+            "./images/case_75/image_0.png"
+        ],
+        "context": "Age: 071Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Acute cardiopulmonary process",
+            "D. None of the above"
+        ],
+        "correct_answer": "D"
+    },
+    "case_77": {
+        "image_path_list": [
+            "./images/case_76/image_0.png",
+            "./images/case_76/image_1.png"
+        ],
+        "context": "Age: 042Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. Active lung disease",
+            "D. No active disease"
+        ],
+        "correct_answer": "D"
+    },
+    "case_78": {
+        "image_path_list": [
+            "./images/case_77/image_0.png",
+            "./images/case_77/image_1.png"
+        ],
+        "context": "Age: 066Y Gender: M",
+        "category": "Negation",
+        "question": "What is the most likely diagnosis based on the chest X-ray images?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. No active cardiopulmonary process",
+            "D. Acute myocardial infarction"
+        ],
+        "correct_answer": "C"
+    },
+    "case_79": {
+        "image_path_list": [
+            "./images/case_78/image_0.png",
+            "./images/case_78/image_1.png",
+            "./images/case_78/image_2.png"
+        ],
+        "context": "Age: 078Y Gender: M",
+        "category": "Other Pulmonary Diagnosis",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. COPD with pulmonary vascular congestion",
+            "C. Pulmonary embolism",
+            "D. Tuberculosis"
+        ],
+        "correct_answer": "B"
+    },
+    "case_80": {
+        "image_path_list": [
+            "./images/case_79/image_0.png",
+            "./images/case_79/image_1.png"
+        ],
+        "context": "Age: 059Y Gender: M",
+        "category": "Negation",
+        "question": "Based on the chest X-ray images, what is the most likely diagnosis?",
+        "options": [
+            "A. Pneumonia",
+            "B. Pulmonary edema",
+            "C. No active cardiopulmonary disease",
+            "D. Congestive heart failure"
+        ],
+        "correct_answer": "C"
+    },
+    "case_81": {
+        "image_path_list": [
+            "./images/case_80/image_0.png"
+        ],
+        "context": "Age: 062Y Gender: M",
+        "category": "Osseous Structures",
+        "question": "What is the finding related to the osseous structures on this chest X-ray?",
+        "options": [
+            "A. Rib fracture",
+            "B. Osteolytic lesion",
+            "C. Normal osseous structures",
+            "D. Scoliosis"
+        ],
+        "correct_answer": "C"
+    },
+    "case_82": {
+        "image_path_list": [
+            "./images/case_81/image_0.png",
+            "./images/case_81/image_1.png"
+        ],
+        "context": "Age: 072Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the pleural space?",
+        "options": [
+            "A. There is a large pleural effusion on the left.",
+            "B. There is a small pleural effusion on the right.",
+            "C. There is no pleural effusion present.",
+            "D. There is bilateral pleural effusion."
+        ],
+        "correct_answer": "C"
+    },
+    "case_83": {
+        "image_path_list": [
+            "./images/case_82/image_0.png",
+            "./images/case_82/image_1.png",
+            "./images/case_82/image_2.png"
+        ],
+        "context": "Age: 027M Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the lung fields?",
+        "options": [
+            "A. The lungs are clear without focal opacities",
+            "B. There is a unilateral left pleural effusion.",
+            "C. There is a unilateral right pleural effusion.",
+            "D. There is a small right pneumothorax."
+        ],
+        "correct_answer": "A"
+    },
+    "case_84": {
+        "image_path_list": [
+            "./images/case_83/image_0.png",
+            "./images/case_83/image_1.png"
+        ],
+        "context": "Age: 056Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Is there any evidence of pleural effusion on this chest X-ray?",
+        "options": [
+            "A. Large right pleural effusion",
+            "B. Small left pleural effusion",
+            "C. No pleural effusion",
+            "D. Bilateral pleural effusions"
+        ],
+        "correct_answer": "C"
+    },
+    "case_85": {
+        "image_path_list": [
+            "./images/case_84/image_0.png",
+            "./images/case_84/image_1.png"
+        ],
+        "context": "Age: 015Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the finding related to the pleural spaces on this chest X-ray?",
+        "options": [
+            "A. Blunting of costophrenic angles",
+            "B. Presence of pleural effusion",
+            "C. No blunting of costophrenic angles",
+            "D. Large pneumothorax"
+        ],
+        "correct_answer": "C"
+    },
+    "case_86": {
+        "image_path_list": [
+            "./images/case_85/image_0.png",
+            "./images/case_85/image_1.png",
+            "./images/case_85/image_2.png"
+        ],
+        "context": "Age: 020Y Gender: O",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the condition of the lung fields on this chest X-ray?",
+        "options": [
+            "A. Presence of focal consolidation",
+            "B. Bilateral pleural effusion",
+            "C. Both lungs are clear",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "C"
+    },
+    "case_87": {
+        "image_path_list": [
+            "./images/case_86/image_0.png",
+            "./images/case_86/image_1.png"
+        ],
+        "context": "Age: 029Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the lung fields?",
+        "options": [
+            "A. There is a focal infiltrate present.",
+            "B. The lungs are clear without focal opacities.",
+            "C. There is a large pleural effusion.",
+            "D. There is a pneumothorax."
+        ],
+        "correct_answer": "B"
+    },
+    "case_88": {
+        "image_path_list": [
+            "./images/case_87/image_0.png"
+        ],
+        "context": "Age: 025Y Gender: M",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly",
+            "B. Normal heart size",
+            "C. Pericardial effusion",
+            "D. Left atrial enlargement"
+        ],
+        "correct_answer": "B"
+    },
+    "case_89": {
+        "image_path_list": [
+            "./images/case_88/image_0.png",
+            "./images/case_88/image_1.png"
+        ],
+        "context": "Age: 043Y Gender: M",
+        "category": "Skeletal Structures",
+        "question": "What is observed regarding the skeletal structures on this chest X-ray?",
+        "options": [
+            "A. Fractures in the ribs",
+            "B. Unremarkable skeletal structures",
+            "C. Osteolytic lesions",
+            "D. Scoliosis"
+        ],
+        "correct_answer": "B"
+    },
+    "case_90": {
+        "image_path_list": [
+            "./images/case_89/image_0.png",
+            "./images/case_89/image_1.png"
+        ],
+        "context": "Age: 023Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the lung fields?",
+        "options": [
+            "A. The lungs are clear without focal opacities",
+            "B. There is a unilateral left pleural effusion.",
+            "C. There is a unilateral right pleural effusion.",
+            "D. There is a small right pneumothorax."
+        ],
+        "correct_answer": "A"
+    },
+    "case_91": {
+        "image_path_list": [
+            "./images/case_90/image_0.png",
+            "./images/case_90/image_1.png"
+        ],
+        "context": "Age: 046Y Gender: F",
+        "category": "Quality of Exams",
+        "question": "Are there any acute bony abnormalities visible on the chest X-ray?",
+        "options": [
+            "A. Yes, there are multiple fractures.",
+            "B. Yes, there is a single fracture.",
+            "C. No, the bony structures are intact.",
+            "D. Yes, there is evidence of bone metastasis."
+        ],
+        "correct_answer": "C"
+    },
+    "case_92": {
+        "image_path_list": [
+            "./images/case_91/image_0.png",
+            "./images/case_91/image_1.png"
+        ],
+        "context": "Age: 028Y Gender: F",
+        "category": "Heart",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the heart size?",
+        "options": [
+            "A. The heart is enlarged",
+            "B. The heart size is normal",
+            "C. The heart is significantly reduced in size",
+            "D. The heart is not visible"
+        ],
+        "correct_answer": "B"
+    },
+    "case_93": {
+        "image_path_list": [
+            "./images/case_92/image_0.png",
+            "./images/case_92/image_1.png"
+        ],
+        "context": "Age: 025M Gender: F",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly is present",
+            "B. Heart size is normal",
+            "C. Heart size is reduced",
+            "D. Heart shows signs of pericardial effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_94": {
+        "image_path_list": [
+            "./images/case_93/image_0.png",
+            "./images/case_93/image_1.png",
+            "./images/case_93/image_2.png",
+            "./images/case_93/image_3.png"
+        ],
+        "context": "Age: 047Y Gender: M",
+        "category": "Pleural Thickening",
+        "question": "Is there any evidence of pleural effusion on this chest X-ray?",
+        "options": [
+            "A. Yes, there is a large pleural effusion",
+            "B. Yes, there is a small pleural effusion",
+            "C. No, there is no pleural effusion",
+            "D. The presence of pleural effusion cannot be determined"
+        ],
+        "correct_answer": "C"
+    },
+    "case_95": {
+        "image_path_list": [
+            "./images/case_94/image_0.png",
+            "./images/case_94/image_1.png"
+        ],
+        "context": "Age: 082Y Gender: F",
+        "category": "Heart",
+        "question": "Which of the following statements is correct regarding the heart on this chest X-ray?",
+        "options": [
+            "A. The heart is enlarged.",
+            "B. There is a pericardial effusion.",
+            "C. The heart and pulmonary vascularity are normal.",
+            "D. There is a left ventricular hypertrophy."
+        ],
+        "correct_answer": "C"
+    },
+    "case_96": {
+        "image_path_list": [
+            "./images/case_95/image_0.png",
+            "./images/case_95/image_1.png"
+        ],
+        "context": "Age: 037Y Gender: F",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly",
+            "B. Normal heart size",
+            "C. Small heart size",
+            "D. Heart size cannot be assessed"
+        ],
+        "correct_answer": "B"
+    },
+    "case_97": {
+        "image_path_list": [
+            "./images/case_96/image_0.png",
+            "./images/case_96/image_1.png"
+        ],
+        "context": "Age: 003Y Gender: F",
+        "category": "Heart",
+        "question": "What is the finding related to the cardiac silhouette in the chest X-ray?",
+        "options": [
+            "A. Cardiomegaly",
+            "B. Normal size and configuration",
+            "C. Pericardial effusion",
+            "D. Dextrocardia"
+        ],
+        "correct_answer": "B"
+    },
+    "case_98": {
+        "image_path_list": [
+            "./images/case_97/image_0.png",
+            "./images/case_97/image_1.png"
+        ],
+        "context": "Age: 053Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the condition of the lung fields on this chest X-ray?",
+        "options": [
+            "A. Presence of bilateral pleural effusion",
+            "B. Presence of focal consolidation",
+            "C. Both lungs are clear",
+            "D. Presence of pneumothorax"
+        ],
+        "correct_answer": "C"
+    },
+    "case_99": {
+        "image_path_list": [
+            "./images/case_98/image_0.png",
+            "./images/case_98/image_1.png"
+        ],
+        "context": "Age: 032Y Gender: F",
+        "category": "Mediastinum",
+        "question": "What is the finding related to mediastinal lymphadenopathy on this chest X-ray?",
+        "options": [
+            "A. Mediastinal lymphadenopathy is present",
+            "B. No mediastinal lymphadenopathy",
+            "C. Mediastinal mass is present",
+            "D. Mediastinal widening is present"
+        ],
+        "correct_answer": "B"
+    },
+    "case_100": {
+        "image_path_list": [
+            "./images/case_99/image_0.png"
+        ],
+        "context": "Age: nan Gender: M",
+        "category": "Mediastinum",
+        "question": "What is the finding related to the mediastinal contour on this chest X-ray?",
+        "options": [
+            "A. Mediastinal widening is present",
+            "B. The mediastinal contour is normal",
+            "C. There is a mediastinal mass",
+            "D. The mediastinum is not visible"
+        ],
+        "correct_answer": "B"
+    },
+    "case_101": {
+        "image_path_list": [
+            "./images/case_100/image_0.png",
+            "./images/case_100/image_1.png"
+        ],
+        "context": "Age: 049Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the condition of the lung fields on this chest X-ray?",
+        "options": [
+            "A. Both lungs show diffuse opacities",
+            "B. There is a focal consolidation in the right lung",
+            "C. Both lungs are clear",
+            "D. There is a pleural effusion on the left side"
+        ],
+        "correct_answer": "C"
+    },
+    "case_102": {
+        "image_path_list": [
+            "./images/case_101/image_0.png",
+            "./images/case_101/image_1.png"
+        ],
+        "context": "Age: 029Y Gender: F",
+        "category": "Mediastinum",
+        "question": "Which statement best describes the mediastinal contours on this chest X-ray?",
+        "options": [
+            "A. The mediastinum is widened.",
+            "B. The mediastinal contours are within normal limits.",
+            "C. There is a mediastinal mass present.",
+            "D. The mediastinum is shifted to the left."
+        ],
+        "correct_answer": "B"
+    },
+    "case_103": {
+        "image_path_list": [
+            "./images/case_102/image_0.png"
+        ],
+        "context": "Age: 059Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the lung fields?",
+        "options": [
+            "A. The lungs are clear without focal opacities",
+            "B. There is a unilateral left pleural effusion.",
+            "C. There is a unilateral right pleural effusion.",
+            "D. There is a small right pneumothorax."
+        ],
+        "correct_answer": "A"
+    },
+    "case_104": {
+        "image_path_list": [
+            "./images/case_103/image_0.png",
+            "./images/case_103/image_1.png",
+            "./images/case_103/image_2.png"
+        ],
+        "context": "Age: 027M Gender: M",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. The heart is enlarged.",
+            "B. The heart is normal in size.",
+            "C. The heart is small.",
+            "D. The heart size cannot be determined."
+        ],
+        "correct_answer": "B"
+    },
+    "case_105": {
+        "image_path_list": [
+            "./images/case_104/image_0.png",
+            "./images/case_104/image_1.png"
+        ],
+        "context": "Age: 070Y Gender: M",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. The heart is enlarged.",
+            "B. The heart is normal in size.",
+            "C. The heart is small.",
+            "D. The heart is not visible."
+        ],
+        "correct_answer": "B"
+    },
+    "case_106": {
+        "image_path_list": [
+            "./images/case_105/image_0.png",
+            "./images/case_105/image_1.png"
+        ],
+        "context": "Age: 052Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the correct statement regarding the presence of focal opacities or effusions in the lungs based on the chest X-ray?",
+        "options": [
+            "A. There are multiple focal opacities in the lungs.",
+            "B. There is a large pleural effusion on the right side.",
+            "C. No focal opacities or effusions are present.",
+            "D. There is a pneumothorax on the left side."
+        ],
+        "correct_answer": "C"
+    },
+    "case_107": {
+        "image_path_list": [
+            "./images/case_106/image_0.png"
+        ],
+        "context": "Age: 023Y Gender: F",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly is present.",
+            "B. The heart size is within normal limits.",
+            "C. There is a pericardial effusion.",
+            "D. The heart is not visible on the X-ray."
+        ],
+        "correct_answer": "B"
+    },
+    "case_108": {
+        "image_path_list": [
+            "./images/case_107/image_0.png",
+            "./images/case_107/image_1.png"
+        ],
+        "context": "Age: 054Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Is there any evidence of pleural effusion on this chest X-ray?",
+        "options": [
+            "A. Yes, there is a large pleural effusion",
+            "B. Yes, there is a small pleural effusion",
+            "C. No, there is no pleural effusion",
+            "D. Indeterminate due to poor image quality"
+        ],
+        "correct_answer": "C"
+    },
+    "case_109": {
+        "image_path_list": [
+            "./images/case_108/image_0.png",
+            "./images/case_108/image_1.png"
+        ],
+        "context": "Age: 031Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Based on the chest X-ray images, which of the following statements is correct regarding the lung fields?",
+        "options": [
+            "A. The lungs are clear without focal opacities",
+            "B. There is a unilateral left pleural effusion.",
+            "C. There is a unilateral right pleural effusion.",
+            "D. There is a small right pneumothorax."
+        ],
+        "correct_answer": "A"
+    },
+    "case_110": {
+        "image_path_list": [
+            "./images/case_109/image_0.png",
+            "./images/case_109/image_1.png"
+        ],
+        "context": "Age: 072Y Gender: M",
+        "category": "Heart",
+        "question": "Based on the chest X-ray images, what can be concluded about the heart size?",
+        "options": [
+            "A. Cardiomegaly is present",
+            "B. Heart size is within normal limits",
+            "C. Pericardial effusion is present",
+            "D. Heart size is reduced"
+        ],
+        "correct_answer": "B"
+    },
+    "case_111": {
+        "image_path_list": [
+            "./images/case_110/image_0.png"
+        ],
+        "context": "Age: 059Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the condition of the lung fields on this chest X-ray?",
+        "options": [
+            "A. Both lungs show diffuse opacities",
+            "B. Both lungs are clear",
+            "C. Right lung shows focal consolidation",
+            "D. Left lung shows pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_112": {
+        "image_path_list": [
+            "./images/case_111/image_0.png",
+            "./images/case_111/image_1.png"
+        ],
+        "context": "Age: 054Y Gender: M",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. Cardiomegaly is present",
+            "B. Heart size is normal",
+            "C. Pericardial effusion is present",
+            "D. Heart size is reduced"
+        ],
+        "correct_answer": "B"
+    },
+    "case_113": {
+        "image_path_list": [
+            "./images/case_112/image_0.png"
+        ],
+        "context": "Age: 000D Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following statements is correct regarding the lung fields on this chest X-ray?",
+        "options": [
+            "A. There is a focal consolidation in the right lung",
+            "B. There is a pleural effusion on the left side",
+            "C. The lungs are clear without any opacities",
+            "D. There is a pneumothorax on the right side"
+        ],
+        "correct_answer": "C"
+    },
+    "case_114": {
+        "image_path_list": [
+            "./images/case_113/image_0.png",
+            "./images/case_113/image_1.png",
+            "./images/case_113/image_2.png"
+        ],
+        "context": "Age: 036Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the correct statement regarding the presence of pulmonary infiltrates on this chest X-ray?",
+        "options": [
+            "A. There is an acute infiltrate present.",
+            "B. There is no acute infiltrate present.",
+            "C. There is a chronic infiltrate present.",
+            "D. There is a bilateral infiltrate present."
+        ],
+        "correct_answer": "B"
+    },
+    "case_115": {
+        "image_path_list": [
+            "./images/case_114/image_0.png",
+            "./images/case_114/image_1.png"
+        ],
+        "context": "Age: 015Y Gender: O",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the finding regarding lung infiltrates or edema on this chest X-ray?",
+        "options": [
+            "A. Presence of acute infiltrate",
+            "B. Presence of pulmonary edema",
+            "C. No acute infiltrate or edema",
+            "D. Bilateral infiltrates"
+        ],
+        "correct_answer": "C"
+    },
+    "case_116": {
+        "image_path_list": [
+            "./images/case_115/image_0.png"
+        ],
+        "context": "Age: 025Y Gender: F",
+        "category": "Mediastinum",
+        "question": "What is the finding related to the mediastinal contours on this chest X-ray?",
+        "options": [
+            "A. The mediastinal contours are widened.",
+            "B. The mediastinal contours are normal.",
+            "C. There is a mediastinal mass present.",
+            "D. The mediastinum is shifted to the left."
+        ],
+        "correct_answer": "B"
+    },
+    "case_117": {
+        "image_path_list": [
+            "./images/case_116/image_0.png",
+            "./images/case_116/image_1.png"
+        ],
+        "context": "Age: 033Y Gender: F",
+        "category": "Heart",
+        "question": "What is the finding related to the heart size on this chest X-ray?",
+        "options": [
+            "A. The heart is enlarged.",
+            "B. The heart is within normal limits in size.",
+            "C. The heart shows signs of pericardial effusion.",
+            "D. The heart is displaced to the right."
+        ],
+        "correct_answer": "B"
+    },
+    "case_118": {
+        "image_path_list": [
+            "./images/case_117/image_0.png"
+        ],
+        "context": "Age: 000D Gender: M",
+        "category": "Bony Structures",
+        "question": "What is the condition of the bony structures in the chest X-ray?",
+        "options": [
+            "A. Intact",
+            "B. Fractured",
+            "C. Deformed",
+            "D. Osteoporotic"
+        ],
+        "correct_answer": "A"
+    },
+    "case_119": {
+        "image_path_list": [
+            "./images/case_118/image_0.png",
+            "./images/case_118/image_1.png"
+        ],
+        "context": "Age: 070Y Gender: F",
+        "category": "Bone",
+        "question": "What is the finding related to the bony structures on this chest X-ray?",
+        "options": [
+            "A. Rib fracture",
+            "B. Bony abnormalities",
+            "C. Normal bony structures",
+            "D. Osteolytic lesions"
+        ],
+        "correct_answer": "C"
+    },
+    "case_120": {
+        "image_path_list": [
+            "./images/case_119/image_0.png",
+            "./images/case_119/image_1.png"
+        ],
+        "context": "Age: 026Y Gender: O",
+        "category": "Mediastinum",
+        "question": "What is the finding related to the mediastinal contours on this chest X-ray?",
+        "options": [
+            "A. Mediastinal widening is present.",
+            "B. The mediastinal contours are within normal limits.",
+            "C. There is a mediastinal mass.",
+            "D. The mediastinum is shifted to the left."
+        ],
+        "correct_answer": "B"
+    },
+    "case_121": {
+        "image_path_list": [
+            "./images/case_120/image_0.png",
+            "./images/case_120/image_1.png"
+        ],
+        "context": "Age: 032Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the location of the consolidation observed on the chest X-ray?",
+        "options": [
+            "A. Right upper lobe",
+            "B. Left lower lobe",
+            "C. Right middle lobe",
+            "D. Left upper lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_122": {
+        "image_path_list": [
+            "./images/case_121/image_0.png"
+        ],
+        "context": "Age: 031Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where does the nasogastric tube terminate as observed on the chest X-ray?",
+        "options": [
+            "A. In the stomach",
+            "B. In the duodenum",
+            "C. At the lower thoracic esophagus",
+            "D. In the upper thoracic esophagus"
+        ],
+        "correct_answer": "C"
+    },
+    "case_123": {
+        "image_path_list": [
+            "./images/case_122/image_0.png"
+        ],
+        "context": "Age: 058Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the distribution of the airspace opacities observed on the chest X-ray?",
+        "options": [
+            "A. Bilateral upper lung zones",
+            "B. Bilateral central and basilar lung zones",
+            "C. Right lung only",
+            "D. Left lung only"
+        ],
+        "correct_answer": "B"
+    },
+    "case_124": {
+        "image_path_list": [
+            "./images/case_123/image_0.png"
+        ],
+        "context": "Age: 087Y Gender: O",
+        "category": "Lung and Pleural Opacity",
+        "question": "What finding is noted at the right costophrenic angle on this chest X-ray?",
+        "options": [
+            "A. Blunting of the right costophrenic angle",
+            "B. Blunting of the left costophrenic angle",
+            "C. Normal costophrenic angles",
+            "D. Bilateral pleural effusion"
+        ],
+        "correct_answer": "A"
+    },
+    "case_125": {
+        "image_path_list": [
+            "./images/case_124/image_0.png",
+            "./images/case_124/image_1.png"
+        ],
+        "context": "Age: 074Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the lung fields on this chest X-ray?",
+        "options": [
+            "A. Lobar consolidation",
+            "B. Mild lower lobe predominant interstitial thickening",
+            "C. Pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_126": {
+        "image_path_list": [
+            "./images/case_125/image_0.png"
+        ],
+        "context": "Age: 004M Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the focal opacity located on this chest X-ray?",
+        "options": [
+            "A. Left lower lobe",
+            "B. Right upper lobe",
+            "C. Right lower lobe",
+            "D. Left upper lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_127": {
+        "image_path_list": [
+            "./images/case_126/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the distal tip of the nasogastric tube located on this chest X-ray?",
+        "options": [
+            "A. In the esophagus",
+            "B. Overlying the expected region of the gastric fundus",
+            "C. In the trachea",
+            "D. In the right main bronchus"
+        ],
+        "correct_answer": "B"
+    },
+    "case_128": {
+        "image_path_list": [
+            "./images/case_127/image_0.png"
+        ],
+        "context": "Age: 072Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the primary finding in the left lung on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe consolidation",
+            "B. Left lower lobe consolidation",
+            "C. Bilateral pleural effusion",
+            "D. Right lower lobe consolidation"
+        ],
+        "correct_answer": "B"
+    },
+    "case_129": {
+        "image_path_list": [
+            "./images/case_128/image_0.png",
+            "./images/case_128/image_1.png"
+        ],
+        "context": "Age: 035Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the more confluent opacity located on this chest X-ray?",
+        "options": [
+            "A. Left upper lobe",
+            "B. Right middle lobe",
+            "C. Right lower lobe",
+            "D. Left lower lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_130": {
+        "image_path_list": [
+            "./images/case_129/image_0.png",
+            "./images/case_129/image_1.png"
+        ],
+        "context": "Age: 011M Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the lung fields on this chest X-ray?",
+        "options": [
+            "A. Diffuse bilateral opacities",
+            "B. Patchy bibasilar opacities, right greater than left",
+            "C. Large pleural effusion on the right",
+            "D. Pneumothorax on the left"
+        ],
+        "correct_answer": "B"
+    },
+    "case_131": {
+        "image_path_list": [
+            "./images/case_130/image_0.png"
+        ],
+        "context": "Age: 063Y Gender: M",
+        "category": "Lung and Pleural Lucency",
+        "question": "Where is the pneumothorax located on the chest X-ray?",
+        "options": [
+            "A. Right lung, apical component",
+            "B. Left lung, medial and apical components",
+            "C. Bilateral lungs, basal components",
+            "D. Right lung, medial component"
+        ],
+        "correct_answer": "B"
+    },
+    "case_132": {
+        "image_path_list": [
+            "./images/case_131/image_0.png"
+        ],
+        "context": "Age: 084Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is atelectasis identified on this chest X-ray?",
+        "options": [
+            "A. Right upper lung",
+            "B. Left midlung and left base",
+            "C. Right lower lung",
+            "D. Bilateral upper lungs"
+        ],
+        "correct_answer": "B"
+    },
+    "case_133": {
+        "image_path_list": [
+            "./images/case_132/image_0.png"
+        ],
+        "context": "Age: 087Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where are the pulmonary infiltrates primarily located on this chest X-ray?",
+        "options": [
+            "A. Upper lobes",
+            "B. Perihilar and lower lobes",
+            "C. Right middle lobe",
+            "D. Left upper lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_134": {
+        "image_path_list": [
+            "./images/case_133/image_0.png"
+        ],
+        "context": "Age: 022Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the distribution of the airspace densities observed in this chest X-ray?",
+        "options": [
+            "A. Predominantly central in both lungs",
+            "B. Predominantly peripheral in the right lung and diffuse in the left lung",
+            "C. Predominantly peripheral in both lungs",
+            "D. Predominantly central in the right lung and peripheral in the left lung"
+        ],
+        "correct_answer": "B"
+    },
+    "case_135": {
+        "image_path_list": [
+            "./images/case_134/image_0.png"
+        ],
+        "context": "Age: 088Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "Where is the enteric tube located in the chest X-ray?",
+        "options": [
+            "A. Esophagus",
+            "B. Trachea",
+            "C. Stomach",
+            "D. Duodenum"
+        ],
+        "correct_answer": "C"
+    },
+    "case_136": {
+        "image_path_list": [
+            "./images/case_135/image_0.png"
+        ],
+        "context": "Age: 053Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the distribution of the airspace disease observed on this chest X-ray?",
+        "options": [
+            "A. Patchy airspace disease at the lung apices",
+            "B. Patchy airspace disease at the lung bases",
+            "C. Diffuse airspace disease throughout both lungs",
+            "D. Focal airspace disease in the right middle lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_137": {
+        "image_path_list": [
+            "./images/case_136/image_0.png",
+            "./images/case_136/image_1.png"
+        ],
+        "context": "Age: 055Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the lung fields on this chest X-ray?",
+        "options": [
+            "A. Dense consolidation in the right upper lobe",
+            "B. Patchy infiltrate at both lung bases",
+            "C. Pleural effusion on the left side",
+            "D. Collapse of the left lower lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_138": {
+        "image_path_list": [
+            "./images/case_137/image_0.png",
+            "./images/case_137/image_1.png"
+        ],
+        "context": "Age: 086Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where are the interstitial opacities primarily located on this chest X-ray?",
+        "options": [
+            "A. Left upper lobe",
+            "B. Right middle and lower lobes",
+            "C. Bilateral upper lobes",
+            "D. Left lower lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_139": {
+        "image_path_list": [
+            "./images/case_138/image_0.png"
+        ],
+        "context": "Age: 070Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the stable opacity located in the lungs on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe",
+            "B. Left lower lobe",
+            "C. Right lower lobe",
+            "D. Left upper lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_140": {
+        "image_path_list": [
+            "./images/case_139/image_0.png",
+            "./images/case_139/image_1.png"
+        ],
+        "context": "Age: 068Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most likely finding in the left lower lobe on this chest X-ray?",
+        "options": [
+            "A. Well-defined mass",
+            "B. Ill-defined airspace disease",
+            "C. Large pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_141": {
+        "image_path_list": [
+            "./images/case_140/image_0.png",
+            "./images/case_140/image_1.png"
+        ],
+        "context": "Age: 069Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the pleural effusion located on this chest X-ray?",
+        "options": [
+            "A. Right pleural effusion",
+            "B. Left pleural effusion",
+            "C. Bilateral pleural effusion",
+            "D. No pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_142": {
+        "image_path_list": [
+            "./images/case_141/image_0.png"
+        ],
+        "context": "Age: 055Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the central catheter located on this chest X-ray?",
+        "options": [
+            "A. In the right atrium",
+            "B. In the superior vena cava slightly beyond the junction with the right innominate vein",
+            "C. In the left innominate vein",
+            "D. In the pulmonary artery"
+        ],
+        "correct_answer": "B"
+    },
+    "case_143": {
+        "image_path_list": [
+            "./images/case_142/image_0.png",
+            "./images/case_142/image_1.png"
+        ],
+        "context": "Age: 014Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What specific finding is noted in the lung fields on this chest X-ray?",
+        "options": [
+            "A. Bilateral pleural effusion",
+            "B. Mild retrocardiac airspace opacity",
+            "C. Pneumothorax",
+            "D. Cardiomegaly"
+        ],
+        "correct_answer": "B"
+    },
+    "case_144": {
+        "image_path_list": [
+            "./images/case_143/image_0.png"
+        ],
+        "context": "Age: 083Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the right IJ line located in this chest X-ray?",
+        "options": [
+            "A. In the right atrium",
+            "B. In the mid superior vena cava (SVC)",
+            "C. In the left atrium",
+            "D. In the pulmonary artery"
+        ],
+        "correct_answer": "B"
+    },
+    "case_145": {
+        "image_path_list": [
+            "./images/case_144/image_0.png",
+            "./images/case_144/image_1.png"
+        ],
+        "context": "Age: 070Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What specific finding is observed in the right upper lobe on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe consolidation",
+            "B. Right upper lobe cavitation",
+            "C. Right upper lobe mass",
+            "D. Right upper lobe atelectasis"
+        ],
+        "correct_answer": "A"
+    },
+    "case_146": {
+        "image_path_list": [
+            "./images/case_145/image_0.png",
+            "./images/case_145/image_1.png"
+        ],
+        "context": "Age: 064Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the possible lung nodule located on the chest X-ray?",
+        "options": [
+            "A. Right upper lobe",
+            "B. Left lower lobe",
+            "C. Projected over the spine on the lateral view",
+            "D. Right middle lobe"
+        ],
+        "correct_answer": "C"
+    },
+    "case_147": {
+        "image_path_list": [
+            "./images/case_146/image_0.png"
+        ],
+        "context": "Age: 053Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the right IJ central venous line located on this chest X-ray?",
+        "options": [
+            "A. In the right atrium",
+            "B. At the junction of the SVC and right atrium",
+            "C. Overlying the mid SVC",
+            "D. In the left subclavian vein"
+        ],
+        "correct_answer": "C"
+    },
+    "case_148": {
+        "image_path_list": [
+            "./images/case_147/image_0.png"
+        ],
+        "context": "Age: 089Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the distribution of pleural effusions observed on this chest X-ray?",
+        "options": [
+            "A. Right pleural effusion only",
+            "B. Left pleural effusion only",
+            "C. Bilateral pleural effusions, right greater than left",
+            "D. No pleural effusions present"
+        ],
+        "correct_answer": "C"
+    },
+    "case_149": {
+        "image_path_list": [
+            "./images/case_148/image_0.png"
+        ],
+        "context": "Age: 077Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the left-sided PICC line located on this chest X-ray?",
+        "options": [
+            "A. Right atrium",
+            "B. Superior vena cava (SVC)",
+            "C. Left ventricle",
+            "D. Pulmonary artery"
+        ],
+        "correct_answer": "B"
+    },
+    "case_150": {
+        "image_path_list": [
+            "./images/case_149/image_0.png",
+            "./images/case_149/image_1.png"
+        ],
+        "context": "Age: 087Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the consolidation primarily located on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe",
+            "B. Right lower lobe",
+            "C. Left lower lobe",
+            "D. Left upper lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_151": {
+        "image_path_list": [
+            "./images/case_150/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the patchy airspace disease located on this chest X-ray?",
+        "options": [
+            "A. Left upper lobe",
+            "B. Right upper and lower lobes",
+            "C. Bilateral lower lobes",
+            "D. Left lower lobe"
+        ],
+        "correct_answer": "B"
+    },
+    "case_152": {
+        "image_path_list": [
+            "./images/case_151/image_0.png",
+            "./images/case_151/image_1.png"
+        ],
+        "context": "Age: 017M Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the lung findings on this chest X-ray?",
+        "options": [
+            "A. Patchy perihilar atelectasis",
+            "B. Large pleural effusion",
+            "C. Diffuse consolidation",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "A"
+    },
+    "case_153": {
+        "image_path_list": [
+            "./images/case_152/image_0.png",
+            "./images/case_152/image_1.png"
+        ],
+        "context": "Age: 050Y Gender: F",
+        "category": "Implanted Devices",
+        "question": "Where are the metallic surgical clips located in the chest X-ray?",
+        "options": [
+            "A. Left upper lung",
+            "B. Right lower lung",
+            "C. Anterior mediastinum",
+            "D. Posterior mediastinum"
+        ],
+        "correct_answer": "C"
+    },
+    "case_154": {
+        "image_path_list": [
+            "./images/case_153/image_0.png",
+            "./images/case_153/image_1.png",
+            "./images/case_153/image_2.png"
+        ],
+        "context": "Age: 078Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the area of increased density located on this chest X-ray?",
+        "options": [
+            "A. Right lung apex",
+            "B. Left lung base",
+            "C. Right lung base",
+            "D. Left lung apex"
+        ],
+        "correct_answer": "B"
+    },
+    "case_155": {
+        "image_path_list": [
+            "./images/case_154/image_0.png"
+        ],
+        "context": "Age: 090Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the dense opacity located on this chest X-ray?",
+        "options": [
+            "A. Left upper lung",
+            "B. Right midlung",
+            "C. Right upper lung",
+            "D. Left lower lung"
+        ],
+        "correct_answer": "B"
+    },
+    "case_156": {
+        "image_path_list": [
+            "./images/case_155/image_0.png"
+        ],
+        "context": "Age: 082Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the pulmonary findings on this chest X-ray?",
+        "options": [
+            "A. Bilateral pleural effusions",
+            "B. Mild asymmetric pulmonary edema in the right lung",
+            "C. Diffuse interstitial lung disease",
+            "D. Large right-sided pleural effusion"
+        ],
+        "correct_answer": "B"
+    },
+    "case_157": {
+        "image_path_list": [
+            "./images/case_156/image_0.png"
+        ],
+        "context": "Age: 053Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the tracheostomy tube located on this chest X-ray?",
+        "options": [
+            "A. In the right main bronchus",
+            "B. Just above the carina",
+            "C. In the left main bronchus",
+            "D. At the level of the vocal cords"
+        ],
+        "correct_answer": "B"
+    },
+    "case_158": {
+        "image_path_list": [
+            "./images/case_157/image_0.png"
+        ],
+        "context": "Age: 084Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the PICC line located on this chest X-ray?",
+        "options": [
+            "A. Right atrium",
+            "B. Upper superior vena cava (SVC)",
+            "C. Left subclavian vein",
+            "D. Inferior vena cava (IVC)"
+        ],
+        "correct_answer": "B"
+    },
+    "case_159": {
+        "image_path_list": [
+            "./images/case_158/image_0.png",
+            "./images/case_158/image_1.png"
+        ],
+        "context": "Age: 083Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Where is the airspace opacity predominantly located on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe",
+            "B. Left upper lobe",
+            "C. Retrocardiac region",
+            "D. Right middle lobe"
+        ],
+        "correct_answer": "C"
+    },
+    "case_160": {
+        "image_path_list": [
+            "./images/case_159/image_0.png",
+            "./images/case_159/image_1.png"
+        ],
+        "context": "Age: 058Y Gender: M",
+        "category": "Implanted Devices",
+        "question": "Where are the surgical clips located on this chest X-ray?",
+        "options": [
+            "A. Right axilla",
+            "B. Left axilla",
+            "C. Right thorax",
+            "D. Left thorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_161": {
+        "image_path_list": [
+            "./images/case_160/image_0.png",
+            "./images/case_160/image_1.png"
+        ],
+        "context": "Age: 050Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and location of the mass observed in the chest X-ray?",
+        "options": [
+            "A. 5.0 x 5.2 x 8.6 cm mass in the left upper anterior chest",
+            "B. 9.0 x 9.2 x 12.6 cm mass in the right lower posterior chest",
+            "C. 7.0 x 7.2 x 10.6 cm mass in the right upper anterior chest",
+            "D. 6.0 x 6.2 x 9.6 cm mass in the left lower posterior chest"
+        ],
+        "correct_answer": "B"
+    },
+    "case_162": {
+        "image_path_list": [
+            "./images/case_161/image_0.png"
+        ],
+        "context": "Age: 088Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip as seen on the chest X-ray?",
+        "options": [
+            "A. 1 cm above the carina",
+            "B. 2.8 cm above the carina",
+            "C. At the level of the carina",
+            "D. Below the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_163": {
+        "image_path_list": [
+            "./images/case_162/image_0.png"
+        ],
+        "context": "Age: 053Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip as seen on the chest X-ray?",
+        "options": [
+            "A. 1 cm above the carina",
+            "B. 2.6 cm above the carina",
+            "C. At the level of the carina",
+            "D. Below the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_164": {
+        "image_path_list": [
+            "./images/case_163/image_0.png"
+        ],
+        "context": "Age: 065Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the nature of the opacities observed in the lower chest on this chest X-ray?",
+        "options": [
+            "A. Nodular opacities",
+            "B. Bandlike opacities",
+            "C. Reticular opacities",
+            "D. Ground-glass opacities"
+        ],
+        "correct_answer": "B"
+    },
+    "case_165": {
+        "image_path_list": [
+            "./images/case_164/image_0.png"
+        ],
+        "context": "Age: 073Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip as seen on this chest X-ray?",
+        "options": [
+            "A. At the level of the carina",
+            "B. 5.0 cm above the carina",
+            "C. In the right main bronchus",
+            "D. In the left main bronchus"
+        ],
+        "correct_answer": "B"
+    },
+    "case_166": {
+        "image_path_list": [
+            "./images/case_165/image_0.png",
+            "./images/case_165/image_1.png"
+        ],
+        "context": "Age: 079Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip relative to the carina on this chest X-ray?",
+        "options": [
+            "A. 2 cm superior to the carina",
+            "B. 4.2 cm superior to the carina",
+            "C. At the level of the carina",
+            "D. 6 cm superior to the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_167": {
+        "image_path_list": [
+            "./images/case_166/image_0.png"
+        ],
+        "context": "Age: 049Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the left lung region on this chest X-ray?",
+        "options": [
+            "A. Round opacity in the right lung",
+            "B. Ovoid masslike opacity in the left suprahilar region",
+            "C. Bilateral pleural effusion",
+            "D. Pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_168": {
+        "image_path_list": [
+            "./images/case_167/image_0.png",
+            "./images/case_167/image_1.png"
+        ],
+        "context": "Age: 041Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and location of the new area of density observed on the chest X-ray?",
+        "options": [
+            "A. 3 x 9 mm in the left lower lobe",
+            "B. 6 x 18 mm in the right lung apex",
+            "C. 10 x 20 mm in the right lower lobe",
+            "D. 5 x 15 mm in the left lung apex"
+        ],
+        "correct_answer": "B"
+    },
+    "case_169": {
+        "image_path_list": [
+            "./images/case_168/image_0.png"
+        ],
+        "context": "Age: 053Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip relative to the carina on this chest X-ray?",
+        "options": [
+            "A. 2 cm above the carina",
+            "B. 5 cm above the carina",
+            "C. 8.4 cm above the carina",
+            "D. At the level of the carina"
+        ],
+        "correct_answer": "C"
+    },
+    "case_170": {
+        "image_path_list": [
+            "./images/case_169/image_0.png",
+            "./images/case_169/image_1.png"
+        ],
+        "context": "Age: 082Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the nature of the opacity observed at the right lung base on the chest X-ray?",
+        "options": [
+            "A. Large mass",
+            "B. Vague opacity likely due to superimposition",
+            "C. Cavitary lesion",
+            "D. Consolidation"
+        ],
+        "correct_answer": "B"
+    },
+    "case_171": {
+        "image_path_list": [
+            "./images/case_170/image_0.png",
+            "./images/case_170/image_1.png"
+        ],
+        "context": "Age: 060Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size of the left upper lobe mass observed on the chest X-ray?",
+        "options": [
+            "A. 2 cm",
+            "B. 5 cm",
+            "C. 10.2 x 9.6 cm",
+            "D. 15 cm"
+        ],
+        "correct_answer": "C"
+    },
+    "case_172": {
+        "image_path_list": [
+            "./images/case_171/image_0.png",
+            "./images/case_171/image_1.png",
+            "./images/case_171/image_2.png"
+        ],
+        "context": "Age: 045Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the pattern of lung abnormalities seen on this chest X-ray?",
+        "options": [
+            "A. Central nodular opacities",
+            "B. Peripheral honeycombing",
+            "C. Diffuse ground-glass opacities",
+            "D. Large cavitary lesions"
+        ],
+        "correct_answer": "B"
+    },
+    "case_173": {
+        "image_path_list": [
+            "./images/case_172/image_0.png",
+            "./images/case_172/image_1.png",
+            "./images/case_172/image_2.png"
+        ],
+        "context": "Age: 087Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and location of the masslike opacity observed on the chest X-ray?",
+        "options": [
+            "A. 5 cm diameter mass in the right upper lung",
+            "B. 7.7 cm diameter mass in the left mid lung",
+            "C. 3 cm diameter mass in the left lower lung",
+            "D. 6 cm diameter mass in the right mid lung"
+        ],
+        "correct_answer": "B"
+    },
+    "case_174": {
+        "image_path_list": [
+            "./images/case_173/image_0.png",
+            "./images/case_173/image_1.png"
+        ],
+        "context": "Age: 081Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the right upper lobe on this chest X-ray?",
+        "options": [
+            "A. Right upper lobe mass lesion measuring approximately 2 cm",
+            "B. Right upper lobe consolidation",
+            "C. Right upper lobe cavitary lesion",
+            "D. Right upper lobe pleural effusion"
+        ],
+        "correct_answer": "A"
+    },
+    "case_175": {
+        "image_path_list": [
+            "./images/case_174/image_0.png"
+        ],
+        "context": "Age: 083Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip as seen on the chest X-ray?",
+        "options": [
+            "A. 5 mm above the carina",
+            "B. At the level of the carina",
+            "C. 2 cm above the carina",
+            "D. 4 cm above the carina"
+        ],
+        "correct_answer": "A"
+    },
+    "case_176": {
+        "image_path_list": [
+            "./images/case_175/image_0.png",
+            "./images/case_175/image_1.png"
+        ],
+        "context": "Age: 051Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "Which of the following best describes the geometric characteristics of the opacities observed in the right lower lobe?",
+        "options": [
+            "A. Confluent consolidation",
+            "B. Patchy airspace opacities",
+            "C. Reticulonodular pattern",
+            "D. Miliary nodules"
+        ],
+        "correct_answer": "B"
+    },
+    "case_177": {
+        "image_path_list": [
+            "./images/case_176/image_0.png",
+            "./images/case_176/image_1.png"
+        ],
+        "context": "Age: 076Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and appearance of the focal opacity observed in the lateral left base on the chest X-ray?",
+        "options": [
+            "A. 1.5 x 1.5 cm, round",
+            "B. 2.7 x 2.6 cm, nodular",
+            "C. 3.0 x 3.0 cm, irregular",
+            "D. 4.0 x 4.0 cm, lobulated"
+        ],
+        "correct_answer": "B"
+    },
+    "case_178": {
+        "image_path_list": [
+            "./images/case_177/image_0.png",
+            "./images/case_177/image_1.png"
+        ],
+        "context": "Age: nan Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube as seen on the chest X-ray?",
+        "options": [
+            "A. 2 cm above the carina",
+            "B. 5 cm above the carina",
+            "C. At the level of the carina",
+            "D. Below the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_179": {
+        "image_path_list": [
+            "./images/case_178/image_0.png",
+            "./images/case_178/image_1.png"
+        ],
+        "context": "Age: 087Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and location of the lung mass observed on this chest X-ray?",
+        "options": [
+            "A. 5 cm mass in the right lung",
+            "B. 9.6 cm mass in the left lung",
+            "C. 3 cm mass in the left lung",
+            "D. 7 cm mass in the right lung"
+        ],
+        "correct_answer": "B"
+    },
+    "case_180": {
+        "image_path_list": [
+            "./images/case_179/image_0.png"
+        ],
+        "context": "Age: 057Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube as seen on the chest X-ray?",
+        "options": [
+            "A. 2 cm above the carina",
+            "B. 4 cm above the carina",
+            "C. 6.2 cm above the carina",
+            "D. At the level of the carina"
+        ],
+        "correct_answer": "C"
+    },
+    "case_181": {
+        "image_path_list": [
+            "./images/case_180/image_0.png"
+        ],
+        "context": "Age: 069Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most notable finding in the left lung region on this chest X-ray?",
+        "options": [
+            "A. Small left pleural effusion",
+            "B. Large left suprahilar mass",
+            "C. Right lung consolidation",
+            "D. Bilateral pneumothorax"
+        ],
+        "correct_answer": "B"
+    },
+    "case_182": {
+        "image_path_list": [
+            "./images/case_181/image_0.png"
+        ],
+        "context": "Age: 072Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip relative to the carina on this chest X-ray?",
+        "options": [
+            "A. 2 cm above the carina",
+            "B. 5.2 cm above the carina",
+            "C. At the level of the carina",
+            "D. Below the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_183": {
+        "image_path_list": [
+            "./images/case_182/image_0.png"
+        ],
+        "context": "Age: 073Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the nasogastric tube as seen on the chest X-ray?",
+        "options": [
+            "A. Coiled in the stomach",
+            "B. Coiled in the distal esophagus with tip at the clavicular heads",
+            "C. Properly positioned in the duodenum",
+            "D. In the trachea"
+        ],
+        "correct_answer": "B"
+    },
+    "case_184": {
+        "image_path_list": [
+            "./images/case_183/image_0.png",
+            "./images/case_183/image_1.png",
+            "./images/case_183/image_2.png"
+        ],
+        "context": "Age: nan Gender: F",
+        "category": "Rib",
+        "question": "Which ribs are affected by fractures as seen on the chest X-ray?",
+        "options": [
+            "A. Right second and third ribs",
+            "B. Right fourth and fifth ribs",
+            "C. Left fourth and fifth ribs",
+            "D. Right sixth and seventh ribs"
+        ],
+        "correct_answer": "B"
+    },
+    "case_185": {
+        "image_path_list": [
+            "./images/case_184/image_0.png"
+        ],
+        "context": "Age: 077Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "Where is the tip of the endotracheal tube located on the chest X-ray?",
+        "options": [
+            "A. At the level of the carina",
+            "B. At the level of the thoracic inlet",
+            "C. In the right main bronchus",
+            "D. In the left main bronchus"
+        ],
+        "correct_answer": "B"
+    },
+    "case_186": {
+        "image_path_list": [
+            "./images/case_185/image_0.png"
+        ],
+        "context": "Age: 046Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the approximate size of the nodular density observed near the cardiac apex on this chest X-ray?",
+        "options": [
+            "A. 0.5 cm",
+            "B. 1.4 cm",
+            "C. 2.0 cm",
+            "D. 3.0 cm"
+        ],
+        "correct_answer": "B"
+    },
+    "case_187": {
+        "image_path_list": [
+            "./images/case_186/image_0.png"
+        ],
+        "context": "Age: 088Y Gender: F",
+        "category": "Lung and Pleural Lucency",
+        "question": "What is the current measurement of the right apical pneumothorax on this chest X-ray?",
+        "options": [
+            "A. 10 mm",
+            "B. 19 mm",
+            "C. 30 mm",
+            "D. 38 mm"
+        ],
+        "correct_answer": "B"
+    },
+    "case_188": {
+        "image_path_list": [
+            "./images/case_187/image_0.png"
+        ],
+        "context": "Age: 019Y Gender: M",
+        "category": "Lung and Pleural Lucency",
+        "question": "What is the approximate volume of the pneumothorax observed on the chest X-ray?",
+        "options": [
+            "A. 5%",
+            "B. 10%",
+            "C. 20%",
+            "D. 30%"
+        ],
+        "correct_answer": "B"
+    },
+    "case_189": {
+        "image_path_list": [
+            "./images/case_188/image_0.png",
+            "./images/case_188/image_1.png"
+        ],
+        "context": "Age: 089Y Gender: F",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the nature of the opacity observed in the right upper lobe on the chest X-ray?",
+        "options": [
+            "A. Confluent consolidation",
+            "B. Slightly more haziness possibly reflecting pleural thickening or fibrosis",
+            "C. Large cavitary lesion",
+            "D. Diffuse nodular pattern"
+        ],
+        "correct_answer": "B"
+    },
+    "case_190": {
+        "image_path_list": [
+            "./images/case_189/image_0.png"
+        ],
+        "context": "Age: 085Y Gender: M",
+        "category": "Lung and Pleural Lucency",
+        "question": "What is the size of the cavitary lesion observed in the right upper lobe on this chest X-ray?",
+        "options": [
+            "A. 1.5 x 1.2 cm",
+            "B. 2.0 x 1.8 cm",
+            "C. 3.1 x 2.7 cm",
+            "D. 4.0 x 3.5 cm"
+        ],
+        "correct_answer": "C"
+    },
+    "case_191": {
+        "image_path_list": [
+            "./images/case_190/image_0.png"
+        ],
+        "context": "Age: 059Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "How far above the carina is the tip of the endotracheal tube located on this chest X-ray?",
+        "options": [
+            "A. 1.5 cm",
+            "B. 2.5 cm",
+            "C. 3.7 cm",
+            "D. 5.0 cm"
+        ],
+        "correct_answer": "C"
+    },
+    "case_192": {
+        "image_path_list": [
+            "./images/case_191/image_0.png",
+            "./images/case_191/image_1.png"
+        ],
+        "context": "Age: 085Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size and characteristic of the mass observed in the right upper lobe on this chest X-ray?",
+        "options": [
+            "A. 2 cm solid mass",
+            "B. 3.5 cm partially cavitary mass",
+            "C. 5 cm calcified mass",
+            "D. 1 cm spiculated nodule"
+        ],
+        "correct_answer": "B"
+    },
+    "case_193": {
+        "image_path_list": [
+            "./images/case_192/image_0.png"
+        ],
+        "context": "Age: 071Y Gender: F",
+        "category": "Tubes and Lines",
+        "question": "What is the position of the endotracheal tube tip relative to the carina on this chest X-ray?",
+        "options": [
+            "A. 1 cm above the carina",
+            "B. 3.3 cm above the carina",
+            "C. At the level of the carina",
+            "D. Below the carina"
+        ],
+        "correct_answer": "B"
+    },
+    "case_194": {
+        "image_path_list": [
+            "./images/case_193/image_0.png"
+        ],
+        "context": "Age: 000D Gender: M",
+        "category": "Tubes and Lines",
+        "question": "What potential issue is noted with the endotracheal tube on the chest X-ray?",
+        "options": [
+            "A. Under inflation of the ET tube balloon",
+            "B. Over inflation of the ET tube balloon",
+            "C. ET tube is too short",
+            "D. ET tube is too long"
+        ],
+        "correct_answer": "B"
+    },
+    "case_195": {
+        "image_path_list": [
+            "./images/case_194/image_0.png"
+        ],
+        "context": "Age: 001D Gender: M",
+        "category": "Tubes and Lines",
+        "question": "How far above the carina is the endotracheal tube placed in this chest X-ray?",
+        "options": [
+            "A. 1.5 cm",
+            "B. 2.8 cm",
+            "C. 4.0 cm",
+            "D. 5.5 cm"
+        ],
+        "correct_answer": "B"
+    },
+    "case_196": {
+        "image_path_list": [
+            "./images/case_195/image_0.png",
+            "./images/case_195/image_1.png"
+        ],
+        "context": "Age: 080Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the most likely interpretation of the bibasilar opacities seen on this chest X-ray?",
+        "options": [
+            "A. Pneumonia",
+            "B. Atelectasis or edema",
+            "C. Lung cancer",
+            "D. Normal finding"
+        ],
+        "correct_answer": "B"
+    },
+    "case_197": {
+        "image_path_list": [
+            "./images/case_196/image_0.png"
+        ],
+        "context": "Age: 080Y Gender: M",
+        "category": "Tubes and Lines",
+        "question": "How far above the carina is the tip of the endotracheal tube positioned on this chest X-ray?",
+        "options": [
+            "A. 2.0 cm",
+            "B. 4.0 cm",
+            "C. 6.0 cm",
+            "D. 8.0 cm"
+        ],
+        "correct_answer": "C"
+    },
+    "case_198": {
+        "image_path_list": [
+            "./images/case_197/image_0.png",
+            "./images/case_197/image_1.png"
+        ],
+        "context": "Age: 083Y Gender: M",
+        "category": "Lung and Pleural Opacity",
+        "question": "What is the size of the nodular density identified in the left lung on this chest X-ray?",
+        "options": [
+            "A. 1.8 cm",
+            "B. 2.5 cm",
+            "C. 3.3 cm",
+            "D. 4.0 cm"
+        ],
+        "correct_answer": "C"
+    }
+}
