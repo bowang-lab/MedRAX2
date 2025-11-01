@@ -18,6 +18,7 @@ import { MessageActivity } from './MessageActivity';
 import { classNames, formatDateTime } from '../../lib/utils';
 import { getImageUrl } from '../../lib/utils/image';
 import { ImageModal } from '../ui/ImageModal';
+import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 
 /**
  * Extract the most relevant generated images from tool executions
@@ -148,7 +149,14 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                 : 'bg-zinc-800 text-zinc-100'
                         )}
                     >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        {/* Render message content as Markdown for assistant, plain text for user */}
+                        {isUser ? (
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        ) : (
+                            <div className="text-sm prose prose-invert max-w-none">
+                                <MarkdownRenderer content={message.content} />
+                            </div>
+                        )}
 
                         {/* Attached Scans (User messages) */}
                         {message.attachedScans && message.attachedScans.length > 0 && (
