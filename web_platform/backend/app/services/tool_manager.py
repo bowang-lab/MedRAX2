@@ -179,12 +179,12 @@ class ToolManager:
             ToolInfo(
                 id="medgemma",
                 name="MedGemma VQA",
-                description="Medical VQA using MedGemma API",
+                description="Medical VQA using MedGemma 4B (Direct Integration)",
                 category="vqa",
-                tool_class="MedGemmaAPIClientTool",
-                module_path="medrax.tools.vqa.medgemma.medgemma_client",
-                dependencies=[],
-                requires_gpu=False
+                tool_class="MedGemmaTool",
+                module_path="medrax.tools.vqa.medgemma.medgemma_tool",
+                dependencies=["transformers", "torch", "accelerate", "bitsandbytes"],
+                requires_gpu=True  # Recommended, but works on CPU
             ),
             
             # SEGMENTATION TOOLS
@@ -740,12 +740,23 @@ class ToolManager:
                 config = RAGConfig()  # Use default configuration
                 logger.info(f"Creating RAGTool with default RAGConfig")
                 return tool_class(config)
-            elif tool.tool_class == "MedGemmaAPIClientTool":
-                # MedGemmaAPIClientTool requires an api_url parameter
-                # Use the configured URL from settings if available
-                api_url = getattr(settings, 'MEDGEMMA_API_URL', 'https://api.google.dev/medgemma/v1')
-                logger.info(f"Creating MedGemmaAPIClientTool with api_url: {api_url}")
-                return tool_class(api_url=api_url)
+            elif tool.tool_class == "MedGemmaTool":
+                # MedGemmaTool - direct integration with optional configuration
+                medgemma_kwargs = {}
+                
+                # Optional: Use 4-bit quantization (saves VRAM)
+                use_4bit = getattr(settings, 'MEDGEMMA_USE_4BIT', False)
+                if use_4bit:
+                    medgemma_kwargs['use_4bit'] = True
+                    logger.info("MedGemma will use 4-bit quantization")
+                
+                # Optional: Custom cache directory
+                cache_dir = getattr(settings, 'MODEL_CACHE_DIR', None)
+                if cache_dir:
+                    medgemma_kwargs['cache_dir'] = cache_dir
+                
+                logger.info(f"Creating MedGemmaTool (model loads on first use)")
+                return tool_class(**medgemma_kwargs)
             else:
                 # Most tools can be instantiated without parameters
                 return tool_class()

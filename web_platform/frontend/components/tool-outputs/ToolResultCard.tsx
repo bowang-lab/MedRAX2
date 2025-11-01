@@ -312,11 +312,11 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                         {showRawData ? '▼ Hide Raw Data' : '▶ Show Raw Data (for debugging)'}
                     </button>
                     {showRawData && (
-                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
-                            <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
+                        <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
                                 {JSON.stringify(result.resultData, null, 2)}
-                            </pre>
-                        </div>
+                        </pre>
+                    </div>
                     )}
                 </div>
             )}

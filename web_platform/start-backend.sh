@@ -135,13 +135,41 @@ else
     echo "   [OK] Database exists (existing data preserved)"
 fi
 
-# Validate tool schemas (optional check, won't block startup)
+# Check GPU support
 echo ""
-echo "Validating tool schemas..."
-if python ../../medrax/tools/validate_schemas.py 2>/dev/null; then
-    echo "   [OK] All tool schemas valid"
+echo "Checking GPU support..."
+GPU_CHECK=$(python -c "import torch; print('cuda' if torch.cuda.is_available() else 'cpu')" 2>/dev/null || echo "error")
+
+if [ "$GPU_CHECK" = "cuda" ]; then
+    GPU_COUNT=$(python -c "import torch; print(torch.cuda.device_count())" 2>/dev/null || echo "0")
+    CUDA_VERSION=$(python -c "import torch; print(torch.version.cuda if torch.cuda.is_available() else 'N/A')" 2>/dev/null || echo "N/A")
+    echo "   [OK] GPU acceleration enabled"
+    echo "       GPUs: $GPU_COUNT"
+    echo "       PyTorch CUDA: $CUDA_VERSION"
+elif [ "$GPU_CHECK" = "cpu" ]; then
+    if command -v nvidia-smi &> /dev/null; then
+        echo "   [WARNING] NVIDIA GPU detected but PyTorch is CPU-only!"
+        echo "   "
+        echo "   To fix: Delete conda environment and recreate:"
+        echo "     conda env remove -n alankrit-medrax2"
+        echo "     conda env create -f backend/environment.yml"
+        echo "   "
+        echo "   Continuing with CPU (tools will be slower)..."
+    else
+        echo "   [OK] No GPU detected (CPU mode)"
+    fi
 else
-    echo "   [SKIP] Schema validation skipped (optional check)"
+    echo "   [WARNING] Could not check GPU status"
+fi
+
+# Validate tools (optional check, won't block startup)
+echo ""
+echo "Validating tools..."
+if python ../../medrax/tools/validate_tools.py 2>/dev/null; then
+    echo "   [OK] All tools validated successfully"
+else
+    echo "   ⚠️  WARNING: Tool validation found issues (see medrax/tools/validate_tools.py)"
+    echo "   Continuing with startup..."
 fi
 
 echo ""

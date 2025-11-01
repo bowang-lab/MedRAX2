@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import ClassVar, Dict, List, Optional, Tuple, Type
 import logging
 
@@ -301,6 +302,13 @@ class ArcPlusClassifierTool(BaseTool):
             FileNotFoundError: If the specified image file does not exist.
             ValueError: If the image cannot be properly loaded or processed.
         """
+        # Validate image file exists
+        image_path_obj = Path(image_path)
+        if not image_path_obj.exists():
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+        if not image_path_obj.is_file():
+            raise ValueError(f"Path is not a file: {image_path}")
+        
         try:
             # Load and preprocess image following the example pattern
             image = Image.open(image_path).convert("RGB").resize((768, 768))
@@ -383,10 +391,12 @@ class ArcPlusClassifierTool(BaseTool):
             return output, metadata
 
         except Exception as e:
+            logger.error(f"ArcPlus classification failed for {image_path}: {str(e)}", exc_info=True)
             return {"error": str(e)}, {
                 "image_path": image_path,
                 "analysis_status": "failed",
                 "error_details": str(e),
+                "error_type": type(e).__name__,
             }
 
     async def _arun(

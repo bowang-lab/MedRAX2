@@ -346,7 +346,8 @@ class XRayPhraseGroundingTool(BaseTool):
         self,
         image_path: str,
         phrase: str,
+        max_new_tokens: int = 300,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Asynchronous version of _run."""
-        return self._run(image_path, phrase, run_manager)
+        return self._run(image_path, phrase, max_new_tokens, run_manager)

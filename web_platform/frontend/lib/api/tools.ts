@@ -27,7 +27,7 @@ export async function getToolExecutionDetail(executionId: string): Promise<ToolE
     if (!data) throw new Error('Tool execution not found');
 
     const response = data as ApiToolExecutionDetailResponse;
-    
+
     return {
         execution: toUiToolExecution(response.execution),
         logs: response.logs.map(toUiToolExecutionLog),

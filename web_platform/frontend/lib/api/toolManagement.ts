@@ -74,7 +74,7 @@ export async function bulkLoadTools(params: {
 }> {
     const requestBody: ApiToolBulkLoadRequest = {
         tool_ids: params.toolIds ?? null,
-        load_all: params.loadAll ?? false,
+            load_all: params.loadAll ?? false,
     };
     
     const { data, error } = await openapiClient.POST('/api/tools/bulk-load', {

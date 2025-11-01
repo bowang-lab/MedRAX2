@@ -53,7 +53,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
                         <p className="mb-3 text-zinc-200 leading-relaxed last:mb-0" {...props} />
                     ),
 
-                    // List styles  
+                    // List styles
                     ul: (props) => (
                         <ul className="list-disc list-outside mb-3 space-y-1.5 text-zinc-200 ml-5" {...props} />
                     ),
@@ -132,8 +132,9 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
                         <hr className="my-6 border-t border-zinc-700" {...props} />
                     ),
 
-                    // Images
+                    // Images (using img tag for dynamic markdown src)
                     img: ({ src, alt, ...props }) => (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                             src={src}
                             alt={alt || ''}

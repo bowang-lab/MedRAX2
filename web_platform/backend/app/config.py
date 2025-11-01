@@ -89,6 +89,18 @@ class Settings(BaseSettings):
     DEVICE: str = "auto"
     # Force CPU even if CUDA is available (useful for testing/development)
     FORCE_CPU: bool = False
+    
+    # MedGemma Configuration (Direct Integration)
+    # MedGemma now runs directly in the MedRAX backend (no separate server needed!)
+    # 
+    # MEDGEMMA_USE_4BIT: Use 4-bit quantization to reduce VRAM usage (~2GB instead of ~8GB)
+    # Set to True if you have limited GPU memory. May slightly affect quality.
+    # Default: False (full precision, best quality)
+    MEDGEMMA_USE_4BIT: bool = False
+    
+    # Legacy API URL setting (for backward compatibility with API client mode)
+    # Leave empty to use direct integration (recommended)
+    MEDGEMMA_API_URL: str = ""
 
 
 settings = Settings()
