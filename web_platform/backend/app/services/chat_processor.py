@@ -259,7 +259,8 @@ class ChatProcessor:
                 try:
                     import ast
                     parsed = ast.literal_eval(str(tool_message.content))
-                    if isinstance(parsed, tuple) and len(parsed) >= 2:
+                    # Handle both tuple and list with 2+ elements (result, metadata)
+                    if isinstance(parsed, (tuple, list)) and len(parsed) >= 2:
                         result_data, metadata = parsed[0], parsed[1]
                     elif isinstance(parsed, dict):
                         result_data = parsed
