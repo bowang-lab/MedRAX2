@@ -118,7 +118,7 @@ def main():
     run_parser.add_argument("--model", required=True, 
                            help="Model name (e.g., gpt-4o, gpt-4.1-2025-04-14, gemini-2.5-pro)")
     run_parser.add_argument("--system-prompt", required=True, 
-                           choices=["MEDICAL_ASSISTANT", "CHESTAGENTBENCH_PROMPT"], 
+                           choices=["MEDICAL_ASSISTANT", "CHESTAGENTBENCH_PROMPT", "MEDGEMMA_PROMPT"], 
                            help="System prompt: MEDICAL_ASSISTANT (general) or CHESTAGENTBENCH_PROMPT (benchmarks)")
     run_parser.add_argument("--data-dir", required=True, 
                            help="Directory containing benchmark data files")

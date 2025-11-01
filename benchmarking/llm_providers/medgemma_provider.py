@@ -3,8 +3,6 @@
 import os
 import time
 import httpx
-from typing import Optional
-from pathlib import Path
 from tenacity import retry, wait_exponential, stop_after_attempt
 
 from .base import LLMProvider, LLMRequest, LLMResponse
@@ -36,9 +34,8 @@ class MedGemmaProvider(LLMProvider):
                 - api_url: URL of the MedGemma FastAPI service
                 - max_new_tokens: Maximum tokens to generate (default: 300)
         """
-        # Extract MedGemma-specific config before calling super().__init__
-        self.api_url = os.getenv('MEDGEMMA_API_URL', 'http://localhost:8002')
-        self.max_new_tokens = kwargs.pop('max_new_tokens', 300)
+        self.provider_name = "medgemma"
+        self.api_url = "http://kn132.paice.vectorinstitute.ai:8002"
         self.client = None
         
         # Call parent constructor
@@ -52,16 +49,6 @@ class MedGemmaProvider(LLMProvider):
             connect=10.0    # 10 seconds to establish connection
         )
         self.client = httpx.Client(timeout=timeout_config)
-        
-        # Test connection to MedGemma service
-        try:
-            response = self.client.get(f"{self.api_url}/docs")
-            if response.status_code != 200:
-                print(f"Warning: MedGemma API at {self.api_url} may not be running (status: {response.status_code})")
-        except httpx.ConnectError:
-            print(f"Warning: Could not connect to MedGemma API at {self.api_url}")
-            print("Please ensure the MedGemma FastAPI service is running:")
-            print(f"  python medrax/tools/vqa/medgemma/medgemma.py")
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def generate_response(self, request: LLMRequest) -> LLMResponse:
@@ -100,14 +87,13 @@ class MedGemmaProvider(LLMProvider):
             files_to_send = []
             for image_path in valid_images:
                 try:
-                    # Detect correct MIME type based on file extension
-                    ext = Path(image_path).suffix.lower()
-                    mime_type = "image/png" if ext == ".png" else "image/jpeg"
-                    
                     # Read image file
                     with open(image_path, "rb") as f:
                         image_data = f.read()
                     
+                    # Detect correct MIME type based on file extension
+                    mime_type = self._get_image_mime_type(image_path)
+
                     # Add to files list
                     files_to_send.append(
                         ("images", (os.path.basename(image_path), image_data, mime_type))
@@ -122,17 +108,14 @@ class MedGemmaProvider(LLMProvider):
                     duration=time.time() - start_time
                 )
             
-            # Prepare form data
             # Use system_prompt if provided, otherwise use default
             system_prompt_text = self.system_prompt if self.system_prompt else "You are an expert radiologist who is able to analyze radiological images at any resolution."
             
-            # Override max_new_tokens if provided in request
-            max_tokens = getattr(request, 'max_tokens', self.max_new_tokens)
-            
+            # Prepare form data
             data = {
                 "prompt": request.text,
                 "system_prompt": system_prompt_text,
-                "max_new_tokens": max_tokens,
+                "max_new_tokens": self.max_tokens,
             }
             
             # Make API request
@@ -148,19 +131,14 @@ class MedGemmaProvider(LLMProvider):
             # Parse response
             response_data = response.json()
             content = response_data.get("response", "")
-            metadata = response_data.get("metadata", {})
             
+            # record duration
             duration = time.time() - start_time
-            
-            # MedGemma doesn't provide token usage, but we can include request info
-            usage = {
-                "num_images": len(valid_images),
-                "max_new_tokens": max_tokens,
-            }
-            
+
+            # return response object
             return LLMResponse(
                 content=content,
-                usage=usage,
+                usage=None,
                 duration=duration
             )
             
@@ -199,7 +177,7 @@ class MedGemmaProvider(LLMProvider):
                 content=f"Error: {error_msg}",
                 duration=duration
             )
-    
+
     def test_connection(self) -> bool:
         """Test the connection to the MedGemma API service.
         
