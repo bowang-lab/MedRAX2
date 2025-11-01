@@ -9,6 +9,7 @@ from typing import Dict, Optional, Any
 from dataclasses import dataclass
 from tqdm import tqdm
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from .llm_providers import LLMProvider, LLMRequest, LLMResponse
 from .benchmarks import Benchmark, BenchmarkDataPoint
 
@@ -31,15 +32,17 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkRunConfig:
     """Configuration for a benchmark run."""
+    benchmark_name: str
     provider_name: str
     model_name: str
-    benchmark_name: str
     output_dir: str
     max_questions: Optional[int] = None
     temperature: float = 0.7
     top_p: float = 0.95
     max_tokens: int = 5000
-    additional_params: Optional[Dict[str, Any]] = None
+    concurrency: int = 1
+    random_seed: Optional[int] = None
+    
 
 
 class BenchmarkRunner:
@@ -57,11 +60,10 @@ class BenchmarkRunner:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate unique run ID
-        self.run_id = f"{config.benchmark_name}_{config.provider_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.run_id = f"{config.benchmark_name}_{config.provider_name}_{config.model_name}_{config.max_questions}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Set up logging
         self._setup_logging()
-        
         self.logger.info(f"Initialized benchmark runner with ID: {self.run_id}")
 
     def _setup_logging(self) -> None:
@@ -89,107 +91,97 @@ class BenchmarkRunner:
 
     def run_benchmark(
         self,
-        llm_provider: LLMProvider,
         benchmark: Benchmark,
+        llm_provider: LLMProvider,
     ) -> Dict[str, Any]:
         """Run a benchmark against an LLM provider.
         
         Args:
-            llm_provider (LLMProvider): The LLM provider to test
             benchmark (Benchmark): The benchmark to run
+            llm_provider (LLMProvider): The LLM provider to test
             
         Returns:
             Dict[str, Any]: Summary of benchmark results
         """
         self.logger.info(f"Starting benchmark run: {self.run_id}")
-        self.logger.info(f"Model: {llm_provider.model_name}")
         self.logger.info(f"Benchmark: {benchmark}")
+        self.logger.info(f"Provider: {llm_provider.provider_name}")
+        self.logger.info(f"Model: {llm_provider.model_name}")
         
         # Test provider connection
         if not llm_provider.test_connection():
             self.logger.error("LLM provider connection test failed")
             return {"error": "LLM provider connection test failed"}
         
-        # Get data points to process
-        total_questions = len(benchmark)
-        max_questions = self.config.max_questions or total_questions
-        end_index = min(max_questions, total_questions)
-        
-        self.logger.info(f"Processing questions {0} to {end_index-1} of {total_questions}")
-        
         # Initialize counters
         processed = 0
         correct = 0
         total_duration = 0.0
         
-        # Process each data point
-        for i in tqdm(range(0, end_index), desc="Processing questions"):
-            try:
-                data_point = benchmark.get_data_point(i)
-                
-                # Run the model on this data point
-                result = self._process_data_point(llm_provider, data_point)
-                
-                # Update counters
-                processed += 1
-                if result.is_correct:
-                    correct += 1
-                total_duration += result.duration
-                
-                # Add to results
-                self.results.append(result)
-                
-                # Save individual result immediately
-                self._save_individual_result(result)
-                
-                # Log progress
-                if processed % 10 == 0:
-                    accuracy = (correct / processed) * 100
-                    avg_duration = total_duration / processed
+        # Determine concurrency
+        max_workers = max(1, int(getattr(self.config, "concurrency", 1) or 1))
+        
+        # Process data points in parallel using a bounded thread pool
+        with tqdm(total=len(benchmark), desc="Processing questions") as pbar:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_index = {executor.submit(self._process_data_point, dp, llm_provider): idx for idx, dp in enumerate(benchmark)}
+                for future in as_completed(future_to_index):
+                    idx = future_to_index[future]
+                    try:
+                        result = future.result()
+                    except Exception as e:
+                        self.logger.error(f"Error processing data point {idx}: {e}")
+                        result = BenchmarkResult(
+                            data_point_id=f"error_{idx}",
+                            question="",
+                            model_answer="",
+                            correct_answer="",
+                            is_correct=False,
+                            duration=0.0,
+                            error=str(e)
+                        )
                     
-                    self.logger.info(
-                        f"Progress: {processed}/{end_index} | "
-                        f"Accuracy: {accuracy:.2f}% | "
-                        f"Avg Duration: {avg_duration:.2f}s"
-                    )
-                
-            except Exception as e:
-                self.logger.error(f"Error processing data point {i}: {e}")
-                # Add error result
-                error_result = BenchmarkResult(
-                    data_point_id=f"error_{i}",
-                    question="",
-                    model_answer="",
-                    correct_answer="",
-                    is_correct=False,
-                    duration=0.0,
-                    error=str(e)
-                )
-                self.results.append(error_result)
-                
-                # Save individual error result immediately
-                self._save_individual_result(error_result)
-                continue
+                    # Update counters
+                    processed += 1
+                    if result.is_correct:
+                        correct += 1
+                    total_duration += result.duration
+                    
+                    # Add to results and persist immediately
+                    self.results.append(result)
+                    self._save_individual_result(result)
+                    
+                    # Update progress bar
+                    pbar.update(1)
+                    
+                    # Periodic logging
+                    if processed % 10 == 0:
+                        accuracy = (correct / processed) * 100
+                        avg_duration = total_duration / processed if processed > 0 else 0.0
+                        self.logger.info(
+                            f"Progress: {processed}/{len(benchmark)} | "
+                            f"Accuracy: {accuracy:.2f}% | "
+                            f"Avg Duration: {avg_duration:.2f}s"
+                        )
         
         # Save final results
         summary = self._save_final_results(benchmark)
-        
+
         self.logger.info(f"Benchmark run completed: {self.run_id}")
-        self.logger.info(f"Final accuracy: {summary['results']['accuracy']:.2f}%")
-        self.logger.info(f"Total duration: {summary['results']['total_duration']:.2f}s")
-        
+        self.logger.info(f"Summary: {summary}")
+
         return summary
 
     def _process_data_point(
         self,
-        llm_provider: LLMProvider,
         data_point: BenchmarkDataPoint,
+        llm_provider: LLMProvider
     ) -> BenchmarkResult:
         """Process a single data point.
         
         Args:
-            llm_provider (LLMProvider): The LLM provider to use
             data_point (BenchmarkDataPoint): The data point to process
+            llm_provider (LLMProvider): The LLM provider to use
             
         Returns:
             BenchmarkResult: Result of processing the data point
@@ -197,14 +189,10 @@ class BenchmarkRunner:
         start_time = time.time()
         
         try:
-            # Create request
+            # Create request for LLM
             request = LLMRequest(
                 text=data_point.text,
-                images=data_point.images,
-                temperature=self.config.temperature,
-                top_p=self.config.top_p,
-                max_tokens=self.config.max_tokens,
-                additional_params=self.config.additional_params
+                images=data_point.images
             )
             
             # Get response from LLM
@@ -214,10 +202,12 @@ class BenchmarkRunner:
             model_answer = self._extract_answer(response.content)
             
             # Check if correct
-            is_correct = self._is_correct_answer(model_answer, data_point.correct_answer)
+            is_correct = model_answer == data_point.correct_answer
             
+            # Calculate duration
             duration = time.time() - start_time
             
+            # Return result
             return BenchmarkResult(
                 data_point_id=data_point.id,
                 question=data_point.text,
@@ -229,8 +219,6 @@ class BenchmarkRunner:
                 chunk_history=response.chunk_history,
                 metadata={
                     "data_point_metadata": data_point.metadata,
-                    "case_id": data_point.case_id,
-                    "category": data_point.category,
                     "raw_response": response.content,
                 }
             )
@@ -247,9 +235,7 @@ class BenchmarkRunner:
                 error=str(e),
                 chunk_history=None,
                 metadata={
-                    "data_point_metadata": data_point.metadata,
-                    "case_id": data_point.case_id,
-                    "category": data_point.category,
+                    "data_point_metadata": data_point.metadata
                 }
             )
 
@@ -271,29 +257,6 @@ class BenchmarkRunner:
         # If no pattern matches, return the full response
         return response_text.strip()
 
-    def _is_correct_answer(self, model_answer: str, correct_answer: str) -> bool:
-        """Check if the model answer is correct.
-        
-        Args:
-            model_answer (str): The model's answer
-            correct_answer (str): The correct answer
-            
-        Returns:
-            bool: True if the answer is correct
-        """
-        if not model_answer or not correct_answer:
-            return False
-        
-        # For multiple choice, compare just the letter
-        model_clean = model_answer.strip().upper()
-        correct_clean = correct_answer.strip().upper()
-        
-        # Extract just the first letter for comparison
-        model_letter = model_clean[0] if model_clean else ""
-        correct_letter = correct_clean[0] if correct_clean else ""
-        
-        return model_letter == correct_letter
-
     def _save_individual_result(self, result: BenchmarkResult) -> None:
         """Save a single result to its own JSON file.
         
@@ -303,12 +266,14 @@ class BenchmarkRunner:
         # Sanitize data_point_id for filename (remove invalid characters)
         safe_id = re.sub(r'[^\w\-_.]', '_', result.data_point_id)
         
+        # Create run_id directory and individual_results subdirectory
+        run_dir = self.output_dir / self.run_id
+        individual_results_dir = run_dir / "individual_results"
+        individual_results_dir.mkdir(parents=True, exist_ok=True)
+        
         # Create filename with benchmark name and data point ID
         filename = f"{self.config.benchmark_name}_{safe_id}.json"
-        result_file = self.output_dir / "individual_results" / filename
-        
-        # Create individual_results directory if it doesn't exist
-        result_file.parent.mkdir(exist_ok=True)
+        result_file = individual_results_dir / filename
         
         # Convert result to serializable format
         result_data = {
@@ -323,7 +288,7 @@ class BenchmarkRunner:
             "usage": result.usage,
             "error": result.error,
             "chunk_history": result.chunk_history,
-            "metadata": result.metadata
+            "metadata": result.metadata,
         }
         
         # Save to file
@@ -339,8 +304,13 @@ class BenchmarkRunner:
         Returns:
             Dict[str, Any]: Summary of results
         """
+        # Create run_id directory and final_results subdirectory
+        run_dir = self.output_dir / self.run_id
+        final_results_dir = run_dir / "final_results"
+        final_results_dir.mkdir(parents=True, exist_ok=True)
+        
         # Save detailed results
-        results_file = self.output_dir / f"{self.run_id}_results.json"
+        results_file = final_results_dir / f"{self.run_id}_results.json"
         
         # Convert results to serializable format for final file
         results_data = []
@@ -367,30 +337,16 @@ class BenchmarkRunner:
         
         accuracy = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
         
-        # Calculate per-category accuracy
-        category_stats = {}
-        for result in self.results:
-            if result.metadata and result.metadata.get("category"):
-                category = result.metadata["category"]
-                if category not in category_stats:
-                    category_stats[category] = {"correct": 0, "total": 0}
-                category_stats[category]["total"] += 1
-                if result.is_correct:
-                    category_stats[category]["correct"] += 1
-        
-        # Calculate accuracy for each category
-        category_accuracies = {}
-        for category, stats in category_stats.items():
-            category_accuracies[category] = (stats["correct"] / stats["total"]) * 100
-        
         # Create summary
         summary = {
             "run_id": self.run_id,
             "timestamp": datetime.now().isoformat(),
             "config": {
-                "model_name": self.config.model_name,
                 "benchmark_name": self.config.benchmark_name,
+                "provider_name": self.config.provider_name,
+                "model_name": self.config.model_name,
                 "temperature": self.config.temperature,
+                "top_p": self.config.top_p,
                 "max_tokens": self.config.max_tokens,
             },
             "benchmark_info": {
@@ -403,13 +359,12 @@ class BenchmarkRunner:
                 "total_questions": total_questions,
                 "total_duration": total_duration,
                 "avg_duration_per_question": total_duration / total_questions if total_questions > 0 else 0,
-                "category_accuracies": category_accuracies,
             },
             "results_file": str(results_file),
         }
         
         # Save summary
-        summary_file = self.output_dir / f"{self.run_id}_summary.json"
+        summary_file = final_results_dir / f"{self.run_id}_summary.json"
         with open(summary_file, 'w') as f:
             json.dump(summary, f, indent=2)
         
