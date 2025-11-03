@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     HUGGINGFACE_CACHE_DIR: str = "~/.cache/huggingface"
     TORCH_CACHE_DIR: str = "~/.cache/torch"
     
+    # Model Weights Directory (for large pretrained models like ArcPlus)
+    # Should point to a directory containing model checkpoint files
+    MODELWEIGHTS: str = "/model-weights"
+    
     # Model Download Settings
     ALLOW_MODEL_DOWNLOADS: bool = True
     MAX_MODEL_DOWNLOAD_SIZE: int = 10737418240  # 10GB

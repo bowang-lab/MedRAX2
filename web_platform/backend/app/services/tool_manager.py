@@ -757,6 +757,23 @@ class ToolManager:
                 
                 logger.info(f"Creating MedGemmaTool (model loads on first use)")
                 return tool_class(**medgemma_kwargs)
+            elif tool.tool_class == "ArcPlusClassifierTool":
+                # ArcPlusClassifierTool - needs cache_dir for model weights
+                arcplus_kwargs = {}
+                
+                # Get model weights directory from settings
+                modelweights_dir = getattr(settings, 'MODELWEIGHTS', None)
+                if modelweights_dir:
+                    arcplus_kwargs['cache_dir'] = modelweights_dir
+                    logger.info(f"ArcPlus will load weights from: {modelweights_dir}")
+                else:
+                    logger.warning("MODELWEIGHTS not set - ArcPlus will not have pretrained weights")
+                
+                # Device configuration
+                arcplus_kwargs['device'] = None  # Auto-detect
+                
+                logger.info(f"Creating ArcPlusClassifierTool")
+                return tool_class(**arcplus_kwargs)
             else:
                 # Most tools can be instantiated without parameters
                 return tool_class()

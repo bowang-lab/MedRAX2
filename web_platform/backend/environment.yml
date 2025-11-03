@@ -1,19 +1,19 @@
 name: alankrit-medrax2
 channels:
-  - conda-forge
   - pytorch
-  - nvidia # CUDA support
+  - nvidia
+  - conda-forge
   - defaults
 dependencies:
   # Python
   - python=3.11
   - pip
 
-  # Core ML/Scientific Stack (via conda for optimized binaries)
-  # Note: pytorch from conda will auto-detect CUDA and install GPU version if available
-  - pytorch>=2.0.0
-  - torchvision>=0.15.0
-  - pytorch-cuda=12.1 # Explicit CUDA support (compatible with CUDA 12.4)
+  # Core ML/Scientific Stack with GPU support
+  # Install PyTorch with CUDA from pytorch channel (higher priority)
+  - pytorch::pytorch>=2.0.0
+  - pytorch::torchvision>=0.15.0
+  - pytorch::pytorch-cuda=12.1
   - numpy>=1.24,<2.0
   - scipy>=1.10.0
   - pandas=2.2.3
