@@ -22,6 +22,7 @@ export async function registerDoctor(
 ): Promise<AuthSession> {
     const { data: response, error } = await openapiClient.POST('/api/auth/register', {
         body: { name: data.name, password: data.password },
+        headers: authHeaders(),
     });
     if (error) throw error;
     if (!response) throw new Error('Failed to register');
@@ -34,6 +35,7 @@ export async function registerDoctor(
 export async function loginDoctor(data: DoctorLogin): Promise<AuthSession> {
     const { data: response, error } = await openapiClient.POST('/api/auth/login', {
         body: { name: data.name, password: data.password },
+        headers: authHeaders(),
     });
     if (error) throw error;
     if (!response) throw new Error('Failed to login');
