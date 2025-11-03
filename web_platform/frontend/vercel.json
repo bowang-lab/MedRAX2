@@ -2,11 +2,5 @@
     "framework": "nextjs",
     "buildCommand": "npm run build",
     "devCommand": "npm run dev",
-    "installCommand": "npm install",
-    "regions": [
-        "iad1"
-    ],
-    "env": {
-        "NEXT_PUBLIC_API_URL": "@medrax_api_url"
-    }
+    "installCommand": "npm install"
 }
