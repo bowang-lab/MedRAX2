@@ -101,6 +101,9 @@ class ChestXRaySegmentationTool(BaseTool):
         # Initialize PSPNet model
         self.model = xrv.baseline_models.chestx_det.PSPNet()
         
+        # Ensure model is in float32 to avoid dtype mismatches
+        self.model = self.model.float()
+        
         # Move to device with meta tensor handling
         try:
             self.model = self.model.to(self.device)
@@ -262,7 +265,8 @@ class ChestXRaySegmentationTool(BaseTool):
             img = img[None, ...]
             img = self.image_transform(img)
             img = torch.from_numpy(img)
-            img = img.to(self.device)
+            # Ensure tensor is float32 to match model dtype
+            img = img.float().to(self.device)
 
             # Generate predictions
             with torch.no_grad():

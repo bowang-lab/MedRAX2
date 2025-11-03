@@ -75,6 +75,10 @@ class TorchXRayVisionClassifierTool(BaseTool):
         
         self.model = xrv.models.DenseNet(weights=model_name)
         self.model.eval()
+        
+        # Ensure model is in float32 to avoid dtype mismatches
+        # torchxrayvision models may load with mixed dtypes
+        self.model = self.model.float()
         self.model = self.model.to(self.device)
         
         self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
@@ -110,7 +114,8 @@ class TorchXRayVisionClassifierTool(BaseTool):
         img = self.image_transform(img)
         img = torch.from_numpy(img).unsqueeze(0)
 
-        img = img.to(self.device)
+        # Ensure tensor is float32 to match model dtype
+        img = img.float().to(self.device)
 
         return img
 

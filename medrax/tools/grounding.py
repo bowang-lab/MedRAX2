@@ -264,11 +264,22 @@ class XRayPhraseGroundingTool(BaseTool):
             inputs = self.processor.format_and_preprocess_phrase_grounding_input(
                 frontal_image=image, phrase=phrase, return_tensors="pt"
             )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            # Move inputs to device
+            # MAIRA-2 model.generate() expects input_ids and attention_mask, but NOT pixel_values
+            # The pixel_values are processed internally when you call the model
+            device_inputs = {}
+            for k, v in inputs.items():
+                if torch.is_tensor(v):
+                    device_inputs[k] = v.to(self.device)
 
+            # Remove pixel_values from generate() kwargs as it's not a valid argument
+            # The model processes images internally via input_ids encoding
+            generate_inputs = {k: v for k, v in device_inputs.items() if k != 'pixel_values'}
+            
             with torch.no_grad():
                 output = self.model.generate(
-                    **inputs,
+                    **generate_inputs,
                     max_new_tokens=max_new_tokens,
                     use_cache=True,
                 )

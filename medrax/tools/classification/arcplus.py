@@ -298,7 +298,9 @@ class ArcPlusClassifierTool(BaseTool):
                 # Skip downsample layers due to architecture mismatch
                 skipped_keys.append(k)
                 continue
-            filtered_state_dict[k] = v
+            # Convert all weights to float32 to avoid dtype mismatches
+            # Checkpoint may contain bfloat16 weights but model expects float32
+            filtered_state_dict[k] = v.float() if torch.is_tensor(v) else v
         
         # Load the model weights (strict=False allows for missing/extra keys)
         msg = self.model.load_state_dict(filtered_state_dict, strict=False)
