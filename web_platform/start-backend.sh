@@ -194,6 +194,9 @@ echo "=================================================="
 echo ""
 
 # Start the server
+# Enable eager loading of tools on startup for better user experience
+export EAGER_LOAD_TOOLS=1
+
 # Use --loop asyncio to avoid conflict with nest_asyncio (used by duckduckgo-search)
 # Use 127.0.0.1 (localhost) for development security - change to 0.0.0.0 in production with proper firewall
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --loop asyncio

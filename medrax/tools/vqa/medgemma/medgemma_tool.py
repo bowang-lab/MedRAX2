@@ -17,8 +17,16 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 from PIL import Image
 import torch
-from transformers import BitsAndBytesConfig, pipeline
+from transformers import pipeline
 import logging
+
+# Try to import BitsAndBytesConfig, but don't fail if unavailable
+try:
+    from transformers import BitsAndBytesConfig
+    HAS_BITSANDBYTES = True
+except ImportError:
+    HAS_BITSANDBYTES = False
+    logging.warning("BitsAndBytesConfig not available, 4-bit quantization disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -136,13 +144,17 @@ class MedGemmaTool(BaseTool):
             # Configure quantization if requested
             quantization_config = None
             if self._use_4bit:
-                logger.info("  Using 4-bit quantization (saves VRAM)")
-                quantization_config = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.bfloat16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                )
+                if HAS_BITSANDBYTES:
+                    logger.info("  Using 4-bit quantization (saves VRAM)")
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.bfloat16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4"
+                    )
+                else:
+                    logger.warning("  4-bit quantization requested but BitsAndBytes not available, using full precision")
+                    self._use_4bit = False
             
             # Determine dtype based on device
             if self.device == "cuda":

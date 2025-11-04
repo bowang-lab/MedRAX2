@@ -183,7 +183,7 @@ class ToolManager:
                 category="vqa",
                 tool_class="MedGemmaTool",
                 module_path="medrax.tools.vqa.medgemma.medgemma_tool",
-                dependencies=["transformers", "torch", "accelerate", "bitsandbytes"],
+                dependencies=["transformers", "torch", "accelerate"],  # Removed bitsandbytes due to triton.ops conflict
                 requires_gpu=True  # Recommended, but works on CPU
             ),
             

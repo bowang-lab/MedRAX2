@@ -115,7 +115,8 @@ class CheXagentXRayVQATool(BaseTool):
                 device_map=device_map,
                 trust_remote_code=True,
                 cache_dir=cache_dir,
-                torch_dtype=self.dtype,
+                low_cpu_mem_usage=False,
+                attn_implementation="eager",
             )
             
             # Model is already initialized with appropriate dtype

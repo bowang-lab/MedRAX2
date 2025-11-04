@@ -14,6 +14,7 @@ from pathlib import Path
 import time
 
 from .config import settings
+import os
 from .api import api_router
 from .services.tool_manager import tool_manager
 from .database import engine, Base
@@ -172,27 +173,63 @@ async def startup_event():
     logger.info(f"🗄️  Database: {settings.DATABASE_URL}")
     logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
 
-    # Eager-load all available tools except the problematic X-ray generation tool
+    # Optional eager loading gated by env var to avoid long cold starts
     try:
-        exclude_ids = {"xray_generator"}
-        all_tools = tool_manager.get_all_tools()
-        target_ids = [
-            t["id"]
-            for t in all_tools
-            if t.get("status") in ("available", "unloaded") and t["id"] not in exclude_ids
-        ]
+        eager_env = os.getenv("EAGER_LOAD_TOOLS", "0").lower() in ("1", "true", "yes")
+        if eager_env:
+            exclude_ids = {"xray_generator"}
+            all_tools = tool_manager.get_all_tools()
+            target_ids = [
+                t["id"]
+                for t in all_tools
+                if t.get("status") in ("available", "unloaded") and t["id"] not in exclude_ids
+            ]
 
-        if target_ids:
-            logger.info(
-                f"🔧 Eager-loading tools at startup (excluding: {', '.join(exclude_ids)}): {', '.join(target_ids)}"
-            )
+            if target_ids:
+                logger.info(
+                    f"🔧 Eager-loading tools at startup (excluding: {', '.join(exclude_ids)}): {', '.join(target_ids)}"
+                )
+            else:
+                logger.info("🔧 No tools eligible for eager loading at startup")
+
+            # Sequential loading strategy to prevent GPU memory contention
+            # when multiple large models are loaded simultaneously
+            import threading
+            
+            def load_tools_sequentially():
+                """Load tools sequentially to prevent GPU memory conflicts."""
+                for i, tool_id in enumerate(target_ids):
+                    tool = tool_manager.tools.get(tool_id)
+                    if not tool or tool.status != "available":
+                        logger.warning(f"⚠️ Tool {tool_id} not available for loading")
+                        continue
+                        
+                    logger.info(f"🔧 Loading tool {i+1}/{len(target_ids)}: {tool_id}")
+                    try:
+                        # Mark as loading
+                        tool.status = "loading"
+                        tool.error_message = None
+                        
+                        # Load tool synchronously to ensure sequential execution
+                        tool_manager.load_tool_in_background(tool_id)
+                        
+                        # Check if it loaded successfully
+                        if tool.status == "loaded":
+                            logger.info(f"✅ Successfully loaded: {tool_id}")
+                        else:
+                            logger.error(f"❌ Failed to load {tool_id}: {tool.error_message}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to load {tool_id}: {e}")
+                        tool.status = "error"
+                        tool.error_message = str(e)
+            
+            # Start loading in background thread to avoid blocking server startup
+            threading.Thread(target=load_tools_sequentially, daemon=True).start()
+            logger.info(f"🔧 Started sequential loading of {len(target_ids)} tools in background")
         else:
-            logger.info("🔧 No tools eligible for eager loading at startup")
-
-        for tool_id in target_ids:
-            tool_manager.start_background_load(tool_id)
+            logger.info("🔧 Eager tool loading disabled (EAGER_LOAD_TOOLS=0). Server will start faster.")
     except Exception as e:
-        logger.warning(f"Failed to eager-load tools at startup: {e}")
+        logger.warning(f"Failed during eager-load phase: {e}")
 
 
 @app.on_event("shutdown")

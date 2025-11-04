@@ -9,11 +9,10 @@ dependencies:
   - python=3.11
   - pip
 
-  # Core ML/Scientific Stack with GPU support
-  # Install PyTorch with CUDA from pytorch channel (higher priority)
-  - pytorch::pytorch>=2.0.0
-  - pytorch::torchvision>=0.15.0
+  # GPU PyTorch stack (CUDA runtime from conda; torch stack via pip)
   - pytorch::pytorch-cuda=12.1
+
+  # Core scientific
   - numpy>=1.24,<2.0
   - scipy>=1.10.0
   - pandas=2.2.3
@@ -22,16 +21,22 @@ dependencies:
   - opencv=4.*
   - scikit-image=0.22.0
 
-  # Medical Imaging
+  # Medical imaging
   - pydicom>=2.4.0
   - simpleitk>=2.2.0
 
-  # Fix OpenMP duplicate library issue on macOS
-  - llvm-openmp
+  # (Linux doesn’t need this; safe to drop unless you build on macOS too)
+  # - llvm-openmp
 
-  # Everything else via pip (not available in conda or needs specific versions)
   - pip:
-      # Backend Framework
+      # Use PyTorch CU121 wheels from official index
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch==2.6.0
+      - torchvision==0.21.0
+      - torchaudio==2.6.0
+      # Triton 2.x for compatibility with code paths expecting triton.ops
+      - triton==2.1.0
+      # Backend framework
       - fastapi==0.115.4
       - uvicorn[standard]==0.32.0
       - python-multipart==0.0.12
@@ -40,41 +45,41 @@ dependencies:
       - pydantic==2.9.2
       - pydantic-settings==2.11.0
 
-      # Database
+      # DB
       - sqlalchemy==2.0.35
       - alembic==1.13.3
 
-      # HTTP & Networking
+      # HTTP & I/O
       - httpx==0.28.1
       - requests==2.32.5
       - aiofiles==25.1.0
+      - anyio==4.11.0
 
       # Testing
       - pytest==8.3.3
       - pytest-asyncio==0.24.0
       - pytest-cov==5.0.0
-      - anyio==4.11.0
 
-      # System utilities
+      # System utils
       - psutil>=5.9.0
 
-      # Environment & Configuration
+      # Env/config
       - python-dotenv==1.0.1
       - python-decouple==3.8
 
-      # ML/AI Frameworks
-      - transformers>=4.43.0,<4.44.0
+      # ML/AI frameworks
+      - transformers==4.57.1
       - diffusers==0.35.2
-      - safetensors==0.4.2
       - accelerate==0.27.2
+      - safetensors>=0.4.3
 
-      # HuggingFace Ecosystem
+      # HF ecosystem
       - huggingface-hub==0.35.3
-      - datasets==4.2.0
+      - datasets>=2.20.0
       - sentencepiece==0.2.0
       - protobuf==4.25.3
 
-      # LangChain Framework
+      # LangChain family
       - langchain==0.3.27
       - langchain-core==0.3.79
       - langchain-community==0.3.31
@@ -87,26 +92,26 @@ dependencies:
       - langgraph-checkpoint==2.0.14
       - langsmith==0.4.37
 
-      # Vector Database & Search
+      # Vector DB & search
       - pinecone==6.0.0
       - cohere==5.19.0
       - duckduckgo-search==4.4.3
 
-      # Medical Imaging - Specialized Models
+      # Medical imaging models
       - torchxrayvision==1.2.1
       - timm==0.9.16
       - albumentations==1.4.0
 
-      # GPU Acceleration & Model Loading
-      - bitsandbytes>=0.42.0 # GPU quantization support
+      # GPU quantization & loaders
+      - bitsandbytes==0.43.1
 
-      # Configuration & Utilities
+      # Config & utils
       - hydra-core==1.3.2
       - omegaconf==2.3.0
       - tqdm>=4.65.0
       - einops>=0.6.0
 
-      # Additional Dependencies
+      # Extras
       - beautifulsoup4==4.12.3
       - lxml>=5.1.0
       - jinja2==3.1.6

@@ -97,19 +97,28 @@ class LlavaMetaModel:
             def get_w(weights, keyword):
                 return {k.split(keyword + ".")[1]: v for k, v in weights.items() if keyword in k}
 
-            mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location="cpu")
-            self.mm_projector.load_state_dict(get_w(mm_projector_weights, "mm_projector"))
+            try:
+                mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location="cpu")
+                self.mm_projector.load_state_dict(get_w(mm_projector_weights, "mm_projector"))
+            except Exception as e:
+                print(
+                    f"Warning: failed to load mm_projector weights from '{pretrain_mm_mlp_adapter}' due to: {e}. Continuing without these optional weights."
+                )
 
             # also load additional learnable parameters during feature alignment
             checkpoint_folder = os.path.dirname(pretrain_mm_mlp_adapter)
             ckpts = glob(f"{checkpoint_folder}/checkpoint-*", recursive=False)
             if len(ckpts) > 0:
-                vision_module_weights = torch.load(f"{ckpts[-1]}/mm_projector.bin", map_location="cpu")
-                model_dict = get_w(vision_module_weights, "vision_tower")
-                print(f"Loading vision module weights from {ckpts[-1]}/mm_projector.bin")
-                # print keys in model_dict
-                print(f"Loaded keys: {model_dict.keys()}")
-                self.vision_tower.load_state_dict(model_dict, strict=False)
+                try:
+                    vision_module_weights = torch.load(f"{ckpts[-1]}/mm_projector.bin", map_location="cpu")
+                    model_dict = get_w(vision_module_weights, "vision_tower")
+                    print(f"Loading vision module weights from {ckpts[-1]}/mm_projector.bin")
+                    print(f"Loaded keys: {model_dict.keys()}")
+                    self.vision_tower.load_state_dict(model_dict, strict=False)
+                except Exception as e:
+                    print(
+                        f"Warning: failed to load optional vision module weights from '{ckpts[-1]}/mm_projector.bin' due to: {e}. Skipping."
+                    )
 
 
 class LlavaMetaForCausalLM(ABC):
@@ -351,8 +360,14 @@ class LlavaMetaForCausalLM(ABC):
                     p.requires_grad = False
 
             if model_args.pretrain_mm_mlp_adapter:
-                mm_projector_weights = torch.load(model_args.pretrain_mm_mlp_adapter, map_location="cpu")
-                embed_tokens_weight = mm_projector_weights["model.embed_tokens.weight"]
+                try:
+                    mm_projector_weights = torch.load(model_args.pretrain_mm_mlp_adapter, map_location="cpu")
+                    embed_tokens_weight = mm_projector_weights["model.embed_tokens.weight"]
+                except Exception as e:
+                    print(
+                        f"Warning: failed to load embed token weights from '{model_args.pretrain_mm_mlp_adapter}' due to: {e}. Skipping."
+                    )
+                    return None
                 assert num_new_tokens == 2
                 if input_embeddings.shape == embed_tokens_weight.shape:
                     input_embeddings[-num_new_tokens:] = embed_tokens_weight[-num_new_tokens:]

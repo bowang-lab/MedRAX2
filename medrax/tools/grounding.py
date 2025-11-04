@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from pydantic import BaseModel, Field, ConfigDict
 
-from transformers import AutoModelForCausalLM, AutoProcessor, BitsAndBytesConfig, AutoConfig
+from transformers import AutoModel, AutoProcessor, BitsAndBytesConfig, AutoConfig
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -180,16 +180,37 @@ class XRayPhraseGroundingTool(BaseTool):
             logger.info("Loading with AutoConfig without trust_remote_code...")
             model_config = AutoConfig.for_model(model_type, **config_dict)
         
-        logger.info("Loading model with patched config and custom model class...")
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            config=model_config,
-            device_map=device_map,
-            cache_dir=cache_dir,
-            trust_remote_code=True,
-            quantization_config=quantization_config,
-            torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
-        )
+        logger.info("Loading MAIRA-2 model with AutoModel for custom architecture...")
+        # AutoModel handles custom architectures like Maira2ForConditionalGeneration
+        try:
+            self.model = AutoModel.from_pretrained(
+                model_path,
+                device_map=device_map,
+                cache_dir=cache_dir,
+                trust_remote_code=True,  # Required for custom model class
+                quantization_config=quantization_config,
+                torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
+                low_cpu_mem_usage=False,
+            )
+            logger.info(f"Model loaded successfully: {type(self.model).__name__}")
+        except Exception as e:
+            logger.error(f"Failed to load MAIRA-2 model: {e}")
+            # Try with explicit config if direct load fails
+            try:
+                self.model = AutoModel.from_pretrained(
+                    model_path,
+                    config=model_config,
+                    device_map=device_map,
+                    cache_dir=cache_dir,
+                    trust_remote_code=True,
+                    quantization_config=quantization_config,
+                    torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
+                    low_cpu_mem_usage=False,
+                )
+                logger.info(f"Model loaded with config: {type(self.model).__name__}")
+            except Exception as e2:
+                logger.error(f"Failed to load MAIRA-2 model even with config: {e2}")
+                raise
         
         logger.info("Loading processor...")
         self.processor = AutoProcessor.from_pretrained(
