@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from pydantic import BaseModel, Field, ConfigDict
 
-from transformers import AutoModel, AutoProcessor, BitsAndBytesConfig, AutoConfig
+from transformers import AutoModelForCausalLM, AutoProcessor, BitsAndBytesConfig, AutoConfig
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -132,85 +132,32 @@ class XRayPhraseGroundingTool(BaseTool):
             logger.warning("Quantization (4-bit/8-bit) only available on CUDA. Loading full precision model.")
 
         device_map = get_device_map(device_str)
-        logger.info(f"Loading MAIRA-2 model (bypassing rope_scaling validation)...")
         
-        import json
-        from huggingface_hub import hf_hub_download
-        
-        logger.info("Downloading config.json...")
-        config_file = hf_hub_download(
-            repo_id=model_path,
-            filename="config.json",
-            cache_dir=cache_dir,
-        )
-        
-        with open(config_file, 'r') as f:
-            config_dict = json.load(f)
-        
-        logger.info(f"Original rope_scaling in config: {config_dict.get('rope_scaling')}")
-        
-        if 'rope_scaling' in config_dict:
-            if config_dict['rope_scaling'] is not None:
-                if isinstance(config_dict['rope_scaling'], dict):
-                    if config_dict['rope_scaling'].get('type') is None:
-                        logger.info("Removing invalid rope_scaling (type=None)")
-                        config_dict['rope_scaling'] = None
-        
-        logger.info("Loading base config without custom class to bypass validation...")
-        
-        if 'auto_map' in config_dict:
-            logger.info("Removing auto_map to prevent custom config class loading")
-            del config_dict['auto_map']
-        
-        architecture = config_dict.get('architectures', ['LlamaForCausalLM'])[0]
-        model_type = config_dict.get('model_type', 'llama')
-        
-        logger.info(f"Model architecture: {architecture}, model_type: {model_type}")
-        
-        from transformers import LlamaConfig, Qwen2Config
+        # MAIRA-2 uses a custom Maira2ForConditionalGeneration class
+        # We'll use AutoModel with trust_remote_code to let it load the custom class
+        logger.info("Loading MAIRA-2 model with trust_remote_code=True...")
         
         try:
-            if 'qwen' in model_type.lower():
-                model_config = Qwen2Config(**config_dict)
-            else:
-                model_config = LlamaConfig(**config_dict)
-            logger.info("Successfully loaded config with base class")
-        except Exception as e:
-            logger.warning(f"Failed to load with specific base class: {e}")
-            logger.info("Loading with AutoConfig without trust_remote_code...")
-            model_config = AutoConfig.for_model(model_type, **config_dict)
-        
-        logger.info("Loading MAIRA-2 model with AutoModel for custom architecture...")
-        # AutoModel handles custom architectures like Maira2ForConditionalGeneration
-        try:
+            # Use AutoModel to load the custom Maira2ForConditionalGeneration class
+            from transformers import AutoModel
             self.model = AutoModel.from_pretrained(
                 model_path,
                 device_map=device_map,
                 cache_dir=cache_dir,
-                trust_remote_code=True,  # Required for custom model class
+                trust_remote_code=True,  # Required for Maira2ForConditionalGeneration
                 quantization_config=quantization_config,
                 torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
                 low_cpu_mem_usage=False,
             )
             logger.info(f"Model loaded successfully: {type(self.model).__name__}")
+            
+            # Verify the model has generation capabilities
+            if not hasattr(self.model, 'generate'):
+                raise AttributeError(f"Loaded model {type(self.model).__name__} doesn't have generate method")
+                    
         except Exception as e:
             logger.error(f"Failed to load MAIRA-2 model: {e}")
-            # Try with explicit config if direct load fails
-            try:
-                self.model = AutoModel.from_pretrained(
-                    model_path,
-                    config=model_config,
-                    device_map=device_map,
-                    cache_dir=cache_dir,
-                    trust_remote_code=True,
-                    quantization_config=quantization_config,
-                    torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
-                    low_cpu_mem_usage=False,
-                )
-                logger.info(f"Model loaded with config: {type(self.model).__name__}")
-            except Exception as e2:
-                logger.error(f"Failed to load MAIRA-2 model even with config: {e2}")
-                raise
+            raise RuntimeError(f"Could not load MAIRA-2 model: {e}")
         
         logger.info("Loading processor...")
         self.processor = AutoProcessor.from_pretrained(
