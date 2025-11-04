@@ -134,61 +134,66 @@ class XRayPhraseGroundingTool(BaseTool):
         device_map = get_device_map(device_str)
         
         # MAIRA-2 uses a custom Maira2ForConditionalGeneration class
-        # We need to try different Auto classes since it's not a standard architecture
+        # We need to load it using a method that works with custom architectures
         logger.info("Loading MAIRA-2 model with trust_remote_code=True...")
         
-        model_loaded = False
-        load_errors = []
+        # Import the necessary components
+        from transformers import AutoConfig
+        from transformers.modeling_utils import PreTrainedModel
+        import importlib
         
-        # Try different model classes in order of likelihood
-        model_classes = [
-            ("AutoModelForSeq2SeqLM", "seq2seq generation model"),
-            ("AutoModel", "base model"),
-            ("AutoModelForCausalLM", "causal language model"),
-        ]
-        
-        from transformers import AutoModel, AutoModelForSeq2SeqLM, AutoModelForCausalLM
-        
-        for class_name, description in model_classes:
-            try:
-                logger.info(f"Attempting to load as {description} using {class_name}...")
+        try:
+            # Load the config first
+            config = AutoConfig.from_pretrained(
+                model_path,
+                cache_dir=cache_dir,
+                trust_remote_code=True,
+            )
+            
+            # The config tells us the model class to use
+            model_class_name = config.architectures[0] if hasattr(config, 'architectures') else None
+            logger.info(f"Model architecture from config: {model_class_name}")
+            
+            # Try to load the model using the specific class
+            if model_class_name == "Maira2ForConditionalGeneration":
+                # Load using the custom model directly
+                # The model files should have been downloaded with trust_remote_code
+                from transformers import AutoModel
                 
-                if class_name == "AutoModelForSeq2SeqLM":
-                    model_class = AutoModelForSeq2SeqLM
-                elif class_name == "AutoModel":
-                    model_class = AutoModel
-                else:
-                    model_class = AutoModelForCausalLM
-                
-                self.model = model_class.from_pretrained(
+                # Use AutoModel but force it to use the custom class
+                self.model = AutoModel.from_pretrained(
                     model_path,
+                    config=config,
                     device_map=device_map,
                     cache_dir=cache_dir,
-                    trust_remote_code=True,  # Required for Maira2ForConditionalGeneration
+                    trust_remote_code=True,
                     quantization_config=quantization_config,
                     torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
                     low_cpu_mem_usage=False,
                 )
-                
-                logger.info(f"Model loaded successfully as {type(self.model).__name__} using {class_name}")
-                
-                # Verify the model has generation capabilities
-                if not hasattr(self.model, 'generate'):
-                    raise AttributeError(f"Model doesn't have generate method")
-                
-                model_loaded = True
-                break
+                logger.info(f"Model loaded successfully: {type(self.model).__name__}")
+            else:
+                # Fallback to AutoModelForCausalLM
+                from transformers import AutoModelForCausalLM
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    device_map=device_map,
+                    cache_dir=cache_dir,
+                    trust_remote_code=True,
+                    quantization_config=quantization_config,
+                    torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
+                    low_cpu_mem_usage=False,
+                )
+                logger.info(f"Model loaded with AutoModelForCausalLM: {type(self.model).__name__}")
+            
+            # Verify the model has generation capabilities
+            if not hasattr(self.model, 'generate'):
+                raise AttributeError(f"Loaded model {type(self.model).__name__} doesn't have generate method")
                     
-            except Exception as e:
-                error_msg = f"{class_name} failed: {str(e)}"
-                logger.warning(error_msg)
-                load_errors.append(error_msg)
-                continue
-        
-        if not model_loaded:
-            error_summary = "\n".join(load_errors)
-            logger.error(f"Failed to load MAIRA-2 with any Auto class:\n{error_summary}")
-            raise RuntimeError(f"Could not load MAIRA-2 model. Tried all Auto classes:\n{error_summary}")
+        except Exception as e:
+            logger.error(f"Failed to load MAIRA-2 model: {e}")
+            # Last resort: Skip this tool for now
+            raise RuntimeError(f"MAIRA-2 requires special handling not yet implemented. Error: {e}")
         
         logger.info("Loading processor...")
         self.processor = AutoProcessor.from_pretrained(
