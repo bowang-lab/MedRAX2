@@ -243,12 +243,17 @@ class MedGemmaTool(BaseTool):
             logger.info(f"Generating response for {len(images)} image(s)...")
             
             with torch.no_grad():
+                # Prepare generation kwargs to avoid unrecognized parameters
+                gen_kwargs = {
+                    "max_new_tokens": max_new_tokens,
+                }
+                
                 if len(images) == 1:
                     # Single image
                     result = self.pipe(
                         images[0],
                         prompt=full_prompt,
-                        max_new_tokens=max_new_tokens,
+                        **gen_kwargs
                     )
                 else:
                     # Multiple images - concatenate or process separately
@@ -257,7 +262,7 @@ class MedGemmaTool(BaseTool):
                     result = self.pipe(
                         images[0],
                         prompt=full_prompt,
-                        max_new_tokens=max_new_tokens,
+                        **gen_kwargs
                     )
             
             # Extract response

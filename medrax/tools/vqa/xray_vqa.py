@@ -160,15 +160,32 @@ class CheXagentXRayVQATool(BaseTool):
 
         # Run inference
         with torch.inference_mode():
-            output = self.model.generate(
-                input_ids,
-                do_sample=False,
-                num_beams=1,
-                temperature=1.0,
-                top_p=1.0,
-                use_cache=True,
-                max_new_tokens=max_new_tokens,
-            )[0]
+            try:
+                output = self.model.generate(
+                    input_ids,
+                    do_sample=False,
+                    num_beams=1,
+                    temperature=1.0,
+                    top_p=1.0,
+                    use_cache=True,
+                    max_new_tokens=max_new_tokens,
+                )[0]
+            except AttributeError as e:
+                if "seen_tokens" in str(e) or "DynamicCache" in str(e):
+                    # Fallback: disable cache if there's a cache-related error
+                    logger.warning("Cache error detected, retrying without cache")
+                    output = self.model.generate(
+                        input_ids,
+                        do_sample=False,
+                        num_beams=1,
+                        temperature=1.0,
+                        top_p=1.0,
+                        use_cache=False,  # Disable cache
+                        max_new_tokens=max_new_tokens,
+                    )[0]
+                else:
+                    raise
+            
             response = self.tokenizer.decode(output[input_ids.size(1) : -1])
 
             return response
