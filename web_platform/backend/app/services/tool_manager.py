@@ -986,12 +986,20 @@ class ToolManager:
 You have access to the following tools:
 {tools_list}
 
-IMPORTANT: Use the available tools proactively whenever they can help answer the user's questions or requests. This includes:
-- Using web search tools when asked to look up information, research topics, or find current data
-- Using medical imaging tools for analyzing scans and images
-- Using classification tools to identify pathologies
-- Using question answering tools for medical queries
-- Using any other available tools that are relevant to the request
+IMPORTANT TOOL USAGE GUIDELINES:
+1. Use tools by their exact names as listed above (e.g., 'torchxrayvision_classifier', 'arcplus_classifier', etc.)
+2. NEVER call a tool named 'run' - this tool does not exist
+3. When asked to "check all tools" or "use all tools", interpret this as using multiple relevant tools from the list above
+4. Use the available tools proactively whenever they can help answer the user's questions or requests:
+   - Medical imaging tools for analyzing scans and images
+   - Classification tools to identify pathologies
+   - Question answering tools for medical queries
+   - Web search tools when asked to look up information
+   - Any other relevant tools from the list
+
+5. If a user asks you to analyze an image with "all tools", use the most relevant tools from your available list:
+   - For chest X-rays: torchxrayvision_classifier, arcplus_classifier, chest_xray_report_generator, etc.
+   - For general medical images: relevant VQA and classification tools
 
 Do not refuse to use tools based on assumptions about their purpose. If a tool is loaded and can help with the user's request, use it.
 

@@ -206,22 +206,35 @@ async def startup_event():
                         
                     logger.info(f"🔧 Loading tool {i+1}/{len(target_ids)}: {tool_id}")
                     try:
-                        # Mark as loading
-                        tool.status = "loading"
-                        tool.error_message = None
+                        # Use the proper background loading method
+                        # This will handle the loading state and threading properly
+                        started = tool_manager.start_background_load(tool_id)
                         
-                        # Load tool synchronously to ensure sequential execution
-                        tool_manager.load_tool_in_background(tool_id)
+                        if not started:
+                            logger.error(f"❌ Failed to start loading {tool_id}")
+                            continue
                         
-                        # Check if it loaded successfully
-                        if tool.status == "loaded":
-                            logger.info(f"✅ Successfully loaded: {tool_id}")
-                        else:
-                            logger.error(f"❌ Failed to load {tool_id}: {tool.error_message}")
+                        # Wait for the tool to finish loading before moving to next
+                        # This ensures sequential loading
+                        import time
+                        max_wait = 300  # 5 minutes max per tool
+                        waited = 0
+                        while waited < max_wait:
+                            tool = tool_manager.tools.get(tool_id)
+                            if tool.status == "loaded":
+                                logger.info(f"✅ Successfully loaded: {tool_id}")
+                                break
+                            elif tool.status == "error":
+                                logger.error(f"❌ Failed to load {tool_id}: {tool.error_message}")
+                                break
+                            time.sleep(2)
+                            waited += 2
+                        
+                        if waited >= max_wait:
+                            logger.warning(f"⏱️ Timeout waiting for {tool_id} to load")
+                            
                     except Exception as e:
-                        logger.error(f"❌ Failed to load {tool_id}: {e}")
-                        tool.status = "error"
-                        tool.error_message = str(e)
+                        logger.error(f"❌ Exception loading {tool_id}: {e}")
             
             # Start loading in background thread to avoid blocking server startup
             threading.Thread(target=load_tools_sequentially, daemon=True).start()

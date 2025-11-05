@@ -72,6 +72,7 @@ class ChatProcessor:
         # Get attached scans
         scans = []
         if scan_ids:
+            # Get specific scans attached to this message
             scans = self.db.query(Scan).filter(
                 Scan.id.in_(scan_ids),
                 Scan.chat_id == self.chat_id
@@ -80,7 +81,21 @@ class ChatProcessor:
             for scan in scans:
                 logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
         else:
-            logger.info("no_scan_ids_in_processor")
+            # If no specific scan_ids provided, check if there are any scans in this chat
+            # This allows the system to use images from previous messages
+            all_chat_scans = self.db.query(Scan).filter(
+                Scan.chat_id == self.chat_id
+            ).order_by(Scan.uploaded_at.desc()).all()
+            
+            if all_chat_scans:
+                # Use the most recent scan(s) from the chat
+                # We'll use all scans in the chat for context
+                scans = all_chat_scans
+                logger.info(f"using_chat_scans count={len(scans)} from_chat_history")
+                for scan in scans:
+                    logger.info(f"chat_scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
+            else:
+                logger.info("no_scan_ids_and_no_chat_scans")
         
         # Build messages for agent
         agent_messages = []

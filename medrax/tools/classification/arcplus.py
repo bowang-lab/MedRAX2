@@ -399,11 +399,26 @@ class ArcPlusClassifierTool(BaseTool):
                 # Apply sigmoid to each output head (as seen in example)
                 preds = [torch.sigmoid(out) for out in pre_logits]
 
-                # Concatenate all predictions into single tensor
-                preds = torch.cat(preds, dim=1)
-
-                # Convert to numpy
-                predictions = preds.cpu().numpy().flatten()
+                # Handle different output formats
+                if len(preds) == 1:
+                    # Single output head
+                    predictions = preds[0].cpu().numpy().flatten()
+                else:
+                    # Multiple output heads - need to handle shape mismatch
+                    # Some models output different sized tensors for different disease groups
+                    try:
+                        # Try concatenating along the last dimension
+                        preds = torch.cat(preds, dim=-1)
+                        predictions = preds.cpu().numpy().flatten()
+                    except RuntimeError as e:
+                        if "dimension" in str(e).lower():
+                            # If concatenation fails, flatten each prediction and concatenate
+                            flat_preds = []
+                            for pred in preds:
+                                flat_preds.append(pred.cpu().numpy().flatten())
+                            predictions = np.concatenate(flat_preds)
+                        else:
+                            raise
 
             # Map predictions to disease names
             if len(predictions) != len(self.disease_list):

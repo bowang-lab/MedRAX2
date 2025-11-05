@@ -146,7 +146,14 @@ class CheXagentXRayVQATool(BaseTool):
         Returns:
             str: Model's response
         """
-        query = self.tokenizer.from_list_format([*[{"image": path} for path in image_paths], {"text": prompt}])
+        # Check if tokenizer has from_list_format method (CheXagent specific)
+        if hasattr(self.tokenizer, 'from_list_format'):
+            query = self.tokenizer.from_list_format([*[{"image": path} for path in image_paths], {"text": prompt}])
+        else:
+            # Fallback: Format as simple text if method doesn't exist
+            image_refs = ", ".join([f"Image {i+1}: {path}" for i, path in enumerate(image_paths)])
+            query = f"{image_refs}\n\n{prompt}"
+            
         conv = [
             {"from": "system", "value": "You are a helpful assistant."},
             {"from": "human", "value": query},
@@ -186,7 +193,11 @@ class CheXagentXRayVQATool(BaseTool):
                 else:
                     raise
             
-            response = self.tokenizer.decode(output[input_ids.size(1) : -1])
+            # Safely decode the response
+            if output is not None and len(output) > input_ids.size(1):
+                response = self.tokenizer.decode(output[input_ids.size(1) : -1])
+            else:
+                response = "Failed to generate response"
 
             return response
 

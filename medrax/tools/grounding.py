@@ -131,60 +131,24 @@ class XRayPhraseGroundingTool(BaseTool):
         elif load_in_4bit or load_in_8bit:
             logger.warning("Quantization (4-bit/8-bit) only available on CUDA. Loading full precision model.")
 
-        device_map = get_device_map(device_str)
-        
-        # MAIRA-2 uses a custom Maira2ForConditionalGeneration class
-        # We need to load it using a method that works with custom architectures
+        # Load MAIRA-2 model - use the same approach as in dev branch
+        # The key is to use AutoModelForCausalLM with device_map set to the device string directly
         logger.info("Loading MAIRA-2 model with trust_remote_code=True...")
         
-        # Import the necessary components
-        from transformers import AutoConfig
-        from transformers.modeling_utils import PreTrainedModel
-        import importlib
-        
         try:
-            # Load the config first
-            config = AutoConfig.from_pretrained(
+            from transformers import AutoModelForCausalLM
+            
+            # Use the same loading approach as the dev branch
+            # Pass device_str directly as device_map for MAIRA-2
+            self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
+                device_map=device_str,  # Use device string directly like dev branch
                 cache_dir=cache_dir,
                 trust_remote_code=True,
+                quantization_config=quantization_config,
+                dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,  # Use dtype instead of torch_dtype
             )
-            
-            # The config tells us the model class to use
-            model_class_name = config.architectures[0] if hasattr(config, 'architectures') else None
-            logger.info(f"Model architecture from config: {model_class_name}")
-            
-            # Try to load the model using the specific class
-            if model_class_name == "Maira2ForConditionalGeneration":
-                # Load using the custom model directly
-                # The model files should have been downloaded with trust_remote_code
-                from transformers import AutoModel
-                
-                # Use AutoModel but force it to use the custom class
-                self.model = AutoModel.from_pretrained(
-                    model_path,
-                    config=config,
-                    device_map=device_map,
-                    cache_dir=cache_dir,
-                    trust_remote_code=True,
-                    quantization_config=quantization_config,
-                    torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
-                    low_cpu_mem_usage=False,
-                )
-                logger.info(f"Model loaded successfully: {type(self.model).__name__}")
-            else:
-                # Fallback to AutoModelForCausalLM
-                from transformers import AutoModelForCausalLM
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    model_path,
-                    device_map=device_map,
-                    cache_dir=cache_dir,
-                    trust_remote_code=True,
-                    quantization_config=quantization_config,
-                    torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
-                    low_cpu_mem_usage=False,
-                )
-                logger.info(f"Model loaded with AutoModelForCausalLM: {type(self.model).__name__}")
+            logger.info(f"Model loaded successfully: {type(self.model).__name__}")
             
             # Verify the model has generation capabilities
             if not hasattr(self.model, 'generate'):
@@ -192,8 +156,7 @@ class XRayPhraseGroundingTool(BaseTool):
                     
         except Exception as e:
             logger.error(f"Failed to load MAIRA-2 model: {e}")
-            # Last resort: Skip this tool for now
-            raise RuntimeError(f"MAIRA-2 requires special handling not yet implemented. Error: {e}")
+            raise RuntimeError(f"Could not load MAIRA-2 model: {e}")
         
         logger.info("Loading processor...")
         self.processor = AutoProcessor.from_pretrained(
@@ -316,10 +279,17 @@ class XRayPhraseGroundingTool(BaseTool):
 
                 # Convert model bboxes to list format and get original image bboxes
                 model_bboxes = [list(bbox) for bbox in pred_bboxes]
-                original_bboxes = [
-                    self.processor.adjust_box_for_original_image_size(bbox, width=image.size[0], height=image.size[1])
-                    for bbox in model_bboxes
-                ]
+                
+                # Try to adjust boxes to original size, but fallback if processor method fails
+                try:
+                    original_bboxes = [
+                        self.processor.adjust_box_for_original_image_size(bbox, width=image.size[0], height=image.size[1])
+                        for bbox in model_bboxes
+                    ]
+                except (AttributeError, TypeError) as e:
+                    logger.warning(f"Failed to adjust box size with processor: {e}. Using model coordinates.")
+                    # Fallback: use model coordinates as-is (they're already normalized 0-1)
+                    original_bboxes = model_bboxes
 
                 processed_predictions.append(
                     {
