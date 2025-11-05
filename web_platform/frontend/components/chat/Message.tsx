@@ -165,6 +165,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                 <div className="flex flex-wrap gap-3">
                                     {message.attachedScans.map((scan, idx) => {
                                         const scanUrl = getImageUrl(scan.displayPath);
+                                        console.log('Scan display:', { scan, displayPath: scan.displayPath, scanUrl });
                                         const hasFailed = !scanUrl || failedImages.has(scanUrl);
 
                                         return (
@@ -193,7 +194,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                         <img
                                                             src={scanUrl}
                                                             alt="Medical Scan"
-                                                            className="max-h-full max-w-full object-contain"
+                                                            className="absolute inset-0 w-full h-full object-contain"
                                                             onError={() => handleImageError(scanUrl)}
                                                         />
                                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
@@ -246,7 +247,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                         <img
                                                             src={imageUrl}
                                                             alt={`Generated result ${idx + 1}`}
-                                                            className="max-h-full max-w-full object-contain"
+                                                            className="absolute inset-0 w-full h-full object-contain"
                                                             onError={() => handleImageError(imageUrl)}
                                                         />
                                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
