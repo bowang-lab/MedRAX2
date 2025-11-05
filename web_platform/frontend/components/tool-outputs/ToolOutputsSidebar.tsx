@@ -326,6 +326,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                     <div className="space-y-2">
                                                         {execution.imagePaths.map((path, idx) => {
                                                             const imageUrl = getImageUrl(path);
+                                                            console.log('Tool output image:', { path, imageUrl });
                                                             return (
                                                                 <div key={idx} className="text-xs">
                                                                     <p className="text-zinc-500 mb-1">Image {idx + 1}:</p>
@@ -343,7 +344,13 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                                                 img.style.display = 'none';
                                                                                 const errorDiv = document.createElement('div');
                                                                                 errorDiv.className = 'bg-red-900/20 border border-red-800 rounded p-2 text-red-400 text-xs';
-                                                                                errorDiv.textContent = '⚠️ Failed to load image';
+                                                                                errorDiv.innerHTML = `
+                                                                                    <div>⚠️ Failed to load image</div>
+                                                                                    <div class="text-[10px] mt-1">
+                                                                                        <div>Path: ${path}</div>
+                                                                                        <div>URL: ${imageUrl}</div>
+                                                                                    </div>
+                                                                                `;
                                                                                 img.parentElement?.insertBefore(errorDiv, img);
                                                                             }}
                                                                         />
