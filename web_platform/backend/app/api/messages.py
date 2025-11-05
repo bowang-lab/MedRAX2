@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from typing import List
 from datetime import datetime
 import asyncio
+import uuid
 
 from ..database import get_db
 from ..models import Doctor, Patient, Chat, Message, Scan, MessageScan, ToolExecution, ToolExecutionLog
@@ -21,6 +22,7 @@ from ..utils.sse import create_sse_event
 from ..utils.logging_config import logger
 from ..services.tool_manager import tool_manager
 from ..services.chat_processor import ChatProcessor
+from ..services.image_registry import image_registry
 
 router = APIRouter()
 
@@ -210,8 +212,12 @@ async def stream_chat_response(
             db.commit()
             db.refresh(assistant_message)
             
-            # 4. Create MedRAX agent if tools are loaded
-            agent = tool_manager.create_agent()
+            # 4. Generate unique request ID for this analysis
+            request_id = str(uuid.uuid4())
+            logger.info(f"Generated request_id={request_id[:8]} for chat_id={chat_id[:8]}")
+            
+            # 5. Create MedRAX agent with request-specific wrapped tools and chat isolation
+            agent = tool_manager.create_agent(request_id=request_id, chat_id=chat_id)
             
             if agent is None:
                 # No tools loaded - send error
@@ -222,7 +228,7 @@ async def stream_chat_response(
                 yield create_sse_event("message_done", messageId=assistant_message.id)
                 return
             
-            # 5. Create chat processor and process message
+            # 6. Create chat processor and process message
             # Attach tool executions to the assistant message for more intuitive UI grouping
             processor = ChatProcessor(agent, db, chat_id, tool_target_message_id=assistant_message.id)
             
@@ -259,11 +265,17 @@ async def stream_chat_response(
             yield create_sse_event("error", error=str(e))
             db.rollback()
         finally:
-            # Ensure database session is properly closed
+            # Clean up request-specific resources
             try:
+                # Clean up image registry for this request
+                if 'request_id' in locals():
+                    image_registry.cleanup_request(request_id)
+                    logger.debug(f"Cleaned up image registry for request {request_id[:8]}")
+                    
+                # Close database session
                 db.close()
             except Exception as e:
-                logger.warning(f"Error closing database session: {e}")
+                logger.warning(f"Error during cleanup: {e}")
     
     return StreamingResponse(
         event_generator(),

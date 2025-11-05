@@ -286,7 +286,7 @@ class XRayPhraseGroundingTool(BaseTool):
                         self.processor.adjust_box_for_original_image_size(bbox, width=image.size[0], height=image.size[1])
                         for bbox in model_bboxes
                     ]
-                except (AttributeError, TypeError) as e:
+                except Exception as e:
                     logger.warning(f"Failed to adjust box size with processor: {e}. Using model coordinates.")
                     # Fallback: use model coordinates as-is (they're already normalized 0-1)
                     original_bboxes = model_bboxes

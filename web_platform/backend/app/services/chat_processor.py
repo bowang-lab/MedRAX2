@@ -18,6 +18,7 @@ from ..models.message import Message
 from ..models.scan import Scan
 from ..models.tool_execution import ToolExecution, ToolExecutionLog, ToolExecutionResult
 from ..utils.logging_config import logger
+from .image_registry import image_registry
 
 
 class ChatProcessor:
@@ -104,24 +105,27 @@ class ChatProcessor:
         if scans:
             scan_paths = [scan.file_path for scan in scans]
             
-            # Create a clear message about available images
-            # Note: Using "user" role instead of "system" to avoid conflicts with
-            # Google Gemini's requirement that SystemMessage only appear at position 0
-            # 
-            # IMPORTANT: We use XML tags to prevent LLM transcription errors
-            # LLMs are very good at preserving content inside XML/code blocks
-            image_context = (
-                f"[Image Context] The user has uploaded {len(scans)} medical image(s). "
-                f"For tools requiring an image_path parameter, use the EXACT path below:\n\n"
-            )
-            for i, scan in enumerate(scans, 1):
-                # Use XML tags which LLMs preserve very accurately
-                image_context += f"<image_path id=\"{i}\">{scan.file_path}</image_path>\n"
+            # Register images in the registry for this request
+            image_mapping = image_registry.register_images(self.request_id, scan_paths)
             
-            # Add explicit instructions
+            # Create a production-ready message with simple indices
+            # This prevents LLM transcription errors completely
+            image_context = (
+                f"[Image Context] The user has uploaded {len(scans)} medical image(s).\n"
+                f"When calling tools that require image paths, use these simple references:\n\n"
+            )
+            
+            # Show the simple indices that the LLM should use
+            for index, path in image_mapping.items():
+                # Show just the filename for context, but use the index for reference
+                filename = Path(path).name
+                image_context += f"  • {index} - {filename}\n"
+            
+            # Add clear instructions
             image_context += (
-                "\n⚠️ CRITICAL: When calling tools, copy the ENTIRE path from between the XML tags above. "
-                "Do not modify, abbreviate, or type from memory - use EXACT content from the tags."
+                "\n📌 IMPORTANT: Always use the simple references (image_1, image_2, etc.) "
+                "when calling tools. Do NOT use file paths. The system will automatically "
+                "resolve these references to the correct paths."
             )
             
             logger.info(f"adding_image_context scans_count={len(scans)}")

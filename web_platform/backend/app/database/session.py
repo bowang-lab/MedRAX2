@@ -32,7 +32,7 @@ if settings.DATABASE_URL.startswith("sqlite"):
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
-    echo=settings.DEBUG,  # Log SQL queries in debug mode
+    echo=False,  # Disable SQL query logging for cleaner logs
     pool_size=10,  # Connection pool size (only for non-SQLite)
     max_overflow=20,  # Additional connections when pool full
     pool_pre_ping=True,  # Verify connections before using

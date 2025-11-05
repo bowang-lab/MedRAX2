@@ -13,6 +13,8 @@ from datetime import datetime
 
 from ..utils.logging_config import logger
 from ..config import settings
+from .image_registry import image_registry
+from .tool_wrapper import wrap_tool_for_production
 import threading
 
 # Global lock for thread-safe imports to prevent Python import deadlocks
@@ -97,6 +99,7 @@ class ToolManager:
         # Agent and memory persistence
         self.agent_instance = None
         self.checkpointer = None
+        self.chat_checkpointers = {}  # Per-chat checkpointers for isolation
         
         # Try to add MedRAX to path
         self._setup_medrax_path()
@@ -860,12 +863,32 @@ class ToolManager:
             if tool.status == ToolStatus.LOADED and tool.instance is not None
         ]
     
+    def get_wrapped_tools_for_request(self, request_id: str) -> List[Any]:
+        """
+        Get loaded tools wrapped for production use with a specific request.
+        
+        This wraps tools that use image paths to automatically resolve
+        simple references (image_1, image_2) to actual paths.
+        
+        Args:
+            request_id: Request ID for image resolution
+            
+        Returns:
+            List of wrapped tool instances
+        """
+        tools = []
+        for tool in self.tools.values():
+            if tool.status == ToolStatus.LOADED and tool.instance:
+                wrapped = wrap_tool_for_production(tool.instance, request_id)
+                tools.append(wrapped)
+        return tools
+    
     def is_agent_ready(self) -> bool:
         """Check if agent can be created with loaded tools."""
         loaded_tools = self.get_loaded_tools()
         return len(loaded_tools) > 0
     
-    def create_agent(self, model=None, system_prompt: str = "", force_recreate: bool = False):
+    def create_agent(self, model=None, system_prompt: str = "", force_recreate: bool = False, request_id: str = None, chat_id: str = None):
         """
         Create MedRAX agent with loaded tools and memory persistence.
         Thread-safe with locking to prevent concurrent agent creation.
@@ -874,6 +897,8 @@ class ToolManager:
             model: Language model to use (if None, will use default)
             system_prompt: System prompt for the agent
             force_recreate: If True, force recreation of agent even if one exists
+            request_id: Optional request ID for production image path resolution
+            chat_id: Optional chat ID for conversation memory isolation
             
         Returns:
             Agent instance or None if not available
@@ -884,8 +909,13 @@ class ToolManager:
         
         # Use lock to prevent concurrent agent creation
         with self._agent_lock:
-            # Return existing agent if available and not forcing recreation
-            if self.agent_instance is not None and not force_recreate:
+            # For production mode with request_id, always create a new agent with wrapped tools
+            if request_id:
+                force_recreate = True
+            
+            # For production with request_id, NEVER reuse agents (isolation)
+            # Only reuse for non-production mode (development/testing)
+            if not request_id and self.agent_instance is not None and not force_recreate:
                 return self.agent_instance
             
             try:
@@ -902,28 +932,84 @@ class ToolManager:
                         temperature=0
                     )
                 
-                # Get loaded tool instances directly
-                tool_instances = self.get_loaded_tools()
+                # Get loaded tool instances - wrapped if request_id provided
+                if request_id:
+                    tool_instances = self.get_wrapped_tools_for_request(request_id)
+                    logger.info(f"Using wrapped tools for request {request_id[:8]}")
+                else:
+                    tool_instances = self.get_loaded_tools()
                 
-                # Create or reuse in-memory checkpointer for conversation persistence
-                if self.checkpointer is None:
-                    self.checkpointer = MemorySaver()
-                    logger.info("[OK] Created new MemorySaver checkpointer for conversation persistence")
+                # Get or create checkpointer for this specific chat (isolation)
+                if request_id and chat_id:
+                    # Production mode: use per-chat checkpointer for isolation
+                    if chat_id not in self.chat_checkpointers:
+                        self.chat_checkpointers[chat_id] = MemorySaver()
+                        logger.info(f"[OK] Created new checkpointer for chat {chat_id[:8]}")
+                    checkpointer = self.chat_checkpointers[chat_id]
+                else:
+                    # Development mode: use shared checkpointer
+                    if self.checkpointer is None:
+                        self.checkpointer = MemorySaver()
+                        logger.info("[OK] Created shared checkpointer (dev mode)")
+                    checkpointer = self.checkpointer
                 
                 # Create agent with memory
-                self.agent_instance = Agent(
+                agent = Agent(
                     model=model,
                     tools=tool_instances,
-                    checkpointer=self.checkpointer,
+                    checkpointer=checkpointer,
                     system_prompt=system_prompt or self._get_default_system_prompt()
                 )
                 
-                logger.info(f"[OK] Agent created with {len(tool_instances)} tools and memory")
-                return self.agent_instance
+                # Only store as instance if NOT using request_id (for dev/testing)
+                if not request_id:
+                    self.agent_instance = agent
+                    logger.info(f"[OK] Agent created and stored with {len(tool_instances)} tools and memory")
+                else:
+                    logger.info(f"[OK] Agent created for request {request_id[:8]} with {len(tool_instances)} wrapped tools")
+                
+                return agent
                 
             except Exception as e:
                 logger.error(f"Failed to create agent: {e}")
                 return None
+    
+    def cleanup_chat_resources(self, chat_id: str) -> bool:
+        """
+        Clean up resources for a specific chat.
+        
+        Args:
+            chat_id: Chat ID to clean up
+            
+        Returns:
+            True if cleanup successful
+        """
+        with self._agent_lock:
+            # Clean up chat-specific checkpointer
+            if chat_id in self.chat_checkpointers:
+                del self.chat_checkpointers[chat_id]
+                logger.info(f"Cleaned up checkpointer for chat {chat_id[:8]}")
+                return True
+        return False
+    
+    def cleanup_old_chats(self, max_age_hours: int = 24):
+        """
+        Clean up checkpointers for old chats to prevent memory leaks.
+        
+        Args:
+            max_age_hours: Maximum age in hours before cleanup
+        """
+        # This would ideally track last access time
+        # For now, we'll keep it simple
+        with self._agent_lock:
+            # Limit total number of chat checkpointers
+            MAX_CHECKPOINTERS = 100
+            if len(self.chat_checkpointers) > MAX_CHECKPOINTERS:
+                # Remove oldest entries (simple FIFO for now)
+                to_remove = len(self.chat_checkpointers) - MAX_CHECKPOINTERS
+                for chat_id in list(self.chat_checkpointers.keys())[:to_remove]:
+                    del self.chat_checkpointers[chat_id]
+                logger.info(f"Cleaned up {to_remove} old chat checkpointers")
     
     def clear_chat_memory(self, thread_id: str) -> bool:
         """
