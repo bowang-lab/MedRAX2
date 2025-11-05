@@ -7,6 +7,7 @@ Wraps tools to automatically resolve image references using the registry.
 from typing import Any, Dict, Optional, Tuple
 from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
+from pydantic import Field
 import logging
 import inspect
 from .image_registry import image_registry
@@ -22,6 +23,10 @@ class ImageResolvingToolWrapper(BaseTool):
     preventing transcription errors.
     """
     
+    # Declare fields for Pydantic
+    wrapped_tool: BaseTool = Field(exclude=True)  # Exclude from serialization
+    request_id: Optional[str] = Field(default=None, exclude=True)
+    
     def __init__(self, tool: BaseTool, request_id: Optional[str] = None):
         """
         Initialize wrapper with the actual tool.
@@ -30,20 +35,25 @@ class ImageResolvingToolWrapper(BaseTool):
             tool: The actual tool to wrap
             request_id: Current request ID for image resolution
         """
-        # Copy tool attributes
-        super().__init__()
+        # Store wrapped tool first
         self.wrapped_tool = tool
-        self.name = tool.name
-        self.description = f"{tool.description} (Use 'image_1', 'image_2', etc. for image references)"
-        self.args_schema = tool.args_schema
-        self.return_direct = tool.return_direct
-        self.verbose = tool.verbose
-        self.callbacks = tool.callbacks
-        self.tags = tool.tags
-        self.metadata = tool.metadata
-        self.handle_tool_error = tool.handle_tool_error
-        self.handle_validation_error = tool.handle_validation_error
         self.request_id = request_id
+        
+        # Initialize parent with required fields
+        super().__init__(
+            name=tool.name,
+            description=f"{tool.description} (Use 'image_1', 'image_2', etc. for image references)"
+        )
+        
+        # Copy other tool attributes
+        self.args_schema = tool.args_schema
+        self.return_direct = tool.return_direct if hasattr(tool, 'return_direct') else False
+        self.verbose = tool.verbose if hasattr(tool, 'verbose') else False
+        self.callbacks = tool.callbacks if hasattr(tool, 'callbacks') else None
+        self.tags = tool.tags if hasattr(tool, 'tags') else None
+        self.metadata = tool.metadata if hasattr(tool, 'metadata') else None
+        self.handle_tool_error = tool.handle_tool_error if hasattr(tool, 'handle_tool_error') else None
+        self.handle_validation_error = tool.handle_validation_error if hasattr(tool, 'handle_validation_error') else None
     
     def set_request_id(self, request_id: str):
         """Set the current request ID for image resolution."""

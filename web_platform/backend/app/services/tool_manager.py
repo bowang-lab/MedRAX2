@@ -876,17 +876,18 @@ class ToolManager:
         Returns:
             List of wrapped tool instances
         """
-        tools = []
-        for tool in self.tools.values():
-            if tool.status == ToolStatus.LOADED and tool.instance:
-                wrapped = wrap_tool_for_production(tool.instance, request_id)
-                tools.append(wrapped)
-        return tools
+        # For now, return unwrapped tools due to Pydantic compatibility issues
+        # TODO: Fix wrapper to work with Pydantic-based BaseTool
+        logger.warning(f"Tool wrapping temporarily disabled for request {request_id[:8]}")
+        return self.get_loaded_tools()
     
     def is_agent_ready(self) -> bool:
         """Check if agent can be created with loaded tools."""
-        loaded_tools = self.get_loaded_tools()
-        return len(loaded_tools) > 0
+        # Check if any tools are loaded (not just the raw instances)
+        for tool in self.tools.values():
+            if tool.status == ToolStatus.LOADED and tool.instance:
+                return True
+        return False
     
     def create_agent(self, model=None, system_prompt: str = "", force_recreate: bool = False, request_id: str = None, chat_id: str = None):
         """
@@ -935,9 +936,13 @@ class ToolManager:
                 # Get loaded tool instances - wrapped if request_id provided
                 if request_id:
                     tool_instances = self.get_wrapped_tools_for_request(request_id)
-                    logger.info(f"Using wrapped tools for request {request_id[:8]}")
+                    logger.info(f"Using wrapped tools for request {request_id[:8]}: {len(tool_instances)} tools")
+                    if not tool_instances:
+                        logger.error(f"No wrapped tools available for request {request_id[:8]}")
+                        return None
                 else:
                     tool_instances = self.get_loaded_tools()
+                    logger.info(f"Using raw tools: {len(tool_instances)} tools")
                 
                 # Get or create checkpointer for this specific chat (isolation)
                 if request_id and chat_id:
