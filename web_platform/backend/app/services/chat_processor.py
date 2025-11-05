@@ -18,7 +18,7 @@ from ..models.message import Message
 from ..models.scan import Scan
 from ..models.tool_execution import ToolExecution, ToolExecutionLog, ToolExecutionResult
 from ..utils.logging_config import logger
-from .image_registry import image_registry
+# from .image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
 
 
 class ChatProcessor:
@@ -105,27 +105,25 @@ class ChatProcessor:
         if scans:
             scan_paths = [scan.file_path for scan in scans]
             
-            # Register images in the registry for this request
-            image_mapping = image_registry.register_images(self.request_id, scan_paths)
+            # Since wrapper is temporarily disabled, use actual paths
+            # TODO: Re-enable this when wrapper is fixed
+            # image_mapping = image_registry.register_images(self.request_id, scan_paths)
             
-            # Create a production-ready message with simple indices
-            # This prevents LLM transcription errors completely
+            # Create a clear message about available images with actual paths
             image_context = (
                 f"[Image Context] The user has uploaded {len(scans)} medical image(s).\n"
-                f"When calling tools that require image paths, use these simple references:\n\n"
+                f"When calling tools that require image paths, use these exact paths:\n\n"
             )
             
-            # Show the simple indices that the LLM should use
-            for index, path in image_mapping.items():
-                # Show just the filename for context, but use the index for reference
-                filename = Path(path).name
-                image_context += f"  • {index} - {filename}\n"
+            # Show the actual paths that the LLM should use
+            for i, scan in enumerate(scans, 1):
+                filename = Path(scan.file_path).name
+                image_context += f"  • Image {i}: {scan.file_path}\n"
             
-            # Add clear instructions
+            # Add clear instructions to prevent path corruption
             image_context += (
-                "\n📌 IMPORTANT: Always use the simple references (image_1, image_2, etc.) "
-                "when calling tools. Do NOT use file paths. The system will automatically "
-                "resolve these references to the correct paths."
+                "\n📌 IMPORTANT: Always use the EXACT file paths shown above when calling tools. "
+                "Copy the entire path exactly as shown. Do NOT modify or abbreviate the paths."
             )
             
             logger.info(f"adding_image_context scans_count={len(scans)}")
@@ -236,20 +234,29 @@ class ChatProcessor:
         Args:
             tool_message: Tool message from agent
             message: User message that triggered this
-            image_paths: Image paths used in this execution
+            image_paths: Image paths used in this execution (file paths)
             
         Yields:
             SSE events for tool execution
         """
         tool_name = tool_message.name
         
-        # Create tool execution record; attach to explicit target message if provided (typically the assistant message)
+        # Convert file paths to display paths for frontend
+        display_paths = []
+        for path in image_paths:
+            # Convert "uploads/chats/..." to "/uploads/chats/..."
+            if path.startswith("uploads/"):
+                display_paths.append(f"/{path}")
+            else:
+                display_paths.append(path)
+        
+        # Create tool execution record with display paths
         execution = ToolExecution(
             message_id=self.tool_target_message_id or message.id,
             request_id=self.request_id,
             tool_name=tool_name,
             status="running",
-            image_paths=image_paths
+            image_paths=display_paths
         )
         self.db.add(execution)
         self.db.flush()
@@ -305,9 +312,15 @@ class ChatProcessor:
                         if isinstance(value, str) and value:
                             generated_images.append(value)
                 
-                # Update execution with generated images
+                # Update execution with generated images (convert to display paths)
                 if generated_images:
-                    execution.image_paths = image_paths + generated_images
+                    generated_display_paths = []
+                    for path in generated_images:
+                        if path.startswith("uploads/") or path.startswith("temp/"):
+                            generated_display_paths.append(f"/{path}")
+                        else:
+                            generated_display_paths.append(path)
+                    execution.image_paths = display_paths + generated_display_paths
             
             # Update execution status
             execution.status = "completed"
