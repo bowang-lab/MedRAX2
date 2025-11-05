@@ -13,8 +13,8 @@ from datetime import datetime
 
 from ..utils.logging_config import logger
 from ..config import settings
-from .image_registry import image_registry
-from .tool_wrapper import wrap_tool_for_production
+# from .image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
+# from .tool_wrapper import wrap_tool_for_production  # TODO: Re-enable when wrapper is fixed
 import threading
 
 # Global lock for thread-safe imports to prevent Python import deadlocks

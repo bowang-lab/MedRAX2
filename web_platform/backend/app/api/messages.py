@@ -22,7 +22,7 @@ from ..utils.sse import create_sse_event
 from ..utils.logging_config import logger
 from ..services.tool_manager import tool_manager
 from ..services.chat_processor import ChatProcessor
-from ..services.image_registry import image_registry
+# from ..services.image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
 
 router = APIRouter()
 
@@ -267,10 +267,10 @@ async def stream_chat_response(
         finally:
             # Clean up request-specific resources
             try:
-                # Clean up image registry for this request
-                if 'request_id' in locals():
-                    image_registry.cleanup_request(request_id)
-                    logger.debug(f"Cleaned up image registry for request {request_id[:8]}")
+                # TODO: Clean up image registry when wrapper is re-enabled
+                # if 'request_id' in locals():
+                #     image_registry.cleanup_request(request_id)
+                #     logger.debug(f"Cleaned up image registry for request {request_id[:8]}")
                     
                 # Close database session
                 db.close()
