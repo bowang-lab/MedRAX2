@@ -124,6 +124,12 @@ echo "Checking uploads directory..."
 mkdir -p uploads
 echo "   [OK] Uploads directory ready"
 
+# Create temp directory for tool outputs (segmentations, generated images, etc.)
+echo ""
+echo "Checking temp directory..."
+mkdir -p temp
+echo "   [OK] Temp directory ready for tool outputs"
+
 # Initialize database if needed
 if [ ! -f "medrax.db" ]; then
     echo ""
@@ -185,6 +191,7 @@ echo "  ReDoc: http://localhost:8000/redoc"
 echo ""
 echo "Database: SQLite at ./medrax.db"
 echo "Uploads: ./uploads/"
+echo "Temp Files: ./temp/"
 if [ -n "$MODEL_CACHE_DIR" ]; then
     echo "Model Cache: $MODEL_CACHE_DIR"
 fi

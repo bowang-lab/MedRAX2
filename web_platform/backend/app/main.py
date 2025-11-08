@@ -73,6 +73,10 @@ async def validate_api_secret(request: Request, call_next):
     if request.url.path.startswith("/uploads/"):
         return await call_next(request)
     
+    # Allow /temp/ paths for serving temporary files (segmentation outputs, etc.)
+    if request.url.path.startswith("/temp/"):
+        return await call_next(request)
+    
     # Allow SSE endpoints - EventSource doesn't support custom headers
     # These endpoints use JWT token in query string for authentication instead
     # SECURITY: Use exact path matching to prevent bypass attacks
@@ -149,7 +153,7 @@ async def log_requests(request: Request, call_next):
 def response_would_be_404(path: str) -> bool:
     """Check if a path would likely result in 404."""
     # API routes and valid endpoints
-    valid_prefixes = ['/api/', '/docs', '/redoc', '/health', '/uploads/']
+    valid_prefixes = ['/api/', '/docs', '/redoc', '/health', '/uploads/', '/temp/']
     if path == '/' or any(path.startswith(prefix) for prefix in valid_prefixes):
         return False
     return True
@@ -162,6 +166,11 @@ uploads_path = Path(settings.UPLOAD_DIR)
 uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
+# Mount static files for temporary files (e.g., segmentation outputs)
+temp_path = Path("temp")
+temp_path.mkdir(parents=True, exist_ok=True)
+app.mount("/temp", StaticFiles(directory=str(temp_path)), name="temp")
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -172,6 +181,7 @@ async def startup_event():
     logger.info(f"📚 API documentation: http://{settings.HOST}:{settings.PORT}/docs")
     logger.info(f"🗄️  Database: {settings.DATABASE_URL}")
     logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
+    logger.info(f"📂 Temp directory: temp/")
 
     # Optional eager loading gated by env var to avoid long cold starts
     try:
