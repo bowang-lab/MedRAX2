@@ -27,6 +27,27 @@ interface MessageActivityProps {
 export function MessageActivity({ executions, onShowDetails }: MessageActivityProps) {
     if (!executions || executions.length === 0) return null;
 
+    // Format duration helper: prefer ms for sub-second, otherwise seconds with 2 decimals
+    const formatDuration = (durationMs: number): string => {
+        if (durationMs < 1000) {
+            return `${Math.max(0, Math.round(durationMs))}ms`;
+        }
+        return `${(durationMs / 1000).toFixed(2)}s`;
+    };
+
+    // Compute duration with fallback: use provided executionTimeMs, else derive from timestamps
+    const getDurationMs = (e: ToolExecution): number | null => {
+        if (e.executionTimeMs != null) return e.executionTimeMs;
+        if (e.startedAt && e.completedAt) {
+            const start = new Date(e.startedAt).getTime();
+            const end = new Date(e.completedAt).getTime();
+            if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
+                return end - start;
+            }
+        }
+        return null;
+    };
+
     // Calculate summary stats
     const completed = executions.filter(e => e.status === 'completed').length;
     const failed = executions.filter(e => e.status === 'failed').length;
@@ -103,11 +124,17 @@ export function MessageActivity({ executions, onShowDetails }: MessageActivityPr
                             </div>
 
                             <div className="flex items-center space-x-2">
-                                {execution.executionTimeMs != null && (
-                                    <span className="text-xs text-zinc-500">
-                                        {(execution.executionTimeMs / 1000).toFixed(1)}s
-                                    </span>
-                                )}
+                                {(() => {
+                                    const durationMs = getDurationMs(execution);
+                                    if (durationMs != null) {
+                                        return (
+                                            <span className="text-xs text-zinc-500">
+                                                {formatDuration(durationMs)}
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                                 <Badge variant={getBadgeVariant()}>
                                     {execution.status}
                                 </Badge>

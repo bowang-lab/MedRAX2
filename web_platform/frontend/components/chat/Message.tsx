@@ -197,7 +197,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                             className="absolute inset-0 w-full h-full object-contain"
                                                             onError={() => handleImageError(scanUrl)}
                                                         />
-                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-opacity pointer-events-none" />
                                                         <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                                             Click to enlarge
                                                         </div>
@@ -250,7 +250,7 @@ export function Message({ message, onShowToolDetails }: MessageProps) {
                                                             className="absolute inset-0 w-full h-full object-contain"
                                                             onError={() => handleImageError(imageUrl)}
                                                         />
-                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none" />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-opacity pointer-events-none" />
                                                         <div className="absolute bottom-1 right-1 bg-black/70 rounded px-2 py-1 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                                             Click to enlarge
                                                         </div>

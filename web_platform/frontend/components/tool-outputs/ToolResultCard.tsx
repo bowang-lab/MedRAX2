@@ -292,7 +292,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                                                 className="h-48 w-auto max-w-full object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-zoom-in"
                                                 onError={() => handleImageError(imageUrl)}
                                             />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg pointer-events-none" />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-opacity rounded-lg pointer-events-none" />
                                         </>
                                     )}
                                 </div>
@@ -311,6 +311,48 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                     >
                         {showRawData ? '▼ Hide Raw Data' : '▶ Show Raw Data (for debugging)'}
                     </button>
+                    {/* Segmentation-specific summary (metrics or mask summary) */}
+                    {isSegmentationTool && (
+                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 space-y-2">
+                            {'metrics' in (data as any) && typeof (data as any).metrics === 'object' ? (
+                                <>
+                                    <h4 className="text-sm font-medium text-zinc-300">Segmentation Metrics:</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {Object.entries((data as any).metrics).map(([organ, metrics]) => {
+                                            const m = metrics as Record<string, unknown>;
+                                            const areaCm2 = typeof m.area_cm2 === 'number' ? m.area_cm2.toFixed(2) : undefined;
+                                            const conf = typeof m.confidence_score === 'number' ? (m.confidence_score * 100).toFixed(1) : undefined;
+                                            const mean = typeof m.mean_intensity === 'number' ? m.mean_intensity.toFixed(1) : undefined;
+                                            return (
+                                                <div key={organ} className="rounded-md border border-zinc-700 p-2">
+                                                    <div className="text-xs text-zinc-400 mb-1">{organ}</div>
+                                                    <div className="text-xs text-zinc-300 space-x-2">
+                                                        {areaCm2 && <span>Area: {areaCm2} cm²</span>}
+                                                        {conf && <span>Conf: {conf}%</span>}
+                                                        {mean && <span>Mean Intensity: {mean}</span>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            ) : ('mask_summary' in (data as any) || 'confidence_scores' in (data as any)) ? (
+                                <>
+                                    <h4 className="text-sm font-medium text-zinc-300">Segmentation Summary:</h4>
+                                    <div className="text-xs text-zinc-300 space-y-1">
+                                        {'mask_summary' in (data as any) && (data as any).mask_summary?.total_masks != null && (
+                                            <div>Total Masks: {(data as any).mask_summary.total_masks}</div>
+                                        )}
+                                        {'best_mask_score' in (data as any) && typeof (data as any).best_mask_score === 'number' && (
+                                            <div>Best Mask Score: {((data as any).best_mask_score * 100).toFixed(1)}%</div>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-xs text-zinc-500">No structured segmentation metrics available.</div>
+                            )}
+                        </div>
+                    )}
                     {showRawData && (
                     <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
                         <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
