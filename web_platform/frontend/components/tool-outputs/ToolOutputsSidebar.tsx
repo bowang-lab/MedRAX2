@@ -316,15 +316,17 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                     {/* Expanded Details */}
                                     {isExpanded && (
                                         <div className="border-t border-zinc-700 p-4 space-y-4">
-                                            {/* Input Images */}
-                                            {execution.imagePaths && execution.imagePaths.length > 0 && (
+                                            {/* Input Images (filter only original uploads, exclude generated temp/visualizations) */}
+                                            {execution.imagePaths && execution.imagePaths.filter(p => typeof p === 'string' && (p.startsWith('uploads/') || p.includes('/uploads/'))).length > 0 && (
                                                 <div>
                                                     <div className="flex items-center space-x-2 mb-2">
                                                         <ImageIcon className="h-4 w-4 text-zinc-400" />
                                                         <h4 className="text-xs font-medium text-zinc-400 uppercase">Inputs</h4>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {execution.imagePaths.map((path, idx) => {
+                                                        {execution.imagePaths
+                                                            .filter((path) => typeof path === 'string' && (path.startsWith('uploads/') || path.includes('/uploads/')))
+                                                            .map((path, idx) => {
                                                             const imageUrl = getImageUrl(path);
                                                             console.log('Tool output image:', { path, imageUrl });
                                                             return (

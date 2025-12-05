@@ -109,7 +109,9 @@ class MedSAM2Tool(BaseTool):
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Using default cache directory: {self.cache_dir}")
         
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/medsam2")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Ensure proper hydra initialization by reinitializing with config_dir

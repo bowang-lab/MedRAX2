@@ -94,8 +94,9 @@ class ChestXRayGeneratorTool(BaseTool):
             else:
                 raise
 
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/xray_generation")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info("Chest X-Ray Generator model loaded successfully")
 

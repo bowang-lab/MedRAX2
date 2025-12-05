@@ -20,15 +20,11 @@ logger = logging.getLogger(__name__)
 class XRayVQAToolInput(BaseModel):
     """Input schema for the CheXagent Tool."""
 
-    image_paths: List[str] = Field(
+    image_path: str = Field(
         ..., 
-        description="List of paths to chest X-ray images to analyze",
-        json_schema_extra={
-            "type": "array",
-            "items": {"type": "string"}
-        }
+        description="Path to chest X-ray image to analyze"
     )
-    prompt: str = Field(..., description="Question or instruction about the chest X-ray images")
+    prompt: str = Field(..., description="Question or instruction about the chest X-ray image")
     max_new_tokens: int = Field(512, description="Maximum number of tokens to generate in the response")
 
 
@@ -40,7 +36,7 @@ class CheXagentXRayVQATool(BaseTool):
         "A versatile tool for analyzing chest X-rays. "
         "Can perform multiple tasks including: visual question answering, report generation, "
         "abnormality detection, comparative analysis, anatomical description, "
-        "and clinical interpretation. Input should be paths to X-ray images "
+        "and clinical interpretation. Input should be a path to an X-ray image "
         "and a natural language prompt describing the analysis needed."
     )
     args_schema: Type[BaseModel] = XRayVQAToolInput
@@ -136,23 +132,22 @@ class CheXagentXRayVQATool(BaseTool):
             logger.error(f"Failed to initialize CheXagent VQA: {e}")
             raise
 
-    def _generate_response(self, image_paths: List[str], prompt: str, max_new_tokens: int) -> str:
+    def _generate_response(self, image_path: str, prompt: str, max_new_tokens: int) -> str:
         """Generate response using CheXagent model.
 
         Args:
-            image_paths: List of paths to chest X-ray images
-            prompt: Question or instruction about the images
+            image_path: Path to chest X-ray image
+            prompt: Question or instruction about the image
             max_new_tokens: Maximum number of tokens to generate
         Returns:
             str: Model's response
         """
         # Check if tokenizer has from_list_format method (CheXagent specific)
         if hasattr(self.tokenizer, 'from_list_format'):
-            query = self.tokenizer.from_list_format([*[{"image": path} for path in image_paths], {"text": prompt}])
+            query = self.tokenizer.from_list_format([{"image": image_path}, {"text": prompt}])
         else:
             # Fallback: Format as simple text if method doesn't exist
-            image_refs = ", ".join([f"Image {i+1}: {path}" for i, path in enumerate(image_paths)])
-            query = f"{image_refs}\n\n{prompt}"
+            query = f"Image: {image_path}\n\n{prompt}"
             
         conv = [
             {"from": "system", "value": "You are a helpful assistant."},
@@ -195,7 +190,12 @@ class CheXagentXRayVQATool(BaseTool):
             
             # Safely decode the response
             if output is not None and len(output) > input_ids.size(1):
-                response = self.tokenizer.decode(output[input_ids.size(1) : -1])
+                # Decode from end of input to end of output (excluding EOS if present)
+                generated_tokens = output[input_ids.size(1):]
+                if len(generated_tokens) > 0:
+                    response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+                else:
+                    response = "No response generated"
             else:
                 response = "Failed to generate response"
 
@@ -203,7 +203,7 @@ class CheXagentXRayVQATool(BaseTool):
 
     def _run(
         self,
-        image_paths: List[str],
+        image_path: str,
         prompt: str,
         max_new_tokens: int = 512,
         run_manager: Optional[CallbackManagerForToolRun] = None,
@@ -211,8 +211,8 @@ class CheXagentXRayVQATool(BaseTool):
         """Execute the chest X-ray analysis.
 
         Args:
-            image_paths: List of paths to chest X-ray images
-            prompt: Question or instruction about the images
+            image_path: Path to chest X-ray image
+            prompt: Question or instruction about the image
             max_new_tokens: Maximum number of tokens to generate
             run_manager: Optional callback manager
 
@@ -220,19 +220,18 @@ class CheXagentXRayVQATool(BaseTool):
             Tuple[Dict[str, Any], Dict]: Output dictionary and metadata dictionary
         """
         try:
-            # Verify image paths
-            for path in image_paths:
-                if not Path(path).is_file():
-                    raise FileNotFoundError(f"Image file not found: {path}")
+            # Verify image path
+            if not Path(image_path).is_file():
+                raise FileNotFoundError(f"Image file not found: {image_path}")
 
-            response = self._generate_response(image_paths, prompt, max_new_tokens)
+            response = self._generate_response(image_path, prompt, max_new_tokens)
 
             output = {
                 "response": response,
             }
 
             metadata = {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "max_new_tokens": max_new_tokens,
                 "analysis_status": "completed",
@@ -243,7 +242,7 @@ class CheXagentXRayVQATool(BaseTool):
         except Exception as e:
             output = {"error": str(e)}
             metadata = {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "max_new_tokens": max_new_tokens,
                 "analysis_status": "failed",
@@ -253,10 +252,10 @@ class CheXagentXRayVQATool(BaseTool):
 
     async def _arun(
         self,
-        image_paths: List[str],
+        image_path: str,
         prompt: str,
         max_new_tokens: int = 512,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Async version of _run."""
-        return self._run(image_paths, prompt, max_new_tokens)
+        return self._run(image_path, prompt, max_new_tokens)

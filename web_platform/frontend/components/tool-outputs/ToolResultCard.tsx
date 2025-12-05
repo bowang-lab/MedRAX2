@@ -31,7 +31,7 @@ interface ToolResultCardProps {
 export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const [showRawData, setShowRawData] = useState(false);
-    
+
     // Parse result data if it's stringified JSON in 'raw' field
     let data = result.resultData;
     if (data && typeof data === 'object' && 'raw' in data && typeof data.raw === 'string') {
@@ -85,10 +85,13 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const isReportTool = toolName.includes('report');
 
     const isGroundingTool = toolName.includes('grounding');
-    
+
     const isSearchTool = toolName.includes('duckduckgo') ||
         toolName.includes('web_browser') ||
         toolName.includes('search');
+
+    // Optional metadata for richer summaries
+    const metadata: any = result.resultMetadata || null;
 
     // Render classification results in a formatted way
     const renderClassificationResults = () => {
@@ -97,15 +100,15 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         // Classification tools return the predictions directly as the data object
         // Format: { "Atelectasis": 0.123, "Cardiomegaly": 0.456, ... }
         const predictions = data.predictions || data.pathology_predictions || data;
-        
+
         // Check if this looks like classification data (object with numeric values)
         if (!predictions || typeof predictions !== 'object') return null;
-        
+
         // Filter to only numeric probability values
-        const pathologies = Object.entries(predictions).filter(([key, value]) => 
+        const pathologies = Object.entries(predictions).filter(([key, value]) =>
             typeof value === 'number' && !key.includes('_') && key !== 'error' && key !== 'image_path'
         );
-        
+
         if (pathologies.length === 0) return null;
 
         return (
@@ -229,9 +232,9 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                 <div className="space-y-2">
                     {results.map((result: { title?: string; link?: string; url?: string; snippet?: string; source?: string }, idx: number) => (
                         <div key={idx} className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-blue-600 transition-colors">
-                            <a 
-                                href={result.link || result.url || '#'} 
-                                target="_blank" 
+                            <a
+                                href={result.link || result.url || '#'}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="block space-y-1"
                             >
@@ -272,6 +275,23 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                             isGroundingTool ? 'Grounding Visualizations:' :
                                 'Generated Images:'}
                     </h4>
+                    {/* Segmentation metadata summary if available */}
+                    {isSegmentationTool && metadata && (
+                        <div className="text-xs text-zinc-400 space-y-1">
+                            {Array.isArray(metadata.requested_organs) && metadata.requested_organs.length > 0 && (
+                                <div>Requested: <span className="text-zinc-300">{metadata.requested_organs.join(', ')}</span></div>
+                            )}
+                            {Array.isArray(metadata.processed_organs) && (
+                                <div>Detected: <span className="text-zinc-300">{metadata.processed_organs.length > 0 ? metadata.processed_organs.join(', ') : 'none'}</span></div>
+                            )}
+                            {typeof metadata.pixel_spacing_mm === 'number' && (
+                                <div>Pixel spacing: <span className="text-zinc-300">{metadata.pixel_spacing_mm} mm</span></div>
+                            )}
+                            {typeof metadata.threshold_used === 'number' && (
+                                <div>Threshold: <span className="text-zinc-300">{metadata.threshold_used}</span></div>
+                            )}
+                        </div>
+                    )}
                     <div className="flex flex-wrap gap-3">
                         {imagePaths.map((imagePath, idx) => {
                             const imageUrl = getImageUrl(imagePath);
@@ -317,24 +337,36 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                             {'metrics' in (data as any) && typeof (data as any).metrics === 'object' ? (
                                 <>
                                     <h4 className="text-sm font-medium text-zinc-300">Segmentation Metrics:</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {Object.entries((data as any).metrics).map(([organ, metrics]) => {
-                                            const m = metrics as Record<string, unknown>;
-                                            const areaCm2 = typeof m.area_cm2 === 'number' ? m.area_cm2.toFixed(2) : undefined;
-                                            const conf = typeof m.confidence_score === 'number' ? (m.confidence_score * 100).toFixed(1) : undefined;
-                                            const mean = typeof m.mean_intensity === 'number' ? m.mean_intensity.toFixed(1) : undefined;
-                                            return (
-                                                <div key={organ} className="rounded-md border border-zinc-700 p-2">
-                                                    <div className="text-xs text-zinc-400 mb-1">{organ}</div>
-                                                    <div className="text-xs text-zinc-300 space-x-2">
-                                                        {areaCm2 && <span>Area: {areaCm2} cm²</span>}
-                                                        {conf && <span>Conf: {conf}%</span>}
-                                                        {mean && <span>Mean Intensity: {mean}</span>}
+                                    {Object.keys((data as any).metrics).length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {Object.entries((data as any).metrics).map(([organ, metrics]) => {
+                                                const m = metrics as Record<string, unknown>;
+                                                const areaCm2 = typeof m.area_cm2 === 'number' ? m.area_cm2.toFixed(2) : undefined;
+                                                const conf = typeof m.confidence_score === 'number' ? (m.confidence_score * 100).toFixed(1) : undefined;
+                                                const mean = typeof m.mean_intensity === 'number' ? m.mean_intensity.toFixed(1) : undefined;
+                                                return (
+                                                    <div key={organ} className="rounded-md border border-zinc-700 p-2">
+                                                        <div className="text-xs text-zinc-400 mb-1">{organ}</div>
+                                                        <div className="text-xs text-zinc-300 space-x-2">
+                                                            {areaCm2 && <span>Area: {areaCm2} cm²</span>}
+                                                            {conf && <span>Conf: {conf}%</span>}
+                                                            {mean && <span>Mean Intensity: {mean}</span>}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="text-xs text-zinc-500">
+                                                No organ masks detected at the current threshold. The overlay image above may look unchanged.
+                                            </div>
+                                            <div className="text-xs p-2 bg-blue-500/10 border border-blue-500/20 rounded">
+                                                <span className="font-semibold text-blue-400">💡 Recommendation:</span>
+                                                <span className="text-zinc-300"> Use MedSAM2 instead - it's more robust and works with a wider variety of X-ray images. MedSAM2 uses advanced segmentation that doesn't rely on pre-trained organ detection.</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </>
                             ) : ('mask_summary' in (data as any) || 'confidence_scores' in (data as any)) ? (
                                 <>
@@ -354,11 +386,11 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                         </div>
                     )}
                     {showRawData && (
-                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
-                        <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
+                        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
+                            <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
                                 {JSON.stringify(result.resultData, null, 2)}
-                        </pre>
-                    </div>
+                            </pre>
+                        </div>
                     )}
                 </div>
             )}

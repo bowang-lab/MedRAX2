@@ -73,6 +73,8 @@ class ChestXRaySegmentationTool(BaseTool):
         "Left/Right Lung, Left/Right Hilus Pulmonis (lung roots), Heart, Aorta, "
         "Facies Diaphragmatica (diaphragm), Mediastinum (central cavity), Weasand (esophagus), "
         "and Spine. Returns segmentation visualization and comprehensive metrics. "
+        "Note: PSPNet model may have limited compatibility with certain X-ray formats. "
+        "Consider using MedSAM2 for more robust segmentation across diverse image types. "
         "Let the user know the area is not accurate unless input has been DICOM."
     )
     args_schema: Type[BaseModel] = ChestXRaySegmentationInput
@@ -84,6 +86,7 @@ class ChestXRaySegmentationTool(BaseTool):
     pixel_spacing_mm: float = 0.2
     temp_dir: Path = Path("temp")
     organ_map: Dict[str, int] = None
+    threshold: float = 0.3  # probability threshold for mask binarization
 
     def __init__(self, device: Optional[str] = None, temp_dir: Optional[Path] = Path("temp")):
         """Initialize the segmentation tool with model and temporary directory."""
@@ -272,19 +275,41 @@ class ChestXRaySegmentationTool(BaseTool):
             with torch.no_grad():
                 pred = self.model(img)
             pred_probs = torch.sigmoid(pred)
-            pred_masks = (pred_probs > 0.5).float()
+
+            # Try multiple thresholds if needed to recover weak masks
+            tried_thresholds = [self.threshold, 0.2, 0.1]
+            final_threshold = self.threshold
+            pred_masks = None
+            results = {}
+            for th in tried_thresholds:
+                pred_masks = (pred_probs > th).float()
+                # Probe for any detections for requested organs
+                temp_results = {}
+                for idx, organ_name in zip(organ_indices, organs):
+                    mask = pred_masks[0, idx].cpu().numpy()
+                    if mask.sum() > 0:
+                        metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
+                        if metrics:
+                            temp_results[organ_name] = metrics
+                if len(temp_results) > 0:
+                    results = temp_results
+                    final_threshold = th
+                    break
+            if pred_masks is None:
+                pred_masks = (pred_probs > self.threshold).float()
 
             # Save visualization
             viz_path = self._save_visualization(original_img, pred_masks, organ_indices)
 
             # Compute metrics for selected organs
-            results = {}
-            for idx, organ_name in zip(organ_indices, organs):
-                mask = pred_masks[0, idx].cpu().numpy()
-                if mask.sum() > 0:
-                    metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
-                    if metrics:
-                        results[organ_name] = metrics
+            if not results:
+                # If thresholds loop above didn't populate, compute once at current masks (may still be empty)
+                for idx, organ_name in zip(organ_indices, organs):
+                    mask = pred_masks[0, idx].cpu().numpy()
+                    if mask.sum() > 0:
+                        metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
+                        if metrics:
+                            results[organ_name] = metrics
 
             output = {
                 "segmentation_image_path": viz_path,
@@ -297,6 +322,7 @@ class ChestXRaySegmentationTool(BaseTool):
                 "original_size": original_img.shape,
                 "model_size": tuple(img.shape[-2:]),
                 "pixel_spacing_mm": self.pixel_spacing_mm,
+                "threshold_used": final_threshold,
                 "requested_organs": organs,
                 "processed_organs": list(results.keys()),
                 "analysis_status": "completed",

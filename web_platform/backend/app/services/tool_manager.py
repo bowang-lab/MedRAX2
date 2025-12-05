@@ -129,6 +129,15 @@ class ToolManager:
                 logger.info(f"[OK] MedRAX path added: {medrax_path}")
             else:
                 logger.warning(f"[WARNING] MedRAX path not found: {medrax_path}")
+
+            # Also add local MedSAM2 repo path so 'sam2' can be imported as a dependency
+            medsam2_path = Path(__file__).parent.parent.parent.parent.parent / "MedSAM2"
+            if medsam2_path.exists():
+                # Insert at front to ensure resolution before site-packages fallbacks
+                sys.path.insert(0, str(medsam2_path))
+                logger.info(f"[OK] MedSAM2 path added: {medsam2_path}")
+            else:
+                logger.info(f"[INFO] MedSAM2 path not found (optional): {medsam2_path}")
         except Exception as e:
             logger.error(f"[ERROR] Failed to setup MedRAX path: {e}")
     
@@ -198,7 +207,7 @@ class ToolManager:
                 category="segmentation",
                 tool_class="MedSAM2Tool",
                 module_path="medrax.tools.segmentation.medsam2",
-                dependencies=["torch", "numpy", "matplotlib", "PIL", "sam2", "huggingface_hub", "hydra"],
+                dependencies=["torch", "numpy", "matplotlib", "PIL", "sam2", "huggingface_hub", "hydra", "iopath"],
                 requires_gpu=True
             ),
             ToolInfo(

@@ -8,6 +8,13 @@ from fastapi import APIRouter
 
 from . import auth, patients, chats, messages, scans, tools, tools_sse, questions, tool_history, memory, system
 
+# Import tool testing routes (development only)
+try:
+    from . import tool_testing
+    TOOL_TESTING_AVAILABLE = True
+except ImportError:
+    TOOL_TESTING_AVAILABLE = False
+
 # Main API router
 api_router = APIRouter(prefix="/api")
 
@@ -24,4 +31,8 @@ api_router.include_router(tools_sse.router, prefix="/tools", tags=["tools-sse"])
 api_router.include_router(questions.router, prefix="/questions", tags=["questions"])
 api_router.include_router(tool_history.router, tags=["tool-history"])  # No prefix - routes include full paths
 api_router.include_router(memory.router, tags=["memory"])
+
+# Include tool testing endpoints (development only)
+if TOOL_TESTING_AVAILABLE:
+    api_router.include_router(tool_testing.router, prefix="/test", tags=["tool-testing"])
 

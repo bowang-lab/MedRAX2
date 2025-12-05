@@ -169,8 +169,9 @@ class XRayPhraseGroundingTool(BaseTool):
 
         self.model = self.model.eval()
 
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/grounding")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info("X-Ray Phrase Grounding model loaded successfully")
 
@@ -249,16 +250,27 @@ class XRayPhraseGroundingTool(BaseTool):
                 if torch.is_tensor(v):
                     device_inputs[k] = v.to(self.device)
 
-            # Remove pixel_values from generate() kwargs as it's not a valid argument
-            # The model processes images internally via input_ids encoding
-            generate_inputs = {k: v for k, v in device_inputs.items() if k != 'pixel_values'}
-            
-            with torch.no_grad():
-                output = self.model.generate(
-                    **generate_inputs,
-                    max_new_tokens=max_new_tokens,
-                    use_cache=True,
-                )
+            # Try with all inputs first, then fallback if needed
+            try:
+                with torch.no_grad():
+                    output = self.model.generate(
+                        **device_inputs,
+                        max_new_tokens=max_new_tokens,
+                        use_cache=True,
+                    )
+            except (TypeError, AttributeError) as e:
+                if "pixel_values" in str(e) or "model" in str(e):
+                    # Fallback: remove pixel_values if it causes issues
+                    logger.warning(f"Generation failed with all inputs, retrying without pixel_values: {e}")
+                    generate_inputs = {k: v for k, v in device_inputs.items() if k != 'pixel_values'}
+                    with torch.no_grad():
+                        output = self.model.generate(
+                            **generate_inputs,
+                            max_new_tokens=max_new_tokens,
+                            use_cache=True,
+                        )
+                else:
+                    raise
 
             prompt_length = inputs["input_ids"].shape[-1]
             decoded_text = self.processor.decode(output[0][prompt_length:], skip_special_tokens=True)

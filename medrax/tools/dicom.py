@@ -36,8 +36,9 @@ class DicomProcessorTool(BaseTool):
     def __init__(self, temp_dir: Optional[str] = None):
         """Initialize the DICOM processor tool."""
         super().__init__()
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/dicom")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _apply_windowing(self, img: np.ndarray, center: float, width: float) -> np.ndarray:
         """Apply window/level adjustment to the image."""

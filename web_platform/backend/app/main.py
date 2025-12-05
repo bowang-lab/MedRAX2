@@ -77,6 +77,10 @@ async def validate_api_secret(request: Request, call_next):
     if request.url.path.startswith("/temp/"):
         return await call_next(request)
     
+    # Allow /api/test/ endpoints for local tool testing (development only)
+    if settings.DEBUG and request.url.path.startswith("/api/test/"):
+        return await call_next(request)
+    
     # Allow SSE endpoints - EventSource doesn't support custom headers
     # These endpoints use JWT token in query string for authentication instead
     # SECURITY: Use exact path matching to prevent bypass attacks

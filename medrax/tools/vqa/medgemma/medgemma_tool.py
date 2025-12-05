@@ -34,15 +34,11 @@ logger = logging.getLogger(__name__)
 class MedGemmaVQAInput(BaseModel):
     """Input schema for the MedGemma VQA Tool."""
     
-    image_paths: List[str] = Field(
+    image_path: str = Field(
         ...,
-        description="List of paths to medical image files to analyze, only supports JPG or PNG images",
-        json_schema_extra={
-            "type": "array",
-            "items": {"type": "string"}
-        }
+        description="Path to medical image file to analyze, only supports JPG or PNG images"
     )
-    prompt: str = Field(..., description="Question or instruction about the medical images")
+    prompt: str = Field(..., description="Question or instruction about the medical image")
     system_prompt: Optional[str] = Field(
         "You are an expert radiologist.",
         description="System prompt to set the context for the model",
@@ -195,7 +191,7 @@ class MedGemmaTool(BaseTool):
     
     def _run(
         self,
-        image_paths: List[str],
+        image_path: str,
         prompt: str,
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
@@ -204,8 +200,8 @@ class MedGemmaTool(BaseTool):
         """Execute medical visual question answering.
         
         Args:
-            image_paths: List of paths to medical images
-            prompt: Question or instruction about the images
+            image_path: Path to medical image
+            prompt: Question or instruction about the image
             system_prompt: System context for the model
             max_new_tokens: Maximum number of tokens to generate
             run_manager: Optional callback manager
@@ -217,53 +213,43 @@ class MedGemmaTool(BaseTool):
             # Ensure model is loaded
             self._ensure_model_loaded()
             
-            # Validate image paths
-            validated_paths = []
-            for path in image_paths:
-                path_obj = Path(path)
-                if not path_obj.exists():
-                    raise FileNotFoundError(f"Image file not found: {path}")
-                if not path_obj.is_file():
-                    raise ValueError(f"Path is not a file: {path}")
-                validated_paths.append(path)
+            # Validate image path
+            path_obj = Path(image_path)
+            if not path_obj.exists():
+                raise FileNotFoundError(f"Image file not found: {image_path}")
+            if not path_obj.is_file():
+                raise ValueError(f"Path is not a file: {image_path}")
             
-            # Load images
-            images = []
-            for path in validated_paths:
-                try:
-                    img = Image.open(path).convert("RGB")
-                    images.append(img)
-                except Exception as e:
-                    raise ValueError(f"Failed to load image {path}: {e}")
+            # Load image
+            try:
+                img = Image.open(image_path).convert("RGB")
+            except Exception as e:
+                raise ValueError(f"Failed to load image {image_path}: {e}")
             
             # Prepare prompt
             full_prompt = f"{system_prompt}\n\n{prompt}"
             
             # Generate response
-            logger.info(f"Generating response for {len(images)} image(s)...")
+            logger.info(f"Generating response for image: {image_path}")
             
             with torch.no_grad():
-                # Prepare generation kwargs to avoid unrecognized parameters
-                gen_kwargs = {
-                    "max_new_tokens": max_new_tokens,
-                }
-                
-                if len(images) == 1:
-                    # Single image
+                # Try generation with minimal kwargs first
+                try:
                     result = self.pipe(
-                        images[0],
+                        img,
                         prompt=full_prompt,
-                        **gen_kwargs
+                        max_new_tokens=max_new_tokens,
                     )
-                else:
-                    # Multiple images - concatenate or process separately
-                    # For now, process first image (MedGemma may have limitations)
-                    logger.warning(f"Multiple images provided, processing first image only")
-                    result = self.pipe(
-                        images[0],
-                        prompt=full_prompt,
-                        **gen_kwargs
-                    )
+                except (ValueError, TypeError) as e:
+                    if "model_kwargs" in str(e) or "num_crops" in str(e):
+                        # Fallback: try without any extra kwargs
+                        logger.warning(f"Generation failed with kwargs, retrying without: {e}")
+                        result = self.pipe(
+                            img,
+                            prompt=full_prompt,
+                        )
+                    else:
+                        raise
             
             # Extract response
             response_text = result[0]["generated_text"] if result else ""
@@ -273,11 +259,10 @@ class MedGemmaTool(BaseTool):
             }
             
             metadata = {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "system_prompt": system_prompt,
                 "max_new_tokens": max_new_tokens,
-                "num_images": len(images),
                 "analysis_status": "completed",
                 "model": self.model_name,
                 "device": self.device,
@@ -290,7 +275,7 @@ class MedGemmaTool(BaseTool):
         except FileNotFoundError as e:
             logger.error(f"File not found: {e}")
             return {"error": str(e)}, {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "analysis_status": "failed",
                 "error_type": "FileNotFoundError",
@@ -300,7 +285,7 @@ class MedGemmaTool(BaseTool):
         except torch.cuda.OutOfMemoryError as e:
             logger.error(f"GPU out of memory: {e}")
             return {"error": "GPU memory exhausted. Try reducing image resolution or max_new_tokens."}, {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "analysis_status": "failed",
                 "error_type": "OutOfMemoryError",
@@ -310,7 +295,7 @@ class MedGemmaTool(BaseTool):
         except Exception as e:
             logger.error(f"MedGemma analysis failed: {e}", exc_info=True)
             return {"error": str(e)}, {
-                "image_paths": image_paths,
+                "image_path": image_path,
                 "prompt": prompt,
                 "analysis_status": "failed",
                 "error_type": type(e).__name__,
@@ -319,14 +304,14 @@ class MedGemmaTool(BaseTool):
     
     async def _arun(
         self,
-        image_paths: List[str],
+        image_path: str,
         prompt: str,
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Async version of _run (currently calls sync version)."""
-        return self._run(image_paths, prompt, system_prompt, max_new_tokens, run_manager)
+        return self._run(image_path, prompt, system_prompt, max_new_tokens, run_manager)
     
     def cleanup(self):
         """Cleanup method called when tool is unloaded."""
