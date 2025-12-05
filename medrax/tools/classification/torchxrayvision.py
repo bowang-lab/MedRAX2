@@ -2,7 +2,7 @@ from typing import Dict, Optional, Tuple, Type
 from pydantic import BaseModel, Field, ConfigDict
 import logging
 
-import skimage.io
+import numpy as np
 import torch
 import torchvision
 
@@ -12,6 +12,7 @@ _original_torch_load = torch.load
 torch.load = lambda *args, **kwargs: _original_torch_load(*args, **{**kwargs, 'weights_only': kwargs.get('weights_only', False)})
 
 import torchxrayvision as xrv
+from PIL import Image
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -102,13 +103,23 @@ class TorchXRayVisionClassifierTool(BaseTool):
             FileNotFoundError: If the specified image file does not exist.
             ValueError: If the image cannot be properly loaded or processed.
         """
-        img = skimage.io.imread(image_path)
+        # Use PIL to load image - more robust with PNG metadata
+        image = Image.open(image_path)
+        
+        # Convert to grayscale if needed
+        if image.mode != 'L':
+            if image.mode in ('RGB', 'RGBA'):
+                # Convert RGB/RGBA to grayscale
+                image = image.convert('L')
+            else:
+                # For other modes, convert to L directly
+                image = image.convert('L')
+        
+        # Convert to numpy array
+        img = np.array(image)
         
         # Use robust normalization that handles both 8-bit and 16-bit images
         img = preprocess_medical_image(img, target_range=(-1024.0, 1024.0))
-
-        if len(img.shape) > 2:
-            img = img[:, :, 0]
 
         img = img[None, :, :]
         img = self.image_transform(img)

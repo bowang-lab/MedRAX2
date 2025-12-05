@@ -3,6 +3,7 @@ from typing import List, Dict, Any, TypedDict, Annotated, Optional
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
+from langchain_core.messages import AnyMessage, SystemMessage, ToolMessage, HumanMessage
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import AnyMessage, SystemMessage
 from langchain_core.language_models import BaseLanguageModel
@@ -80,13 +81,26 @@ class Agent:
             Dict[str, List[AnyMessage]]: A dictionary containing the model's response.
         """
         messages = state["messages"]
-        
-        # Only add system prompt if:
-        # 1. We have a system prompt to add
-        # 2. The first message is not already a SystemMessage
-        # This prevents duplicate system messages when the workflow loops (agent -> tools -> agent)
-        if self.system_prompt and (not messages or not isinstance(messages[0], SystemMessage)):
+    
+        # Only add system prompt if it's not already present (i.e., first call in this conversation)
+        # This avoids redundantly sending the system prompt on every model invocation
+        if self.system_prompt and (len(messages) == 0 or not isinstance(messages[0], SystemMessage)):
             messages = [SystemMessage(content=self.system_prompt)] + messages
+        
+        # Check if we just executed tools by checking if the last message is a ToolMessage
+        # This indicates we're in the process node immediately after the execute node
+        has_tool_results = len(messages) > 0 and isinstance(messages[-1], ToolMessage)
+
+        # If we have tool results, add explicit instruction to continue reasoning
+        # This is especially important for models like Gemini that may stop without generating output
+        # Use HumanMessage instead of SystemMessage as it's more compatible with all models
+        # The prompt allows the model to call more tools OR provide final answer, giving it flexibility
+        if has_tool_results:
+            synthesis_prompt = HumanMessage(
+                content="Review the tool results above. If you need more information, you can call additional tools. "
+                "Otherwise, provide your complete final answer synthesizing all the information."
+            )
+            messages = messages + [synthesis_prompt]
         
         response = self.model.invoke(messages)
         return {"messages": [response]}

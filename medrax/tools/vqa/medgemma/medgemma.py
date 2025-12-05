@@ -4,6 +4,8 @@ from pathlib import Path
 import traceback
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
+
+import numpy as np
 from PIL import Image
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -29,7 +31,7 @@ class VQAInput(BaseModel):
     """
     prompt: str = Field(..., description="Question or instruction about the medical images")
     system_prompt: Optional[str] = Field(
-        "You are an expert radiologist.",
+        "You are an expert radiologist who is able to analyze radiological images at any resolution.",
         description="System prompt to set the context for the model",
     )
     max_new_tokens: int = Field(
@@ -174,6 +176,14 @@ class MedGemmaModel:
                 raise FileNotFoundError(f"Image file not found: {path}")
 
             image = Image.open(path)
+            
+            # Properly handle 16-bit grayscale images (common in medical imaging)
+            if image.mode == "I;16":
+                # Convert 16-bit to 8-bit by normalizing to 0-255 range
+                img_array = np.array(image)
+                img_normalized = ((img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255).astype(np.uint8)
+                image = Image.fromarray(img_normalized, mode='L')
+            
             if image.mode != "RGB":
                 image = image.convert("RGB")
             images.append(image)
@@ -356,7 +366,7 @@ async def startup_event():
 async def analyze_images(
     images: List[UploadFile] = File(..., description="List of medical image files to analyze (JPG or PNG)."),
     prompt: str = Form(..., description="Question or instruction about the medical images."),
-    system_prompt: Optional[str] = Form("You are an expert radiologist.", description="System prompt to set the context for the model."),
+    system_prompt: Optional[str] = Form("You are an expert radiologist who is able to analyze radiological images at any resolution.", description="System prompt to set the context for the model."),
     max_new_tokens: int = Form(100, description="Maximum number of tokens to generate in the response.")
 ):
     """Analyze medical images using MedGemma AI model.

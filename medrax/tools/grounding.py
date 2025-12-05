@@ -5,6 +5,7 @@ import tempfile
 import logging
 import matplotlib.pyplot as plt
 import torch
+import numpy as np
 from PIL import Image
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -178,7 +179,7 @@ class XRayPhraseGroundingTool(BaseTool):
     ) -> str:
         """Create and save visualization of multiple bounding boxes on the image."""
         plt.figure(figsize=(12, 12))
-        plt.imshow(image, cmap="gray")
+        plt.imshow(image)
 
         for bbox in bboxes:
             x1, y1, x2, y2 = bbox
@@ -225,6 +226,14 @@ class XRayPhraseGroundingTool(BaseTool):
         """
         try:
             image = Image.open(image_path)
+            
+            # Properly handle 16-bit grayscale images (common in medical imaging)
+            if image.mode == "I;16":
+                # Convert 16-bit to 8-bit by normalizing to 0-255 range
+                img_array = np.array(image)
+                img_normalized = ((img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255).astype(np.uint8)
+                image = Image.fromarray(img_normalized, mode='L')
+            
             if image.mode != "RGB":
                 image = image.convert("RGB")
 
