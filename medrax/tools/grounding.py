@@ -147,7 +147,7 @@ class XRayPhraseGroundingTool(BaseTool):
                 cache_dir=cache_dir,
                 trust_remote_code=True,
                 quantization_config=quantization_config,
-                dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,  # Use dtype instead of torch_dtype
+                torch_dtype=torch.bfloat16 if device_str == "cuda" else torch.float32,
             )
             logger.info(f"Model loaded successfully: {type(self.model).__name__}")
             
