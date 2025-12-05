@@ -360,23 +360,26 @@ class LlavaMetaForCausalLM(ABC):
                     p.requires_grad = False
 
             if model_args.pretrain_mm_mlp_adapter:
+                embed_tokens_weight = None
                 try:
                     mm_projector_weights = torch.load(model_args.pretrain_mm_mlp_adapter, map_location="cpu")
                     embed_tokens_weight = mm_projector_weights["model.embed_tokens.weight"]
                 except Exception as e:
                     print(
-                        f"Warning: failed to load embed token weights from '{model_args.pretrain_mm_mlp_adapter}' due to: {e}. Skipping."
+                        f"Warning: failed to load embed token weights from '{model_args.pretrain_mm_mlp_adapter}' due to: {e}. "
+                        "Continuing with default-initialized tokens."
                     )
-                    return None
-                assert num_new_tokens == 2
-                if input_embeddings.shape == embed_tokens_weight.shape:
-                    input_embeddings[-num_new_tokens:] = embed_tokens_weight[-num_new_tokens:]
-                elif embed_tokens_weight.shape[0] == num_new_tokens:
-                    input_embeddings[-num_new_tokens:] = embed_tokens_weight
-                else:
-                    raise ValueError(
-                        f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}."
-                    )
+
+                if embed_tokens_weight is not None:
+                    assert num_new_tokens == 2
+                    if input_embeddings.shape == embed_tokens_weight.shape:
+                        input_embeddings[-num_new_tokens:] = embed_tokens_weight[-num_new_tokens:]
+                    elif embed_tokens_weight.shape[0] == num_new_tokens:
+                        input_embeddings[-num_new_tokens:] = embed_tokens_weight
+                    else:
+                        raise ValueError(
+                            f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}."
+                        )
         elif model_args.mm_use_im_patch_token:
             if model_args.tune_mm_mlp_adapter:
                 for p in self.get_input_embeddings().parameters():
