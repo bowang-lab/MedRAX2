@@ -299,17 +299,6 @@ class ToolManager:
                 requires_gpu=False
             ),
             
-            # CODE EXECUTION
-            ToolInfo(
-                id="python_sandbox",
-                name="Python Sandbox",
-                description="Execute Python code in secure sandbox (requires Deno)",
-                category="execution",
-                tool_class="PyodideSandboxTool",
-                module_path="medrax.tools.python_tool",
-                dependencies=["langchain_sandbox"],
-                requires_gpu=False
-            ),
         ]
         
         for tool_def in tool_definitions:
