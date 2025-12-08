@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import 'highlight.js/styles/github-dark.css';
+import { getImageUrl } from '../../lib/utils/image';
 
 export interface MarkdownRendererProps {
     /** Markdown content to render */
@@ -133,28 +134,32 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
                     ),
 
                     // Images (using img tag for dynamic markdown src)
-                    img: ({ src, alt, ...props }) => (
+                    img: ({ src, alt, ...props }) => {
+                        // Normalize backend image paths to include API base URL
+                        const resolvedSrc = getImageUrl(src ?? '') ?? src;
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            src={src}
-                            alt={alt || ''}
-                            className="max-w-full h-auto rounded-lg border border-zinc-700 my-4"
-                            loading="lazy"
-                            onError={(e) => {
-                                // Handle broken images gracefully
-                                const img = e.currentTarget;
-                                img.style.display = 'none';
-                                const parent = img.parentElement;
-                                if (parent && !parent.querySelector('.image-error')) {
-                                    const errorDiv = document.createElement('div');
-                                    errorDiv.className = 'image-error bg-red-900/20 border border-red-800 rounded-lg p-3 my-4';
-                                    errorDiv.innerHTML = `<p class="text-sm text-red-400">⚠️ Failed to load image: ${alt || src || 'unknown'}</p>`;
-                                    parent.appendChild(errorDiv);
-                                }
-                            }}
-                            {...props}
-                        />
-                    ),
+                        return (
+                            <img
+                                src={resolvedSrc ?? undefined}
+                                alt={alt || ''}
+                                className="max-w-full h-auto rounded-lg border border-zinc-700 my-4"
+                                loading="lazy"
+                                onError={(e) => {
+                                    // Handle broken images gracefully
+                                    const img = e.currentTarget;
+                                    img.style.display = 'none';
+                                    const parent = img.parentElement;
+                                    if (parent && !parent.querySelector('.image-error')) {
+                                        const errorDiv = document.createElement('div');
+                                        errorDiv.className = 'image-error bg-red-900/20 border border-red-800 rounded-lg p-3 my-4';
+                                        errorDiv.innerHTML = `<p class="text-sm text-red-400">⚠️ Failed to load image: ${alt || src || 'unknown'}</p>`;
+                                        parent.appendChild(errorDiv);
+                                    }
+                                }}
+                                {...props}
+                            />
+                        );
+                    },
                 }}
             >
                 {content}
