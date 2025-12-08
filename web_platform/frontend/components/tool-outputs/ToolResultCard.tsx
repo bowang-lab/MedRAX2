@@ -70,6 +70,7 @@ const parseRawResult = (raw: string) => {
 export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const [showRawData, setShowRawData] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     // Normalize raw tool output into structured data + metadata
     const { data, parsedMetadata } = useMemo(() => {
@@ -370,6 +371,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                                                 alt={`Tool output ${idx + 1}`}
                                                 className="h-48 w-auto max-w-full object-contain rounded-lg border border-zinc-700 bg-zinc-900 hover:border-blue-500 transition-colors cursor-zoom-in"
                                                 onError={() => handleImageError(imageUrl)}
+                                                onClick={() => imageUrl && setPreviewImage(imageUrl)}
                                             />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-opacity rounded-lg pointer-events-none" />
                                         </>
@@ -451,6 +453,34 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                             </pre>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Image preview modal */}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <div
+                        className="relative max-h-[90vh] max-w-5xl w-full bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute top-2 right-2 rounded-md bg-black/50 hover:bg-black/70 text-zinc-200 text-sm px-2 py-1 border border-zinc-700"
+                        >
+                            Close
+                        </button>
+                        <div className="flex items-center justify-center p-4 bg-black">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={previewImage}
+                                alt="Preview"
+                                className="max-h-[80vh] w-auto object-contain"
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

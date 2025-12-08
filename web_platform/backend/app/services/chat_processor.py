@@ -72,29 +72,23 @@ class ChatProcessor:
         
         # Get attached scans
         scans = []
-        if scan_ids is not None:
-            if len(scan_ids) > 0:
-                # Get specific scans attached to this message
-                scans = self.db.query(Scan).filter(
-                    Scan.id.in_(scan_ids),
-                    Scan.chat_id == self.chat_id
-                ).all()
-                logger.info(f"scans_retrieved count={len(scans)} requested={len(scan_ids)}")
-                for scan in scans:
-                    logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
-            else:
-                # scan_ids explicitly provided as empty list → user chose no images; do not fall back
-                logger.info("scan_ids_provided_empty -> skipping chat history fallback")
+        if scan_ids is not None and len(scan_ids) > 0:
+            # Get specific scans attached to this message (scoped to this chat to avoid mixing patients/chats)
+            scans = self.db.query(Scan).filter(
+                Scan.id.in_(scan_ids),
+                Scan.chat_id == self.chat_id
+            ).all()
+            logger.info(f"scans_retrieved count={len(scans)} requested={len(scan_ids)}")
+            for scan in scans:
+                logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
         else:
-            # If no specific scan_ids provided, check if there are any scans in this chat
-            # This allows the system to use images from previous messages
+            # No scan_ids provided (None) OR explicitly empty list: fall back to latest scans in this chat
+            # This preserves image context across requests within the same chat without mixing chats/patients.
             all_chat_scans = self.db.query(Scan).filter(
                 Scan.chat_id == self.chat_id
             ).order_by(Scan.uploaded_at.desc()).all()
             
             if all_chat_scans:
-                # Use the most recent scan(s) from the chat
-                # We'll use all scans in the chat for context
                 scans = all_chat_scans
                 logger.info(f"using_chat_scans count={len(scans)} from_chat_history")
                 for scan in scans:
