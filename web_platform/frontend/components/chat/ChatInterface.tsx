@@ -96,6 +96,8 @@ export function ChatInterface() {
             ]);
             setCurrentChat(chat);
             setMessages(chatId, msgs);
+            // Keep sidebar/chat list in sync (message/scan counts, name)
+            updateChatInStore(chatId, chat);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load chat');
         } finally {

@@ -128,6 +128,8 @@ export const useAppStore = create<AppState>()((set) => ({
                 delete restScans[chatId];
             });
 
+            const shouldClearSelected = patientChatIds.includes(state.selectedChatId ?? '');
+
             return {
                 patients: (state.patients || []).filter((p) => p.id !== id),
                 chats: restChats,
@@ -135,6 +137,7 @@ export const useAppStore = create<AppState>()((set) => ({
                 chatsError: restChatsError,
                 messages: restMessages,
                 scans: restScans,
+                selectedChatId: shouldClearSelected ? null : state.selectedChatId,
             };
         }),
 
