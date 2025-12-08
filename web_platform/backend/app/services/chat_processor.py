@@ -72,15 +72,19 @@ class ChatProcessor:
         
         # Get attached scans
         scans = []
-        if scan_ids:
-            # Get specific scans attached to this message
-            scans = self.db.query(Scan).filter(
-                Scan.id.in_(scan_ids),
-                Scan.chat_id == self.chat_id
-            ).all()
-            logger.info(f"scans_retrieved count={len(scans)} requested={len(scan_ids)}")
-            for scan in scans:
-                logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
+        if scan_ids is not None:
+            if len(scan_ids) > 0:
+                # Get specific scans attached to this message
+                scans = self.db.query(Scan).filter(
+                    Scan.id.in_(scan_ids),
+                    Scan.chat_id == self.chat_id
+                ).all()
+                logger.info(f"scans_retrieved count={len(scans)} requested={len(scan_ids)}")
+                for scan in scans:
+                    logger.info(f"scan_details scan_id={scan.id[:8]} path={scan.file_path} exists={Path(scan.file_path).exists()}")
+            else:
+                # scan_ids explicitly provided as empty list → user chose no images; do not fall back
+                logger.info("scan_ids_provided_empty -> skipping chat history fallback")
         else:
             # If no specific scan_ids provided, check if there are any scans in this chat
             # This allows the system to use images from previous messages
