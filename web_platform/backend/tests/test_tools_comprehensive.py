@@ -96,7 +96,7 @@ def test_gpu_availability_check():
     ("medrax.tools.vqa.xray_vqa", "CheXagentXRayVQATool"),
     ("medrax.tools.vqa.llava_med", "LlavaMedTool"),
     ("medrax.tools.browsing.duckduckgo", "DuckDuckGoSearchTool"),
-    ("medrax.tools.dicom_processor", "DICOMProcessorTool"),
+    ("medrax.tools.dicom", "DicomProcessorTool"),
 ])
 def test_tool_import(module_path, class_name):
     """Test that tools can be imported."""
@@ -151,9 +151,9 @@ def test_duckduckgo_tool_run():
 
 def test_dicom_processor_initialization():
     """Test DICOM processor tool initialization."""
-    from medrax.tools.dicom_processor import DICOMProcessorTool
+    from medrax.tools.dicom import DicomProcessorTool
     
-    tool = DICOMProcessorTool()
+    tool = DicomProcessorTool()
     assert tool.name == "dicom_processor"
     assert "dicom" in tool.description.lower()
 

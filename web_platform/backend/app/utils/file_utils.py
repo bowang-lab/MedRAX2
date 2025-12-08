@@ -5,12 +5,20 @@ File handling and upload utilities.
 """
 
 import os
-import aiofiles
-from pathlib import Path
-from fastapi import UploadFile
 import uuid
+import logging
+from pathlib import Path
+
+import aiofiles
+import numpy as np
+import pydicom
+from PIL import Image
+from fastapi import UploadFile
 
 from ..config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_file_extension(filename: str | None) -> str:
@@ -40,6 +48,59 @@ def is_allowed_file(filename: str) -> bool:
     """
     ext = get_file_extension(filename)
     return ext in settings.ALLOWED_EXTENSIONS
+
+
+def _apply_windowing(img: np.ndarray, center: float, width: float) -> np.ndarray:
+    """Apply basic window/level adjustment."""
+    img_min = center - width / 2
+    img_max = center + width / 2
+    img = np.clip(img, img_min, img_max)
+    denom = width if width != 0 else (img_max - img_min) or 1
+    img = ((img - img_min) / denom * 255).astype(np.uint8)
+    return img
+
+
+def convert_dicom_to_png(dicom_path: Path) -> Path | None:
+    """
+    Convert a DICOM file to a PNG for display.
+
+    Returns:
+        Path to the generated PNG or None if conversion fails.
+    """
+    try:
+        dcm = pydicom.dcmread(dicom_path)
+        img = dcm.pixel_array.astype(float)
+
+        # Apply rescale slope/intercept if available
+        slope = getattr(dcm, "RescaleSlope", 1)
+        intercept = getattr(dcm, "RescaleIntercept", 0)
+        img = img * slope + intercept
+
+        center = getattr(dcm, "WindowCenter", None)
+        width = getattr(dcm, "WindowWidth", None)
+
+        # Handle multi-value fields
+        if isinstance(center, (list, tuple)):
+            center = center[0]
+        if isinstance(width, (list, tuple)):
+            width = width[0]
+
+        if center is not None and width is not None:
+            img = _apply_windowing(img, float(center), float(width))
+        else:
+            img_min, img_max = np.min(img), np.max(img)
+            if img_max == img_min:
+                img = np.zeros_like(img, dtype=np.uint8)
+            else:
+                img = ((img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+
+        png_path = dicom_path.with_suffix(".png")
+        Image.fromarray(img).save(png_path)
+        logger.info(f"Converted DICOM to PNG: {dicom_path} -> {png_path}")
+        return png_path
+    except Exception as e:
+        logger.warning(f"Failed to convert DICOM {dicom_path} to PNG: {e}")
+        return None
 
 
 async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[str, str]:
@@ -83,6 +144,15 @@ async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[st
     
     # Generate display path (URL path for frontend)
     display_path = f"/uploads/{subdirectory}/{unique_filename}" if subdirectory else f"/uploads/{unique_filename}"
+
+    # For DICOM files, create a PNG copy for frontend display
+    if ext in {"dcm", "dicom"}:
+        png_path = convert_dicom_to_png(file_path)
+        if png_path and png_path.exists():
+            # Use PNG for display so the frontend can render it directly
+            display_path = f"/{png_path.as_posix()}"
+        else:
+            logger.warning(f"Using original DICOM for display; PNG conversion failed for {file_path}")
     
     return str(file_path), display_path
 

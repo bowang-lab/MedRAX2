@@ -47,6 +47,28 @@ class ChatProcessor:
         self.request_id = None  # Set when processing message
         # If provided, all tool executions will be attached to this message id instead of the triggering user message
         self.tool_target_message_id = tool_target_message_id
+
+    def _resolve_image_path(self, scan: Scan) -> str:
+        """
+        Choose the best path for encoding an image to base64.
+        Prefer a display-ready path for DICOMs if available.
+        """
+        if scan.file_type and scan.file_type.lower() in {"dcm", "dicom"} and scan.display_path:
+            candidate = Path(scan.display_path.lstrip("/"))
+            if candidate.exists():
+                return str(candidate)
+        return scan.file_path
+
+    def _infer_mime_type(self, path: str) -> str:
+        """Infer MIME type for data URI based on file extension."""
+        ext = Path(path).suffix.lower()
+        if ext in {".png"}:
+            return "image/png"
+        if ext in {".jpg", ".jpeg"}:
+            return "image/jpeg"
+        if ext in {".gif"}:
+            return "image/gif"
+        return "application/octet-stream"
         
     async def process_message(
         self,
@@ -136,18 +158,20 @@ class ChatProcessor:
             images_encoded = 0
             for scan in scans:
                 try:
-                    with open(scan.file_path, "rb") as f:
+                    image_path = self._resolve_image_path(scan)
+                    with open(image_path, "rb") as f:
                         img_bytes = f.read()
                         img_base64 = base64.b64encode(img_bytes).decode("utf-8")
+                    mime_type = self._infer_mime_type(image_path)
                     agent_messages.append({
                         "role": "user",
                         "content": [{
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}
+                            "image_url": {"url": f"data:{mime_type};base64,{img_base64}"}
                         }]
                     })
                     images_encoded += 1
-                    logger.info(f"image_encoded scan_id={scan.id[:8]} size_bytes={len(img_bytes)}")
+                    logger.info(f"image_encoded scan_id={scan.id[:8]} path={image_path} size_bytes={len(img_bytes)}")
                 except Exception as e:
                     logger.error(f"image_encoding_error scan_id={scan.id} path={scan.file_path} error={str(e)}")
             logger.info(f"images_encoded_total count={images_encoded}/{len(scans)}")
@@ -204,7 +228,7 @@ class ChatProcessor:
                             async for tool_event in self._process_tool_execution(
                                 tool_message,
                                 message,
-                                [scan.file_path for scan in scans]
+                                [scan.display_path or scan.file_path for scan in scans]
                             ):
                                 yield tool_event
             
