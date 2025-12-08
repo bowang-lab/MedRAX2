@@ -17,7 +17,10 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 from PIL import Image
 import torch
-from transformers import pipeline
+from transformers import (
+    AutoProcessor,
+    AutoModelForVisionText2Text,
+)
 import logging
 
 # Try to import BitsAndBytesConfig, but don't fail if unavailable
@@ -35,8 +38,13 @@ class MedGemmaVQAInput(BaseModel):
     """Input schema for the MedGemma VQA Tool."""
     
     image_path: str = Field(
-        ...,
+        default="",
         description="Path to medical image file to analyze, only supports JPG or PNG images"
+    )
+    image_paths: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of image paths (legacy format); first valid path will be used",
+        json_schema_extra={"type": "array", "items": {"type": "string"}},
     )
     prompt: str = Field(..., description="Question or instruction about the medical image")
     system_prompt: Optional[str] = Field(
@@ -90,7 +98,9 @@ class MedGemmaTool(BaseTool):
     return_direct: bool = True
     
     # Model components
-    pipe: Any = None
+    pipe: Any = None  # kept for compatibility but not used after refactor
+    processor: Any = None
+    model: Any = None
     device: str = "cuda"
     model_name: str = "google/medgemma-4b-it"
     
@@ -129,11 +139,11 @@ class MedGemmaTool(BaseTool):
         logger.info(f"  Cache dir: {cache_dir or 'default'}")
     
     def _ensure_model_loaded(self):
-        """Lazy load the model on first use."""
-        if self.pipe is not None:
+        """Lazy load processor + model (direct integration, no pipeline)."""
+        if self.processor is not None and self.model is not None:
             return  # Already loaded
         
-        logger.info(f"Loading MedGemma model: {self.model_name}")
+        logger.info(f"Loading MedGemma model (direct): {self.model_name}")
         logger.info(f"  This may take 1-2 minutes on first load (downloading ~8GB)...")
         
         try:
@@ -159,25 +169,20 @@ class MedGemmaTool(BaseTool):
                 torch_dtype = torch.float32
                 logger.warning("Using CPU - inference will be slow!")
             
-            # Create pipeline
             model_kwargs = {
                 "torch_dtype": torch_dtype,
                 "device_map": "auto" if self.device == "cuda" else None,
             }
-            
             if quantization_config:
                 model_kwargs["quantization_config"] = quantization_config
-            
             if self._cache_dir:
                 model_kwargs["cache_dir"] = self._cache_dir
             
-            self.pipe = pipeline(
-                "image-to-text",
-                model=self.model_name,
-                model_kwargs=model_kwargs,
-            )
+            # Load processor and model directly (no pipeline) to keep control of image tokens
+            self.processor = AutoProcessor.from_pretrained(self.model_name, **({"cache_dir": self._cache_dir} if self._cache_dir else {}))
+            self.model = AutoModelForVisionText2Text.from_pretrained(self.model_name, **model_kwargs)
             
-            logger.info(f"✅ MedGemma model loaded successfully!")
+            logger.info(f"✅ MedGemma model loaded successfully (direct)")
             
             # Print GPU memory usage
             if self.device == "cuda" and torch.cuda.is_available():
@@ -189,18 +194,57 @@ class MedGemmaTool(BaseTool):
             logger.error(f"Failed to load MedGemma model: {e}", exc_info=True)
             raise
     
+    def _resolve_image_path(self, image_path: str, image_paths: Optional[List[str]]) -> str:
+        """
+        Support both single-path (current) and list-of-paths (legacy) inputs.
+        Picks the first non-empty path.
+        """
+        if image_path:
+            return image_path
+        if image_paths:
+            for p in image_paths:
+                if p:
+                    return p
+        raise ValueError("No image path provided. Supply image_path or image_paths[0].")
+
+    def _generate_direct(self, img: Image.Image, full_prompt: str, max_new_tokens: int):
+        """
+        Direct generation via processor + model (no pipeline). Ensures image tokens are inserted.
+        """
+        if self.processor is None or self.model is None:
+            raise RuntimeError("MedGemma processor/model not loaded")
+
+        # Preferred path: processor handles both text and images
+        inputs = self.processor(text=[full_prompt], images=[img], return_tensors="pt")
+
+        # Move to device
+        device = self.model.device
+        inputs = {k: (v.to(device) if hasattr(v, "to") else v) for k, v in inputs.items()}
+
+        # Strip num_crops if present (defensive)
+        inputs.pop("num_crops", None)
+
+        with torch.no_grad():
+            outputs = self.model.generate(**inputs, max_new_tokens=max_new_tokens)
+
+        decoded = self.processor.batch_decode(outputs, skip_special_tokens=True)
+        text = decoded[0] if decoded else ""
+        return [{"generated_text": text}]
+
     def _run(
         self,
         image_path: str,
         prompt: str,
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
+        image_paths: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Execute medical visual question answering.
         
         Args:
-            image_path: Path to medical image
+            image_path: Path to medical image (current)
+            image_paths: Optional list of images (legacy); first valid will be used
             prompt: Question or instruction about the image
             system_prompt: System context for the model
             max_new_tokens: Maximum number of tokens to generate
@@ -213,43 +257,27 @@ class MedGemmaTool(BaseTool):
             # Ensure model is loaded
             self._ensure_model_loaded()
             
-            # Validate image path
-            path_obj = Path(image_path)
+            # Resolve and validate image path (support single path or list)
+            resolved_path = self._resolve_image_path(image_path, image_paths)
+            path_obj = Path(resolved_path)
             if not path_obj.exists():
-                raise FileNotFoundError(f"Image file not found: {image_path}")
+                raise FileNotFoundError(f"Image file not found: {resolved_path}")
             if not path_obj.is_file():
-                raise ValueError(f"Path is not a file: {image_path}")
+                raise ValueError(f"Path is not a file: {resolved_path}")
             
             # Load image
             try:
-                img = Image.open(image_path).convert("RGB")
+                img = Image.open(resolved_path).convert("RGB")
             except Exception as e:
-                raise ValueError(f"Failed to load image {image_path}: {e}")
+                raise ValueError(f"Failed to load image {resolved_path}: {e}")
             
             # Prepare prompt
             full_prompt = f"{system_prompt}\n\n{prompt}"
             
             # Generate response
-            logger.info(f"Generating response for image: {image_path}")
+            logger.info(f"Generating response for image: {resolved_path}")
             
-            with torch.no_grad():
-                # Try generation with minimal kwargs first
-                try:
-                    result = self.pipe(
-                        img,
-                        prompt=full_prompt,
-                        max_new_tokens=max_new_tokens,
-                    )
-                except (ValueError, TypeError) as e:
-                    if "model_kwargs" in str(e) or "num_crops" in str(e):
-                        # Fallback: try without any extra kwargs
-                        logger.warning(f"Generation failed with kwargs, retrying without: {e}")
-                        result = self.pipe(
-                            img,
-                            prompt=full_prompt,
-                        )
-                    else:
-                        raise
+            result = self._generate_direct(img, full_prompt, max_new_tokens)
             
             # Extract response
             response_text = result[0]["generated_text"] if result else ""
@@ -259,7 +287,7 @@ class MedGemmaTool(BaseTool):
             }
             
             metadata = {
-                "image_path": image_path,
+                "image_path": resolved_path,
                 "prompt": prompt,
                 "system_prompt": system_prompt,
                 "max_new_tokens": max_new_tokens,
@@ -308,10 +336,11 @@ class MedGemmaTool(BaseTool):
         prompt: str,
         system_prompt: str = "You are an expert radiologist.",
         max_new_tokens: int = 300,
+        image_paths: Optional[List[str]] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Async version of _run (currently calls sync version)."""
-        return self._run(image_path, prompt, system_prompt, max_new_tokens, run_manager)
+        return self._run(image_path, prompt, system_prompt, max_new_tokens, image_paths, run_manager)
     
     def cleanup(self):
         """Cleanup method called when tool is unloaded."""

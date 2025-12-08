@@ -2,6 +2,10 @@
 
 set -e
 
+# Pin to GPU 2 for all backend processes (0-based index)
+export CUDA_VISIBLE_DEVICES=2
+echo "Forcing CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+
 echo "=================================================="
 echo "Starting MedRAX Backend Server"
 echo "=================================================="
