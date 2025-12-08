@@ -12,7 +12,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ToolExecutionResult } from '../../lib/types/tool';
 import { getImageUrl } from '../../lib/utils/image';
 
@@ -28,22 +28,75 @@ interface ToolResultCardProps {
     result: ToolExecutionResult;
 }
 
+// Basic check for plain objects (avoids arrays/Date/etc.)
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+
+// Convert python-ish output (with np.float32, tuples, single quotes) into JSON-parsable text
+const toJsonishString = (raw: string) => {
+    let cleaned = raw.trim();
+    // Drop np.float32/np.float64 wrappers that break JSON
+    cleaned = cleaned.replace(/np\.float(?:16|32|64)?\(\s*([+\-]?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)\s*\)/g, '$1');
+    cleaned = cleaned.replace(/np\.int(?:8|16|32|64)?\(\s*([+\-]?\d+)\s*\)/g, '$1');
+    // Normalise booleans/nulls
+    cleaned = cleaned.replace(/\bNone\b/g, 'null')
+        .replace(/\bTrue\b/g, 'true')
+        .replace(/\bFalse\b/g, 'false');
+    // Convert leading/trailing tuple to array so JSON.parse can handle it
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+        cleaned = `[${cleaned.slice(1, -1)}]`;
+    }
+    // Switch single quotes to double quotes for JSON compatibility
+    cleaned = cleaned.replace(/'/g, '"');
+    return cleaned;
+};
+
+// Try to coerce raw string into structured data
+const parseRawResult = (raw: string) => {
+    const attempts = [
+        () => JSON.parse(raw),
+        () => JSON.parse(toJsonishString(raw)),
+    ];
+    for (const attempt of attempts) {
+        try {
+            return attempt();
+        } catch {
+            // try next strategy
+        }
+    }
+    return null;
+};
+
 export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const [showRawData, setShowRawData] = useState(false);
 
-    // Parse result data if it's stringified JSON in 'raw' field
-    let data = result.resultData;
-    if (data && typeof data === 'object' && 'raw' in data && typeof data.raw === 'string') {
-        try {
-            const parsed = JSON.parse(data.raw);
-            // If parsed is an array, use the first item (which typically has the main results)
-            // Backend often returns [actual_results, metadata], we want the first item
-            data = Array.isArray(parsed) ? parsed[0] : parsed;
-        } catch {
-            // Keep original data if parsing fails
+    // Normalize raw tool output into structured data + metadata
+    const { data, parsedMetadata } = useMemo(() => {
+        let normalized: any = result.resultData;
+        let metadata: Record<string, unknown> | null = null;
+
+        if (isPlainObject(normalized) && 'raw' in normalized && typeof (normalized as any).raw === 'string') {
+            const raw = (normalized as any).raw as string;
+            const parsed = parseRawResult(raw);
+
+            if (parsed !== null) {
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    normalized = parsed[0];
+                    if (parsed.length > 1 && isPlainObject(parsed[1])) {
+                        metadata = parsed[1];
+                    }
+                } else if (isPlainObject(parsed)) {
+                    normalized = parsed;
+                } else {
+                    // Fallback: wrap primitive into object so downstream logic still works
+                    normalized = { value: parsed };
+                }
+            }
         }
-    }
+
+        return { data: normalized, parsedMetadata: metadata };
+    }, [result.resultData]);
 
     const handleImageError = (imagePath: string) => {
         setFailedImages(prev => new Set(prev).add(imagePath));
@@ -91,7 +144,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         toolName.includes('search');
 
     // Optional metadata for richer summaries
-    const metadata: any = result.resultMetadata || null;
+    const metadata: any = parsedMetadata || result.resultMetadata || null;
 
     // Render classification results in a formatted way
     const renderClassificationResults = () => {
@@ -111,11 +164,17 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
 
         if (pathologies.length === 0) return null;
 
+        const sortedPathologies = [...pathologies].sort(([, a], [, b]) => {
+            const aNum = typeof a === 'number' ? a : Number(a) || 0;
+            const bNum = typeof b === 'number' ? b : Number(b) || 0;
+            return bNum - aNum;
+        });
+
         return (
             <div className="space-y-2">
                 <h4 className="text-sm font-medium text-zinc-300">Pathology Predictions:</h4>
                 <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 space-y-2">
-                    {pathologies.map(([pathology, probability]) => {
+                    {sortedPathologies.map(([pathology, probability]) => {
                         const prob = typeof probability === 'number' ? probability : 0;
                         const percentage = (prob * 100).toFixed(1);
                         const isHighProbability = prob > 0.5;
@@ -388,7 +447,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                     {showRawData && (
                         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-h-96 overflow-y-auto">
                             <pre className="text-xs text-zinc-400 whitespace-pre-wrap overflow-x-auto">
-                                {JSON.stringify(result.resultData, null, 2)}
+                                {JSON.stringify(data ?? result.resultData, null, 2)}
                             </pre>
                         </div>
                     )}
