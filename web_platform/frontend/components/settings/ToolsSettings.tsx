@@ -69,10 +69,13 @@ export function ToolsSettings() {
         // Expand all categories by default
         setExpandedCategories(new Set(Object.keys(CATEGORY_DISPLAY_NAMES)));
 
+        // Capture the current ref value for cleanup
+        const sseConnections = sseConnectionsRef.current;
+
         // Cleanup SSE connections on unmount
         return () => {
-            sseConnectionsRef.current.forEach(connection => connection.close());
-            sseConnectionsRef.current.clear();
+            sseConnections.forEach(connection => connection.close());
+            sseConnections.clear();
         };
     }, []);
 

@@ -74,11 +74,11 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
 
     // Normalize raw tool output into structured data + metadata
     const { data, parsedMetadata } = useMemo(() => {
-        let normalized: any = result.resultData;
+        let normalized: unknown = result.resultData;
         let metadata: Record<string, unknown> | null = null;
 
-        if (isPlainObject(normalized) && 'raw' in normalized && typeof (normalized as any).raw === 'string') {
-            const raw = (normalized as any).raw as string;
+        if (isPlainObject(normalized) && 'raw' in normalized && typeof normalized.raw === 'string') {
+            const raw = normalized.raw;
             const parsed = parseRawResult(raw);
 
             if (parsed !== null) {
@@ -96,7 +96,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
             }
         }
 
-        return { data: normalized, parsedMetadata: metadata };
+        return { data: normalized as Record<string, unknown> | null, parsedMetadata: metadata };
     }, [result.resultData]);
 
     const handleImageError = (imagePath: string) => {
@@ -105,7 +105,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
 
     // Extract image paths from result data (generated images, visualizations, masks)
     const imagePaths: string[] = [];
-    if (data && typeof data === 'object') {
+    if (isPlainObject(data)) {
         Object.entries(data).forEach(([key, value]) => {
             if (
                 (key.toLowerCase().includes('image_path') ||
@@ -145,7 +145,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         toolName.includes('search');
 
     // Optional metadata for richer summaries
-    const metadata: any = parsedMetadata || result.resultMetadata || null;
+    const metadata = parsedMetadata || result.resultMetadata || null;
 
     // Render classification results in a formatted way
     const renderClassificationResults = () => {
@@ -153,7 +153,10 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
 
         // Classification tools return the predictions directly as the data object
         // Format: { "Atelectasis": 0.123, "Cardiomegaly": 0.456, ... }
-        const predictions = data.predictions || data.pathology_predictions || data;
+        const dataObj = isPlainObject(data) ? data : null;
+        if (!dataObj) return null;
+        
+        const predictions = dataObj.predictions || dataObj.pathology_predictions || dataObj;
 
         // Check if this looks like classification data (object with numeric values)
         if (!predictions || typeof predictions !== 'object') return null;
@@ -206,7 +209,10 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const renderVQAAnswer = () => {
         if (!isVQATool || !data) return null;
 
-        const answer = data.answer || data.response || data.text;
+        const dataObj = isPlainObject(data) ? data : null;
+        if (!dataObj) return null;
+        
+        const answer = dataObj.answer || dataObj.response || dataObj.text;
         if (!answer || typeof answer !== 'string') return null;
 
         return (
@@ -223,8 +229,11 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const renderReport = () => {
         if (!isReportTool || !data) return null;
 
-        const findingsRaw = data.findings || data.Findings;
-        const impressionRaw = data.impression || data.Impression;
+        const dataObj = isPlainObject(data) ? data : null;
+        if (!dataObj) return null;
+
+        const findingsRaw = dataObj.findings || dataObj.Findings;
+        const impressionRaw = dataObj.impression || dataObj.Impression;
 
         // Convert to strings safely
         const findings = typeof findingsRaw === 'string' ? findingsRaw : null;
@@ -258,10 +267,13 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
     const renderSearchResults = () => {
         if (!isSearchTool || !data) return null;
 
+        const dataObj = isPlainObject(data) ? data : null;
+        if (!dataObj) return null;
+
         // Handle error state
-        if (data.error || data.error_details) {
-            const errorMsg = data.error || data.error_details;
-            const queryText = typeof data.query === 'string' ? data.query : '';
+        if (dataObj.error || dataObj.error_details) {
+            const errorMsg = dataObj.error || dataObj.error_details;
+            const queryText = typeof dataObj.query === 'string' ? dataObj.query : '';
             return (
                 <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
                     <h4 className="text-sm font-medium text-red-400 mb-2">❌ Search Failed</h4>
@@ -272,9 +284,9 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
         }
 
         // Extract results array
-        const results = data.results || [];
+        const results = dataObj.results;
         if (!Array.isArray(results) || results.length === 0) {
-            const queryText = typeof data.query === 'string' ? data.query : '';
+            const queryText = typeof dataObj.query === 'string' ? dataObj.query : '';
             return (
                 <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3">
                     <p className="text-sm text-zinc-400">No search results found.</p>
@@ -283,7 +295,7 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
             );
         }
 
-        const messageText = typeof data.message === 'string' ? data.message : '';
+        const messageText = typeof dataObj.message === 'string' ? dataObj.message : '';
         return (
             <div className="space-y-3">
                 <h4 className="text-sm font-medium text-zinc-300">
@@ -393,15 +405,15 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                         {showRawData ? '▼ Hide Raw Data' : '▶ Show Raw Data (for debugging)'}
                     </button>
                     {/* Segmentation-specific summary (metrics or mask summary) */}
-                    {isSegmentationTool && (
+                    {isSegmentationTool && isPlainObject(data) && (
                         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 space-y-2">
-                            {'metrics' in (data as any) && typeof (data as any).metrics === 'object' ? (
+                            {'metrics' in data && isPlainObject(data.metrics) ? (
                                 <>
                                     <h4 className="text-sm font-medium text-zinc-300">Segmentation Metrics:</h4>
-                                    {Object.keys((data as any).metrics).length > 0 ? (
+                                    {Object.keys(data.metrics).length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            {Object.entries((data as any).metrics).map(([organ, metrics]) => {
-                                                const m = metrics as Record<string, unknown>;
+                                            {Object.entries(data.metrics).map(([organ, metrics]) => {
+                                                const m = isPlainObject(metrics) ? metrics : {};
                                                 const areaCm2 = typeof m.area_cm2 === 'number' ? m.area_cm2.toFixed(2) : undefined;
                                                 const conf = typeof m.confidence_score === 'number' ? (m.confidence_score * 100).toFixed(1) : undefined;
                                                 const mean = typeof m.mean_intensity === 'number' ? m.mean_intensity.toFixed(1) : undefined;
@@ -429,15 +441,15 @@ export function ToolResultCard({ toolName, result }: ToolResultCardProps) {
                                         </div>
                                     )}
                                 </>
-                            ) : ('mask_summary' in (data as any) || 'confidence_scores' in (data as any)) ? (
+                            ) : ('mask_summary' in data || 'confidence_scores' in data) ? (
                                 <>
                                     <h4 className="text-sm font-medium text-zinc-300">Segmentation Summary:</h4>
                                     <div className="text-xs text-zinc-300 space-y-1">
-                                        {'mask_summary' in (data as any) && (data as any).mask_summary?.total_masks != null && (
-                                            <div>Total Masks: {(data as any).mask_summary.total_masks}</div>
+                                        {'mask_summary' in data && isPlainObject(data.mask_summary) && typeof data.mask_summary.total_masks === 'number' && (
+                                            <div>Total Masks: {data.mask_summary.total_masks}</div>
                                         )}
-                                        {'best_mask_score' in (data as any) && typeof (data as any).best_mask_score === 'number' && (
-                                            <div>Best Mask Score: {((data as any).best_mask_score * 100).toFixed(1)}%</div>
+                                        {'best_mask_score' in data && typeof data.best_mask_score === 'number' && (
+                                            <div>Best Mask Score: {(data.best_mask_score * 100).toFixed(1)}%</div>
                                         )}
                                     </div>
                                 </>

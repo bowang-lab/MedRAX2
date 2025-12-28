@@ -136,11 +136,13 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
                     // Images (using img tag for dynamic markdown src)
                     img: ({ src, alt, ...props }) => {
                         // Normalize backend image paths to include API base URL
-                        const resolvedSrc = getImageUrl(src ?? '') ?? src;
-                        // eslint-disable-next-line @next/next/no-img-element
+                        // src can be string or Blob - only process if string
+                        const srcString = typeof src === 'string' ? src : undefined;
+                        const resolvedSrc = srcString ? (getImageUrl(srcString) ?? srcString) : undefined;
                         return (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                                src={resolvedSrc ?? undefined}
+                                src={resolvedSrc}
                                 alt={alt || ''}
                                 className="max-w-full h-auto rounded-lg border border-zinc-700 my-4"
                                 loading="lazy"

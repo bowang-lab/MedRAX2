@@ -337,6 +337,7 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                                                             ⚠️ Invalid image path
                                                                         </div>
                                                                     ) : (
+                                                                        /* eslint-disable-next-line @next/next/no-img-element */
                                                                         <img
                                                                             src={imageUrl}
                                                                             alt={`Input ${idx + 1}`}
