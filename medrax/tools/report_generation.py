@@ -1,7 +1,9 @@
 from typing import Any, Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+import logging
 
 import torch
+import numpy as np
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -17,6 +19,10 @@ from transformers import (
     VisionEncoderDecoderModel,
     GenerationConfig,
 )
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRayInput(BaseModel):
@@ -45,8 +51,9 @@ class ChestXRayReportGeneratorTool(BaseTool):
         "to a chest X-ray image file. Output is a structured report with both detailed "
         "observations and key clinical conclusions."
     )
-    device: Optional[str] = "cuda"
+    device: str = "cuda"
     args_schema: Type[BaseModel] = ChestXRayInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     findings_model: VisionEncoderDecoderModel = None
     impression_model: VisionEncoderDecoderModel = None
     findings_tokenizer: BertTokenizer = None
@@ -55,15 +62,24 @@ class ChestXRayReportGeneratorTool(BaseTool):
     impression_processor: ViTImageProcessor = None
     generation_args: Dict[str, Any] = None
 
-    def __init__(self, cache_dir: str = "/model-weights", device: Optional[str] = "cuda"):
+    def __init__(self, cache_dir: Optional[str] = None, device: Optional[str] = None):
         """Initialize the ChestXRayReportGeneratorTool with both findings and impression models."""
         super().__init__()
-        self.device = torch.device(device) if device else "cuda"
+        
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Report Generator on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Report Generator running on CPU. This will be significantly slower than GPU.")
 
         # Initialize findings model
+        logger.info("Loading findings model from HuggingFace...")
         self.findings_model = VisionEncoderDecoderModel.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-findings-baseline", cache_dir=cache_dir
-        ).eval()
+        )
         self.findings_tokenizer = BertTokenizer.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-findings-baseline", cache_dir=cache_dir
         )
@@ -72,9 +88,10 @@ class ChestXRayReportGeneratorTool(BaseTool):
         )
 
         # Initialize impression model
+        logger.info("Loading impression model from HuggingFace...")
         self.impression_model = VisionEncoderDecoderModel.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
-        ).eval()
+        )
         self.impression_tokenizer = BertTokenizer.from_pretrained(
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
         )
@@ -82,9 +99,22 @@ class ChestXRayReportGeneratorTool(BaseTool):
             "IAMJB/chexpert-mimic-cxr-impression-baseline", cache_dir=cache_dir
         )
 
-        # Move models to device
-        self.findings_model = self.findings_model.to(self.device)
-        self.impression_model = self.impression_model.to(self.device)
+        # Move models to device AFTER loading (handles meta tensors properly)
+        logger.info(f"Moving models to device: {device_str}")
+        try:
+            self.findings_model = self.findings_model.to(self.device)
+            self.impression_model = self.impression_model.to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.findings_model = self.findings_model.to_empty(device=self.device)
+                self.impression_model = self.impression_model.to_empty(device=self.device)
+            else:
+                raise
+        
+        # Set to eval mode AFTER moving to device
+        self.findings_model.eval()
+        self.impression_model.eval()
 
         # Default generation arguments
         self.generation_args = {
@@ -93,6 +123,8 @@ class ChestXRayReportGeneratorTool(BaseTool):
             "use_cache": True,
             "beam_width": 2,
         }
+        
+        logger.info("Chest X-Ray Report Generator models loaded successfully")
 
     def _process_image(
         self, image_path: str, processor: ViTImageProcessor, model: VisionEncoderDecoderModel
@@ -107,7 +139,16 @@ class ChestXRayReportGeneratorTool(BaseTool):
         Returns:
             torch.Tensor: Processed image tensor ready for model input.
         """
-        image = Image.open(image_path).convert("RGB")
+        image = Image.open(image_path)
+        
+        # Properly handle 16-bit grayscale images (common in medical imaging)
+        if image.mode == "I;16":
+            # Convert 16-bit to 8-bit by normalizing to 0-255 range
+            img_array = np.array(image)
+            img_normalized = ((img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255).astype(np.uint8)
+            image = Image.fromarray(img_normalized, mode='L')
+        
+        image = image.convert("RGB")
         pixel_values = processor(image, return_tensors="pt").pixel_values
 
         expected_size = model.config.encoder.image_size

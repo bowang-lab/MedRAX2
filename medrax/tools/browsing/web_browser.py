@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class WebBrowserSchema(BaseModel):
@@ -77,6 +77,7 @@ class WebBrowserTool(BaseTool):
     )
     max_results: int = 5
     args_schema: Type[BaseModel] = WebBrowserSchema
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     def __init__(self, search_api_key: Optional[str] = None, search_engine_id: Optional[str] = None, **kwargs):
         """Initialize the web browser tool with optional search API credentials.

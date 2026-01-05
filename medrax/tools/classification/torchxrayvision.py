@@ -1,10 +1,18 @@
 from typing import Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+import logging
 
-import skimage.io
+import numpy as np
 import torch
 import torchvision
+
+# Fix PyTorch 2.6+ weights_only issue BEFORE importing torchxrayvision
+# The torchxrayvision library uses torch.load internally
+_original_torch_load = torch.load
+torch.load = lambda *args, **kwargs: _original_torch_load(*args, **{**kwargs, 'weights_only': kwargs.get('weights_only', False)})
+
 import torchxrayvision as xrv
+from PIL import Image
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -13,6 +21,9 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 
 from medrax.utils.utils import preprocess_medical_image
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class TorchXRayVisionInput(BaseModel):
@@ -46,17 +57,34 @@ class TorchXRayVisionClassifierTool(BaseTool):
         "Higher values indicate a higher likelihood of the condition being present."
     )
     args_schema: Type[BaseModel] = TorchXRayVisionInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     model: xrv.models.DenseNet = None
-    device: Optional[str] = "cuda"
-    transform: torchvision.transforms.Compose = None
+    device: str = "cuda"
+    image_transform: torchvision.transforms.Compose = None
 
-    def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = "cuda"):
+    def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = None):
         super().__init__()
+        
+
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing TorchXRayVision on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("TorchXRayVision running on CPU. This will be slower than GPU.")
+        
         self.model = xrv.models.DenseNet(weights=model_name)
         self.model.eval()
-        self.device = torch.device(device) if device else "cuda"
+        
+        # Ensure model is in float32 to avoid dtype mismatches
+        # torchxrayvision models may load with mixed dtypes
+        self.model = self.model.float()
         self.model = self.model.to(self.device)
-        self.transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
+        
+        self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop()])
+        
+        logger.info("TorchXRayVision model loaded successfully")
 
     def _process_image(self, image_path: str) -> torch.Tensor:
         """
@@ -75,19 +103,30 @@ class TorchXRayVisionClassifierTool(BaseTool):
             FileNotFoundError: If the specified image file does not exist.
             ValueError: If the image cannot be properly loaded or processed.
         """
-        img = skimage.io.imread(image_path)
+        # Use PIL to load image - more robust with PNG metadata
+        image = Image.open(image_path)
+        
+        # Convert to grayscale if needed
+        if image.mode != 'L':
+            if image.mode in ('RGB', 'RGBA'):
+                # Convert RGB/RGBA to grayscale
+                image = image.convert('L')
+            else:
+                # For other modes, convert to L directly
+                image = image.convert('L')
+        
+        # Convert to numpy array
+        img = np.array(image)
         
         # Use robust normalization that handles both 8-bit and 16-bit images
         img = preprocess_medical_image(img, target_range=(-1024.0, 1024.0))
 
-        if len(img.shape) > 2:
-            img = img[:, :, 0]
-
         img = img[None, :, :]
-        img = self.transform(img)
+        img = self.image_transform(img)
         img = torch.from_numpy(img).unsqueeze(0)
 
-        img = img.to(self.device)
+        # Ensure tensor is float32 to match model dtype
+        img = img.float().to(self.device)
 
         return img
 

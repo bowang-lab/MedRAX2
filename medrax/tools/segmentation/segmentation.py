@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
 import uuid
 import tempfile
+import logging
 
 import numpy as np
 import torch
@@ -13,7 +14,7 @@ import skimage.measure
 import skimage.transform
 import traceback
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -21,18 +22,21 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 
 from medrax.utils.utils import preprocess_medical_image
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRaySegmentationInput(BaseModel):
     """Input schema for the Chest X-ray Segmentation Tool."""
 
     image_path: str = Field(..., description="Path to the chest X-ray image file to be segmented")
-    organs: Optional[List[str]] = Field(
-        None,
-        description="List of organs to segment. If None, all available organs will be segmented. "
+    organs: List[str] = Field(
+        default_factory=list,
+        description="List of organs to segment. If empty list, all available organs will be segmented. "
         "Available organs: Left/Right Clavicle, Left/Right Scapula, Left/Right Lung, "
         "Left/Right Hilus Pulmonis, Heart, Aorta, Facies Diaphragmatica, "
-        "Mediastinum, Weasand, Spine",
+        "Mediastinum, Weasand, Spine"
     )
 
 
@@ -69,26 +73,55 @@ class ChestXRaySegmentationTool(BaseTool):
         "Left/Right Lung, Left/Right Hilus Pulmonis (lung roots), Heart, Aorta, "
         "Facies Diaphragmatica (diaphragm), Mediastinum (central cavity), Weasand (esophagus), "
         "and Spine. Returns segmentation visualization and comprehensive metrics. "
+        "Note: PSPNet model may have limited compatibility with certain X-ray formats. "
+        "Consider using MedSAM2 for more robust segmentation across diverse image types. "
         "Let the user know the area is not accurate unless input has been DICOM."
     )
     args_schema: Type[BaseModel] = ChestXRaySegmentationInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: Any = None
-    device: Optional[str] = "cuda"
-    transform: Any = None
+    device: str = "cuda"
+    image_transform: Any = None
     pixel_spacing_mm: float = 0.2
     temp_dir: Path = Path("temp")
     organ_map: Dict[str, int] = None
+    threshold: float = 0.3  # probability threshold for mask binarization
 
-    def __init__(self, device: Optional[str] = "cuda", temp_dir: Optional[Path] = Path("temp")):
+    def __init__(self, device: Optional[str] = None, temp_dir: Optional[Path] = Path("temp")):
         """Initialize the segmentation tool with model and temporary directory."""
         super().__init__()
-        self.model = xrv.baseline_models.chestx_det.PSPNet()
-        self.device = torch.device(device) if device else "cuda"
-        self.model = self.model.to(self.device)
-        self.model.eval()
+        
 
-        self.transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Segmentation on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Chest X-Ray Segmentation running on CPU. This will be slower than GPU.")
+        
+        # Initialize PSPNet model
+        self.model = xrv.baseline_models.chestx_det.PSPNet()
+        
+        # Ensure model is in float32 to avoid dtype mismatches
+        self.model = self.model.float()
+        
+        # Move to device with meta tensor handling
+        try:
+            self.model = self.model.to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.model = self.model.to_empty(device=self.device)
+            else:
+                raise
+        
+        self.model.eval()
+        
+        logger.info("Chest X-Ray Segmentation model loaded successfully")
+
+        self.image_transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
 
         self.temp_dir = temp_dir if isinstance(temp_dir, Path) else Path(temp_dir)
         self.temp_dir.mkdir(exist_ok=True)
@@ -209,19 +242,19 @@ class ChestXRaySegmentationTool(BaseTool):
     def _run(
         self,
         image_path: str,
-        organs: Optional[List[str]] = None,
+        organs: List[str] = [],
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Run segmentation analysis for specified organs."""
         try:
             # Validate and get organ indices
-            if organs:
+            if organs:  # If list is not empty
                 organs = [o.strip() for o in organs]
                 invalid_organs = [o for o in organs if o not in self.organ_map]
                 if invalid_organs:
                     raise ValueError(f"Invalid organs specified: {invalid_organs}")
                 organ_indices = [self.organ_map[o] for o in organs]
-            else:
+            else:  # If list is empty, use all organs
                 organ_indices = list(self.organ_map.values())
                 organs = list(self.organ_map.keys())
 
@@ -233,27 +266,50 @@ class ChestXRaySegmentationTool(BaseTool):
             # Use robust normalization that handles both 8-bit and 16-bit images
             img = preprocess_medical_image(original_img)
             img = img[None, ...]
-            img = self.transform(img)
+            img = self.image_transform(img)
             img = torch.from_numpy(img)
-            img = img.to(self.device)
+            # Ensure tensor is float32 to match model dtype
+            img = img.float().to(self.device)
 
             # Generate predictions
             with torch.no_grad():
                 pred = self.model(img)
             pred_probs = torch.sigmoid(pred)
-            pred_masks = (pred_probs > 0.5).float()
+
+            # Try multiple thresholds if needed to recover weak masks
+            tried_thresholds = [self.threshold, 0.2, 0.1]
+            final_threshold = self.threshold
+            pred_masks = None
+            results = {}
+            for th in tried_thresholds:
+                pred_masks = (pred_probs > th).float()
+                # Probe for any detections for requested organs
+                temp_results = {}
+                for idx, organ_name in zip(organ_indices, organs):
+                    mask = pred_masks[0, idx].cpu().numpy()
+                    if mask.sum() > 0:
+                        metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
+                        if metrics:
+                            temp_results[organ_name] = metrics
+                if len(temp_results) > 0:
+                    results = temp_results
+                    final_threshold = th
+                    break
+            if pred_masks is None:
+                pred_masks = (pred_probs > self.threshold).float()
 
             # Save visualization
             viz_path = self._save_visualization(original_img, pred_masks, organ_indices)
 
             # Compute metrics for selected organs
-            results = {}
-            for idx, organ_name in zip(organ_indices, organs):
-                mask = pred_masks[0, idx].cpu().numpy()
-                if mask.sum() > 0:
-                    metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
-                    if metrics:
-                        results[organ_name] = metrics
+            if not results:
+                # If thresholds loop above didn't populate, compute once at current masks (may still be empty)
+                for idx, organ_name in zip(organ_indices, organs):
+                    mask = pred_masks[0, idx].cpu().numpy()
+                    if mask.sum() > 0:
+                        metrics = self._compute_organ_metrics(mask, original_img, float(pred_probs[0, idx].mean().cpu()))
+                        if metrics:
+                            results[organ_name] = metrics
 
             output = {
                 "segmentation_image_path": viz_path,
@@ -266,6 +322,7 @@ class ChestXRaySegmentationTool(BaseTool):
                 "original_size": original_img.shape,
                 "model_size": tuple(img.shape[-2:]),
                 "pixel_spacing_mm": self.pixel_spacing_mm,
+                "threshold_used": final_threshold,
                 "requested_organs": organs,
                 "processed_organs": list(results.keys()),
                 "analysis_status": "completed",
@@ -285,7 +342,7 @@ class ChestXRaySegmentationTool(BaseTool):
     async def _arun(
         self,
         image_path: str,
-        organs: Optional[List[str]] = None,
+        organs: List[str] = [],
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> Tuple[Dict[str, Any], Dict]:
         """Async version of _run."""

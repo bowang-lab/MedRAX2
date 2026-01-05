@@ -6,13 +6,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import sys
+import logging
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 # Add MedSAM2 to Python path for proper module resolution
 medsam2_path = str(Path(__file__).parent.parent.parent.parent / "MedSAM2")
@@ -34,12 +39,12 @@ class MedSAM2Input(BaseModel):
         "box",
         description="Type of prompt: 'box' for bounding box, 'point' for point click, or 'auto' for automatic segmentation",
     )
-    prompt_coords: Optional[List[int]] = Field(
-        None,
-        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave None for auto segmentation",
+    prompt_coords: List[int] = Field(
+        default_factory=list,
+        description="Prompt coordinates: [x1,y1,x2,y2] for box prompt or [x,y] for point prompt. Leave empty list for auto segmentation"
     )
     slice_index: Optional[int] = Field(
-        None,
+        default=None,
         description="Specific slice index for 3D volumes (0-based). If None, processes middle slice",
     )
 
@@ -64,16 +69,17 @@ class MedSAM2Tool(BaseTool):
         "Example: {'image_path': '/path/to/image.png', 'prompt_type': 'box', 'prompt_coords': [100,100,200,200]}"
     )
     args_schema: Type[BaseModel] = MedSAM2Input
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
-    device: Optional[str] = "cuda"
-    cache_dir: Path = None
+    device: str = "cuda"
+    cache_dir: Optional[Path] = None
     temp_dir: Path = Path("temp")
     predictor: Any = None
 
     def __init__(
         self,
-        device: Optional[str] = "cuda",
-        cache_dir: str = "/model-weights",
+        device: Optional[str] = None,
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
         model_path: str = "wanglab/MedSAM2",
         model_file: str = "MedSAM2_latest.pt",
@@ -82,9 +88,30 @@ class MedSAM2Tool(BaseTool):
     ):
         """Initialize the MedSAM2 tool."""
         super().__init__()
-        self.device = device
-        self.cache_dir = Path(cache_dir)
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
+        
+
+        self.device = get_device(device)
+        
+        logger.info(f"Initializing MedSAM2 on device: {self.device}")
+        
+        if self.device == "cpu":
+            logger.warning("MedSAM2 running on CPU. This will be significantly slower than GPU.")
+            logger.warning("For better performance, consider using a system with CUDA support.")
+        
+        # Handle cache_dir properly - don't pass None to Path()
+        if cache_dir:
+            self.cache_dir = Path(cache_dir)
+        else:
+            # Use default model cache directory
+            import os
+            default_cache = os.getenv("MODEL_CACHE_DIR", "./model_cache")
+            self.cache_dir = Path(default_cache) / "medsam2"
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Using default cache directory: {self.cache_dir}")
+        
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/medsam2")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Ensure proper hydra initialization by reinitializing with config_dir
@@ -100,10 +127,13 @@ class MedSAM2Tool(BaseTool):
             )
 
             config_path = model_cfg.replace(".yaml", "")
-            sam2_model = build_sam2(config_path, str(self.cache_dir / model_file), device=device)
+            sam2_model = build_sam2(config_path, str(self.cache_dir / model_file), device=self.device)
             self.predictor = SAM2ImagePredictor(sam2_model)
+            
+            logger.info("MedSAM2 model loaded successfully")
 
         except Exception as e:
+            logger.error(f"Failed to initialize MedSAM2: {e}")
             raise RuntimeError(f"Failed to initialize MedSAM2: {str(e)}")
 
     def _load_image(self, image_path: str) -> np.ndarray:
@@ -116,7 +146,14 @@ class MedSAM2Tool(BaseTool):
 
             # Load standard image formats
             image = Image.open(image_path)
-
+            
+            # Properly handle 16-bit grayscale images (common in medical imaging)
+            if image.mode == "I;16":
+                # Convert 16-bit to 8-bit by normalizing to 0-255 range
+                img_array = np.array(image)
+                img_normalized = ((img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255).astype(np.uint8)
+                image = Image.fromarray(img_normalized, mode='L')
+            
             # For medical images, convert to grayscale first if needed, then to RGB
             if image.mode == "L":  # Grayscale
                 # Convert grayscale to RGB for SAM2

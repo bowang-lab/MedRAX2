@@ -1,7 +1,9 @@
 from typing import Any, Dict, Optional, Tuple, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+import logging
 
 import torch
+import numpy as np
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -10,6 +12,10 @@ from langchain_core.callbacks import (
 from langchain_core.tools import BaseTool
 
 from PIL import Image
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 from medrax.llava.conversation import conv_templates
@@ -48,23 +54,39 @@ class LlavaMedTool(BaseTool):
         "Input should be a question and optionally a path to a medical image file."
     )
     args_schema: Type[BaseModel] = LlavaMedInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     tokenizer: Any = None
     model: Any = None
     image_processor: Any = None
     context_len: int = 200000
+    device: str = "cuda"
 
     def __init__(
         self,
         model_path: str = "microsoft/llava-med-v1.5-mistral-7b",
-        cache_dir: str = "/model-weights",
+        cache_dir: Optional[str] = None,
         low_cpu_mem_usage: bool = True,
-        torch_dtype: torch.dtype = torch.bfloat16,
-        device: str = "cuda",
+        torch_dtype: Optional[torch.dtype] = None,
+        device: Optional[str] = None,
         load_in_4bit: bool = False,
         load_in_8bit: bool = False,
         **kwargs,
     ):
         super().__init__()
+        
+
+        self.device = get_device(device)
+        
+        logger.info(f"Initializing LLaVA-Med on device: {self.device}")
+        
+        # Adjust dtype based on device
+        if torch_dtype is None:
+            torch_dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
+        
+        if self.device == "cpu":
+            logger.warning("LLaVA-Med running on CPU. This will be significantly slower than GPU.")
+            logger.warning("For better performance, consider using a system with CUDA support.")
+        
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
             model_path=model_path,
             model_base=None,
@@ -74,10 +96,12 @@ class LlavaMedTool(BaseTool):
             cache_dir=cache_dir,
             low_cpu_mem_usage=low_cpu_mem_usage,
             torch_dtype=torch_dtype,
-            device=device,
+            device=self.device,  # Pass the determined device
             **kwargs,
         )
         self.model.eval()
+        
+        logger.info("LLaVA-Med model loaded successfully")
 
     def _process_input(
         self, question: str, image_path: Optional[str] = None
@@ -93,14 +117,30 @@ class LlavaMedTool(BaseTool):
         prompt = conv.get_prompt()
 
         input_ids = (
-            tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
+            tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
+            .unsqueeze(0)
+            .to(self.device)  # Use configured device instead of hardcoded .cuda()
         )
 
         image_tensor = None
         if image_path:
             image = Image.open(image_path)
+            
+            # Properly handle 16-bit grayscale images (common in medical imaging)
+            if image.mode == "I;16":
+                # Convert 16-bit to 8-bit by normalizing to 0-255 range
+                img_array = np.array(image)
+                img_normalized = ((img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255).astype(np.uint8)
+                image = Image.fromarray(img_normalized, mode='L')
+            
             image_tensor = process_images([image], self.image_processor, self.model.config)[0]
-            image_tensor = image_tensor.unsqueeze(0).half().cuda()
+            image_tensor = image_tensor.unsqueeze(0)
+            
+            # Only use half precision on CUDA
+            if self.device == "cuda":
+                image_tensor = image_tensor.half()
+            
+            image_tensor = image_tensor.to(self.device)
 
         return input_ids, image_tensor
 

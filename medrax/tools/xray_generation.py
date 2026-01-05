@@ -2,11 +2,16 @@ from typing import Dict, Optional, Tuple, Type
 from pathlib import Path
 import uuid
 import tempfile
+import logging
 import torch
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from diffusers import StableDiffusionPipeline
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
+
+from medrax.utils.device import get_device
+
+logger = logging.getLogger(__name__)
 
 
 class ChestXRayGeneratorInput(BaseModel):
@@ -35,27 +40,65 @@ class ChestXRayGeneratorTool(BaseTool):
         "Output: Path to the generated X-ray image and generation metadata."
     )
     args_schema: Type[BaseModel] = ChestXRayGeneratorInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     model: StableDiffusionPipeline = None
-    device: torch.device = None
+    device: str = "cuda"
     temp_dir: Path = None
 
     def __init__(
         self,
-        model_path: str = "/model-weights/roentgen",
-        cache_dir: str = "/model-weights",
+        model_path: str = "StanfordAIMI/RoentGen",
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
-        device: Optional[str] = "cuda",
+        device: Optional[str] = None,
     ):
         """Initialize the chest X-ray generator tool."""
         super().__init__()
 
-        self.device = torch.device(device) if device else "cuda"
-        self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)
-        self.model = self.model.to(torch.float32).to(self.device)
 
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        device_str = get_device(device)
+        self.device = torch.device(device_str)
+        
+        logger.info(f"Initializing Chest X-Ray Generator on device: {device_str}")
+        
+        if device_str == "cpu":
+            logger.warning("Chest X-Ray Generator running on CPU. This will be slower than GPU.")
+        
+        # Load RoentGen model with proper error handling
+        try:
+            logger.info(f"Loading model from {model_path}...")
+            self.model = StableDiffusionPipeline.from_pretrained(
+                model_path, 
+                cache_dir=cache_dir,
+                local_files_only=False  # Allow downloading if not cached
+            )
+        except Exception as e:
+            error_msg = f"Cannot load model {model_path}: {str(e)}"
+            if "connection" in str(e).lower() or "fetch metadata" in str(e).lower():
+                error_msg += (
+                    " The model is not cached locally and cannot be downloaded. "
+                    "This tool requires internet access for first-time setup to download the RoentGen model (~5GB). "
+                    "Please ensure you have a stable internet connection and try again."
+                )
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        # Move to device with meta tensor handling
+        try:
+            self.model = self.model.to(torch.float32).to(self.device)
+        except RuntimeError as e:
+            if "meta tensor" in str(e).lower():
+                logger.warning("Detected meta tensor issue, using to_empty() workaround")
+                self.model = self.model.to_empty(device=self.device).to(torch.float32)
+            else:
+                raise
+
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/xray_generation")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info("Chest X-Ray Generator model loaded successfully")
 
     def _run(
         self,

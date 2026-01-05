@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 import pydicom
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 
@@ -30,13 +30,15 @@ class DicomProcessorTool(BaseTool):
         "Output: Path to processed image file and DICOM metadata."
     )
     args_schema: Type[BaseModel] = DicomProcessorInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
     temp_dir: Path = None
 
     def __init__(self, temp_dir: Optional[str] = None):
         """Initialize the DICOM processor tool."""
         super().__init__()
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        # Use local temp directory within project instead of system /tmp
+        self.temp_dir = Path(temp_dir) if temp_dir else Path("temp/dicom")
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _apply_windowing(self, img: np.ndarray, center: float, width: float) -> np.ndarray:
         """Apply window/level adjustment to the image."""

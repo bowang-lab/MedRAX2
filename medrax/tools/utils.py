@@ -1,5 +1,5 @@
 from typing import Optional, Type, Dict, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import matplotlib.pyplot as plt
 import skimage.io
 from pathlib import Path
@@ -32,6 +32,7 @@ class ImageVisualizerTool(BaseTool):
         "Output: Dict with image path and metadata."
     )
     args_schema: Type[BaseModel] = ImageVisualizerInput
+    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
 
     def _display_image(
         self,

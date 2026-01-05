@@ -15,7 +15,12 @@ The python_sandbox instance is configured with:
   used with caution in production environments.
 """
 
-from langchain_sandbox import PyodideSandboxTool
+try:
+    from langchain_experimental.sandbox import PyodideSandboxTool
+except ImportError:
+    # Fallback if sandbox not available
+    from langchain_core.tools import BaseTool
+    PyodideSandboxTool = BaseTool
 from typing import Optional, List
 
 

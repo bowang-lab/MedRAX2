@@ -1,3 +1,4 @@
+from typing import Optional
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from medrax.llava.model import LlavaMistralForCausalLM
@@ -15,17 +16,20 @@ def load_pretrained_model(
     load_in_8bit=False,
     load_in_4bit=True,
     device="cuda",
-    cache_dir: str = "/model-weights",
+    cache_dir: Optional[str] = None,
     low_cpu_mem_usage=True,
     torch_dtype=torch.bfloat16,
 ):
 
     kwargs = {}
 
-    if device != "cuda":
+    # Device mapping strategy:
+    # - CUDA: Use "auto" to let HuggingFace/Accelerate handle placement, avoiding meta-tensor issues
+    # - CPU/MPS: Use explicit device mapping for direct control
+    if device == "cuda":
+        kwargs["device_map"] = "auto"
+    else:
         kwargs["device_map"] = {"": device}
-    # else:
-    #     kwargs["device_map"] = "auto"
 
     if load_in_8bit:
         kwargs["load_in_8bit"] = True
@@ -44,12 +48,16 @@ def load_pretrained_model(
         # Load LLaVA model
         if "mistral" in model_name.lower():
             tokenizer = AutoTokenizer.from_pretrained(model_path, cache_dir=cache_dir)
+            # LLaVA-Med specific: Override to use explicit "cuda" mapping
+            # to ensure proper device placement for vision-language model
+            if device == "cuda":
+                kwargs["device_map"] = "cuda"
             model = LlavaMistralForCausalLM.from_pretrained(
                 model_path,
-                low_cpu_mem_usage=low_cpu_mem_usage,
-                use_flash_attention_2=False,
+                # Disable low_cpu_mem_usage to avoid meta tensor errors during model loading
+                low_cpu_mem_usage=False,
                 cache_dir=cache_dir,
-                torch_dtype=torch_dtype,
+                attn_implementation="eager",
                 **kwargs,
             )
 
@@ -110,11 +118,12 @@ def load_pretrained_model(
         if not vision_tower.is_loaded:
             vision_tower.load_model()
 
-        vision_tower.to(device=device, dtype=torch_dtype)
-        model.model.mm_projector.to(device=device, dtype=torch_dtype)
-
-        if not (load_in_4bit or load_in_8bit):
-            model.to(device=device, dtype=torch_dtype)
+        # Skip manual device placement when using auto device mapping to prevent conflicts
+        if kwargs.get("device_map") != "auto":
+            vision_tower.to(device=device, dtype=torch_dtype)
+            model.model.mm_projector.to(device=device, dtype=torch_dtype)
+            if not (load_in_4bit or load_in_8bit):
+                model.to(device=device, dtype=torch_dtype)
 
         image_processor = vision_tower.image_processor
 
