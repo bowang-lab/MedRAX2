@@ -187,11 +187,13 @@ echo "=================================================="
 echo "Starting server..."
 echo "=================================================="
 echo ""
+BACKEND_PORT="${BACKEND_PORT:-8000}"
+
 echo "Backend will be available at:"
-echo "  API: http://localhost:8000"
-echo "  Health: http://localhost:8000/health"
-echo "  Interactive Docs: http://localhost:8000/docs"
-echo "  ReDoc: http://localhost:8000/redoc"
+echo "  API: http://localhost:$BACKEND_PORT"
+echo "  Health: http://localhost:$BACKEND_PORT/health"
+echo "  Interactive Docs: http://localhost:$BACKEND_PORT/docs"
+echo "  ReDoc: http://localhost:$BACKEND_PORT/redoc"
 echo ""
 echo "Database: SQLite at ./medrax.db"
 echo "Uploads: ./uploads/"
@@ -211,4 +213,4 @@ export EAGER_LOAD_TOOLS=0
 # Use --loop asyncio to avoid conflict with nest_asyncio (used by duckduckgo-search)
 # Use 127.0.0.1 (localhost) for development security - change to 0.0.0.0 in production with proper firewall
 # Removed --reload flag for stability (it was causing auto-restarts on file changes)
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --loop asyncio
+uvicorn app.main:app --host 127.0.0.1 --port $BACKEND_PORT --loop asyncio
