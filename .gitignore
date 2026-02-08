@@ -130,6 +130,13 @@ ENV/
 env.bak/
 venv.bak/
 
+# MedRAX web platform local data
+web_platform/backend/medrax.db
+web_platform/backend/medrax.db-wal
+web_platform/backend/medrax.db-shm
+web_platform/backend/uploads/
+web_platform/backend/temp/
+
 # Spyder project settings
 .spyderproject
 .spyproject
