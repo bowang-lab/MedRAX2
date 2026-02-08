@@ -1,0 +1,6 @@
+# ChestAgentBench benchmark configuration
+name: chestagentbench
+data_dir: benchmarking/data/chestagentbench
+subset_file: null
+max_questions: null  # null = process all questions
+random_seed: 42

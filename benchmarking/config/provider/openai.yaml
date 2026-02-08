@@ -1,0 +1,9 @@
+# OpenAI provider configuration
+type: openai
+model: gpt-4o
+system_prompt: MEDICAL_ASSISTANT
+temperature: 0.7
+top_p: 0.95
+max_tokens: 10000
+prompt_file: medrax/docs/MedRAX2_system_prompt_v0.txt
+

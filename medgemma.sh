@@ -1,17 +1,23 @@
 #!/bin/bash
 
-#SBATCH --job-name=medgemma2
+#SBATCH --job-name=medgemma
 #SBATCH -c 4
-#SBATCH --gres=gpu:l40s:1
-#SBATCH --time=16:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --time=48:00:00
 #SBATCH --mem=50G
-#SBATCH --output=medgemma-%j.out
-#SBATCH --error=medgemma-%j.err
+#SBATCH --reservation=mkoziarski_gpu
+#SBATCH --output=.cache/medgemma/medgemma-%j.out
+#SBATCH --error=.cache/medgemma/medgemma-%j.err
 
 export MEDGEMMA_DEVICE=cuda
 
-cd medrax/tools/vqa/medgemma
+source ~/.bashrc
+conda activate medrax_python
 
-source medgemma/bin/activate
+source .venv/medgemma/bin/activate
 
-python medgemma.py
+nvidia-smi
+
+root_dir=${1:-"."}
+
+python medrax/tools/vqa/medgemma/medgemma.py --root-dir "$root_dir"

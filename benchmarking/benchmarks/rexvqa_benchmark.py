@@ -35,6 +35,12 @@ class ReXVQABenchmark(Benchmark):
     Paper: https://arxiv.org/abs/2506.04353
     Dataset: https://huggingface.co/datasets/rajpurkarlab/ReXVQA
     Images: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K
+    
+    -- MEDGEMMA SUBSET --
+    
+    This benchmark also includes a subset of the ReXVQA dataset used for evaluation of MedGemma.
+    
+    Dataset: https://huggingface.co/datasets/andrewlx065/MedGemma_ReXVQA_Cases
     """
 
     def __init__(self, data_dir: str, **kwargs):
@@ -49,7 +55,15 @@ class ReXVQABenchmark(Benchmark):
                 images_dir (str): Directory containing extracted PNG images (default: None)
         """
         self.split = kwargs.get("split", "test")
-        self.images_dir = f"{data_dir}/images/deid_png"
+        self.data_dir = Path(data_dir)
+        # Detect MedGemma subset by folder name anywhere in the path
+        self.is_medgemma_subset = "rexvqa_medgemma_cases" in str(self.data_dir)
+        
+        self.images_dir = self.data_dir / "images" / "deid_png" # Default image path for the full ReXGradient set
+        
+        # MedGemma subset uses images/case_x/image_y.png
+        if self.is_medgemma_subset:
+            self.images_dir = self.data_dir / "images"
 
         super().__init__(data_dir, **kwargs)
 
@@ -57,8 +71,12 @@ class ReXVQABenchmark(Benchmark):
         """Load ReXVQA data from HuggingFace."""
         try:
             # Download images and test_vqa_data.json locally if missing
-            self.download_test_vqa_data_json(self.data_dir)
-            self.download_rexgradient_images(self.data_dir, test_only=True)
+            if self.is_medgemma_subset:
+                # Prepare MedGemma subset into ReXVQA-compatible layout
+                self.download_medgemma_test_vqa_data(self.data_dir)
+            else:
+                self.download_test_vqa_data_json(self.data_dir)
+                self.download_rexgradient_images(self.data_dir, test_only=True)
             
             # Load JSON file
             json_file_path = os.path.join(self.data_dir, "metadata", "test_vqa_data.json")
@@ -116,8 +134,11 @@ class ReXVQABenchmark(Benchmark):
             images = []
             for rel_path in item["ImagePath"]:
                 norm_rel_path = rel_path.lstrip("./")
-                full_path = str(Path(self.images_dir).parent / norm_rel_path)
-                images.append(full_path)
+                base_path = Path(self.images_dir)
+                candidate = base_path / norm_rel_path
+                if not candidate.exists():
+                    candidate = base_path.parent / norm_rel_path
+                images.append(str(candidate))
         
         # Extract metadata
         metadata = {
@@ -344,3 +365,106 @@ class ReXVQABenchmark(Benchmark):
         except Exception as e:
             print(f"Error downloading test_vqa_data.json: {e}")
             print("You may need to accept the license agreement on HuggingFace.")
+            
+    @staticmethod
+    def download_medgemma_test_vqa_data(output_dir: str = "benchmarking/data/rexvqa_medgemma_cases", repo_id: str = "andrewlx065/MedGemma_ReXVQA_Cases"):
+        """Download medgemma_test_vqa_data.json from the MedGemma_ReXVQA_Cases HuggingFace repo if not already present."""
+        output_dir = Path(output_dir)
+        images_dir = output_dir / "images"
+        metadata_dir = output_dir / "metadata"
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        target_json = metadata_dir / "test_vqa_data.json"
+
+        # Skip if already prepared
+        if target_json.exists() and images_dir.exists() and any(images_dir.rglob("*.png")):
+            print(f"MedGemma subset already prepared at {output_dir}, skipping download.")
+            return
+
+        print(f"Downloading MedGemma ReXVQA subset from {repo_id} to {output_dir}...")
+        try:
+            files = list_repo_files(repo_id, repo_type='dataset', token=get_hf_token())
+            for filename in files:
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    local_dir=output_dir,
+                    local_dir_use_symlinks=False,
+                    repo_type='dataset',
+                    token=get_hf_token()
+                )
+        except Exception as e:
+            print(f"Error downloading MedGemma subset files: {e}")
+            return
+
+        # Convert random_cases.json into ReXVQA-compatible metadata/test_vqa_data.json
+        random_cases_path = output_dir / "random_cases.json"
+        if not random_cases_path.exists():
+            print(f"Expected random_cases.json not found at {random_cases_path}")
+            return
+
+        try:
+            with open(random_cases_path, 'r', encoding='utf-8') as f:
+                random_cases = json.load(f)
+        except Exception as e:
+            print(f"Error reading random_cases.json: {e}")
+            return
+
+        converted = {}
+        items_iter = random_cases.items()
+        try:
+            from tqdm import tqdm
+
+            items_iter = tqdm(items_iter, total=len(random_cases), desc="Converting MedGemma cases")
+        except Exception:
+            pass
+
+        for case_id, item in items_iter:
+            context_str = item.get("context", "") or ""
+            patient_age = ""
+            patient_sex = ""
+            try:
+                # crude parse: "Age: 060Y Gender: F"
+                parts = context_str.replace("Age:", "").replace("Gender:", "").split()
+                for p in parts:
+                    if "Y" in p:
+                        patient_age = p.strip()
+                    elif len(p.strip()) == 1:
+                        patient_sex = p.strip()
+            except Exception:
+                pass
+
+            image_paths = []
+            for rel_path in item.get("image_path_list", []):
+                norm_path = rel_path.lstrip("./")
+                if norm_path.startswith("images/"):
+                    norm_path = norm_path[len("images/"):]
+                image_paths.append(f"./{norm_path}")
+
+            converted[case_id] = {
+                "id": case_id,
+                "question": item.get("question", ""),
+                "options": item.get("options", []),
+                "correct_answer": item.get("correct_answer", ""),
+                "ImagePath": image_paths,
+                # Optional / metadata fields to align with main loader expectations
+                "category": item.get("category", ""),
+                "task_name": item.get("task_name", ""),  # not present in subset; keep empty
+                "class": item.get("class", ""),
+                "subcategory": item.get("subcategory", ""),
+                "PatientID": item.get("PatientID", ""),
+                "StudyInstanceUid": item.get("StudyInstanceUid", ""),
+                "PatientAge": patient_age,
+                "PatientSex": patient_sex,
+                "StudyDate": item.get("StudyDate", ""),
+                "Indication": context_str,
+                "Findings": item.get("Findings", ""),
+                "Impression": item.get("Impression", ""),
+                "ImageModality": item.get("ImageModality", []),
+                "ImageViewPosition": item.get("ImageViewPosition", []),
+                "correct_answer_explanation": item.get("correct_answer_explanation", ""),
+            }
+
+        target_json.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_json, 'w', encoding='utf-8') as f:
+            json.dump(converted, f, indent=2)
+        print(f"Prepared ReXVQA-compatible metadata at {target_json}")

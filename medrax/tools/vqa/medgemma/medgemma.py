@@ -4,22 +4,19 @@ from pathlib import Path
 import traceback
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
-
+import argparse
 import numpy as np
 from PIL import Image
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
+
 import torch
-import transformers
 from transformers import BitsAndBytesConfig, pipeline
 import uvicorn
-
-# Configuration
-UPLOAD_DIR = "./medgemma_images"
-
-# Create directories if they don't exist
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 # Pydantic Models for API
@@ -325,6 +322,7 @@ async def startup_event():
         # Allow overriding Hugging Face cache directory and device via env vars
         cache_dir_env = os.getenv("MEDGEMMA_CACHE_DIR")
         device_env = os.getenv("MEDGEMMA_DEVICE")
+        model_name_env = os.getenv("MEDGEMMA_MODEL_NAME")
         max_concurrency_env = os.getenv("MEDGEMMA_MAX_CONCURRENCY", "1")
 
         # Ensure the cache directory is writable; if not, fall back to a user cache
@@ -339,7 +337,13 @@ async def startup_event():
                 print(f"Warning: MEDGEMMA_CACHE_DIR '{cache_dir_env}' not writable. Falling back to '{fallback}'.")
                 cache_dir_env = fallback
 
-        medgemma_model = MedGemmaModel(cache_dir=cache_dir_env, device=device_env)
+        model_name = model_name_env or "google/medgemma-4b-it"
+        print(f"model_name: {model_name}")
+        medgemma_model = MedGemmaModel(
+            model_name=model_name,
+            cache_dir=cache_dir_env,
+            device=device_env,
+        )
         # Initialize concurrency gate
         try:
             max_concurrency = int(max_concurrency_env)
@@ -348,7 +352,7 @@ async def startup_event():
         max_concurrency = max(1, max_concurrency)
         global inference_semaphore
         inference_semaphore = asyncio.Semaphore(max_concurrency)
-        print("MedGemma model loaded successfully.")
+        print(f"MedGemma model loaded successfully: {model_name}")
     except RuntimeError as e:
         print(f"Error loading MedGemma model: {e}")
         exit(1)
@@ -466,6 +470,22 @@ if __name__ == "__main__":
     Reads MEDGEMMA_HOST and MEDGEMMA_PORT if provided; otherwise defaults
     to 0.0.0.0:8002.
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root-dir", type=str, default=".")
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=None,
+        help="Hugging Face model ID (overrides MEDGEMMA_MODEL_NAME)",
+    )
+    args = parser.parse_args()
+    
+    # Set the upload directory
+    global UPLOAD_DIR
+    UPLOAD_DIR = os.path.join(args.root_dir, "medgemma_images")
+    # Create the upload directory if it doesn't exist
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+        
     host = os.getenv("MEDGEMMA_HOST", "0.0.0.0")
     try:
         port = int(os.getenv("MEDGEMMA_PORT", "8002"))

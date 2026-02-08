@@ -35,7 +35,7 @@ class MedGemmaProvider(LLMProvider):
                 - max_new_tokens: Maximum tokens to generate (default: 300)
         """
         self.provider_name = "medgemma"
-        self.api_url = "http://kn132.paice.vectorinstitute.ai:8002"
+        self.api_url = os.getenv("MEDGEMMA_API_URL", "http://0.0.0.0:8002")
         self.client = None
         
         # Call parent constructor
@@ -185,9 +185,9 @@ class MedGemmaProvider(LLMProvider):
             bool: True if connection is successful and service is responding
         """
         try:
-            # Try to access the API docs endpoint
-            response = self.client.get(f"{self.api_url}/docs")
-            return response.status_code == 200
+            # Try to access the API health endpoint
+            response = self.client.get(f"{self.api_url}/health")
+            return response.json().get("status") == "ok"
         except Exception as e:
             print(f"MedGemma connection test failed: {e}")
             return False

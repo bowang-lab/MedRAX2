@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.gz
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -129,6 +130,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.medgemma/
 
 # Spyder project settings
 .spyderproject
@@ -170,8 +172,10 @@ afallah/
 logs/
 
 temp/
+.tmp/
 
 .gradio/
+.vscode/
 
 hf_files/
 medrax-pdfs/
@@ -179,6 +183,9 @@ model-weights/
 
 .DS_Store
 
+# benchmarking
 benchmarking/data/
 model_cache/
 medgemma/
+medgemma_images/
+benchmark_results/

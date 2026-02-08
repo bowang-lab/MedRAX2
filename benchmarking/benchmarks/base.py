@@ -37,11 +37,17 @@ class Benchmark(ABC):
 
         self.data_points = []
         self._load_data()
+        
+        if self.config.get("subset_file", None):
+            # Resolve subset_file path relative to data_dir
+            subset_file = self.data_dir / self.config.get("subset_file")
+            self._filter_subset(subset_file)
+
         self._shuffle_data()
 
         self.max_questions = self.config.get("max_questions", None)
         if self.max_questions:
-            self.data_points = self.data_points[:self.max_questions]
+            self.data_points = self.data_points[: self.max_questions]
             print(f"Randomly sampled {self.max_questions} questions from {self.__class__.__name__}")
         else:
             print(f"Loaded all {len(self.data_points)} questions from {self.__class__.__name__}")
@@ -100,3 +106,10 @@ class Benchmark(ABC):
         for i in range(len(self)):
             yield self.get_data_point(i)
 
+    def _filter_subset(self, subset_file: Path) -> None:
+        """Load a subset of data points based on IDs specified in a text file.
+        
+        Args:
+            subset_file: Path to a text file containing question_id values (one per line)
+        """
+        raise NotImplementedError("Subclasses must implement this method")

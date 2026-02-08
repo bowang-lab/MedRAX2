@@ -17,6 +17,7 @@ from .benchmarks import Benchmark, BenchmarkDataPoint
 @dataclass
 class BenchmarkResult:
     """Result of running a benchmark on a single data point."""
+
     data_point_id: str
     question: str
     model_answer: str
@@ -32,6 +33,7 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkRunConfig:
     """Configuration for a benchmark run."""
+
     benchmark_name: str
     provider_name: str
     model_name: str
@@ -41,8 +43,9 @@ class BenchmarkRunConfig:
     top_p: float = 0.95
     max_tokens: int = 5000
     concurrency: int = 1
+    run_id: Optional[str] = None
     random_seed: Optional[int] = None
-    
+    system_prompt: Optional[str] = None
 
 
 class BenchmarkRunner:
@@ -50,7 +53,7 @@ class BenchmarkRunner:
 
     def __init__(self, config: BenchmarkRunConfig):
         """Initialize the benchmark runner.
-        
+
         Args:
             config (BenchmarkRunConfig): Configuration for the benchmark run
         """
@@ -58,34 +61,35 @@ class BenchmarkRunner:
         self.results = []
         self.output_dir = Path(config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+        self.prompt_name: Optional[str] = None
+        self.prompt_file: Optional[str] = None
+        self.prompt_content: Optional[str] = None
+
         # Generate unique run ID
-        self.run_id = f"{config.benchmark_name}_{config.provider_name}_{config.model_name}_{config.max_questions}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.run_id = config.run_id or f"{config.benchmark_name}_{config.provider_name}_{config.model_name}_{config.max_questions}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.run_dir = self.output_dir / self.run_id
+        self.run_dir.mkdir(parents=True, exist_ok=True)
         
         # Set up logging
         self._setup_logging()
         self.logger.info(f"Initialized benchmark runner with ID: {self.run_id}")
+        self.logger.info(f"Run ID from Hydra: {self.config.run_id}")
 
     def _setup_logging(self) -> None:
         """Set up logging configuration."""
-        log_file = self.output_dir / f"benchmark_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        
         # Create logger
         self.logger = logging.getLogger(f"benchmark_runner_{self.run_id}")
         self.logger.setLevel(logging.INFO)
-        
-        # Create handlers
+        # Clear existing handlers to avoid duplicate logs when reusing the logger name
+        self.logger.handlers.clear()
+
+        # Log to both file and console for traceability
+        log_file = self.run_dir / f"benchmark_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         file_handler = logging.FileHandler(log_file)
         console_handler = logging.StreamHandler()
-        
-        # Create formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
-        
-        # Add handlers to logger
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
 
@@ -107,7 +111,11 @@ class BenchmarkRunner:
         self.logger.info(f"Benchmark: {benchmark}")
         self.logger.info(f"Provider: {llm_provider.provider_name}")
         self.logger.info(f"Model: {llm_provider.model_name}")
-        
+        # Capture prompt details for logging
+        self.prompt_name = getattr(llm_provider, "prompt_name", None)
+        self.prompt_file = getattr(llm_provider, "prompt_file", None)
+        self.prompt_content = getattr(llm_provider, "system_prompt", None)
+
         # Test provider connection
         if not llm_provider.test_connection():
             self.logger.error("LLM provider connection test failed")
@@ -124,7 +132,10 @@ class BenchmarkRunner:
         # Process data points in parallel using a bounded thread pool
         with tqdm(total=len(benchmark), desc="Processing questions") as pbar:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_to_index = {executor.submit(self._process_data_point, dp, llm_provider): idx for idx, dp in enumerate(benchmark)}
+                future_to_index = {
+                    executor.submit(self._process_data_point, dp, llm_provider): idx
+                    for idx, dp in enumerate(benchmark)
+                }
                 for future in as_completed(future_to_index):
                     idx = future_to_index[future]
                     try:
@@ -138,7 +149,7 @@ class BenchmarkRunner:
                             correct_answer="",
                             is_correct=False,
                             duration=0.0,
-                            error=str(e)
+                            error=str(e),
                         )
                     
                     # Update counters
@@ -173,9 +184,7 @@ class BenchmarkRunner:
         return summary
 
     def _process_data_point(
-        self,
-        data_point: BenchmarkDataPoint,
-        llm_provider: LLMProvider
+        self, data_point: BenchmarkDataPoint, llm_provider: LLMProvider
     ) -> BenchmarkResult:
         """Process a single data point.
         
@@ -190,11 +199,8 @@ class BenchmarkRunner:
         
         try:
             # Create request for LLM
-            request = LLMRequest(
-                text=data_point.text,
-                images=data_point.images
-            )
-            
+            request = LLMRequest(text=data_point.text, images=data_point.images)
+
             # Get response from LLM
             response: LLMResponse = llm_provider.generate_response(request)
             
@@ -220,7 +226,7 @@ class BenchmarkRunner:
                 metadata={
                     "data_point_metadata": data_point.metadata,
                     "raw_response": response.content,
-                }
+                },
             )
             
         except Exception as e:
@@ -234,9 +240,7 @@ class BenchmarkRunner:
                 duration=duration,
                 error=str(e),
                 chunk_history=None,
-                metadata={
-                    "data_point_metadata": data_point.metadata
-                }
+                metadata={"data_point_metadata": data_point.metadata},
             )
 
     def _extract_answer(self, response_text: str) -> str:
@@ -249,7 +253,7 @@ class BenchmarkRunner:
             str: The extracted answer
         """
         # Look for the '\boxed{A}' format
-        boxed_pattern = r'\\boxed\{([A-Fa-f])\}'
+        boxed_pattern = r"\\boxed\{([A-Fa-f])\}"
         match = re.search(boxed_pattern, response_text)
         if match:
             return match.group(1).upper()
@@ -264,11 +268,10 @@ class BenchmarkRunner:
             result (BenchmarkResult): The result to save
         """
         # Sanitize data_point_id for filename (remove invalid characters)
-        safe_id = re.sub(r'[^\w\-_.]', '_', result.data_point_id)
-        
+        safe_id = re.sub(r"[^\w\-_.]", "_", result.data_point_id)
+
         # Create run_id directory and individual_results subdirectory
-        run_dir = self.output_dir / self.run_id
-        individual_results_dir = run_dir / "individual_results"
+        individual_results_dir = self.run_dir / "individual_results"
         individual_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Create filename with benchmark name and data point ID
@@ -292,7 +295,7 @@ class BenchmarkRunner:
         }
         
         # Save to file
-        with open(result_file, 'w') as f:
+        with open(result_file, "w") as f:
             json.dump(result_data, f, indent=2)
 
     def _save_final_results(self, benchmark: Benchmark) -> Dict[str, Any]:
@@ -305,8 +308,7 @@ class BenchmarkRunner:
             Dict[str, Any]: Summary of results
         """
         # Create run_id directory and final_results subdirectory
-        run_dir = self.output_dir / self.run_id
-        final_results_dir = run_dir / "final_results"
+        final_results_dir = self.run_dir / "final_results"
         final_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Save detailed results
@@ -315,28 +317,31 @@ class BenchmarkRunner:
         # Convert results to serializable format for final file
         results_data = []
         for result in self.results:
-            results_data.append({
-                "data_point_id": result.data_point_id,
-                "question": result.question,
-                "model_answer": result.model_answer,
-                "correct_answer": result.correct_answer,
-                "is_correct": result.is_correct,
-                "duration": result.duration,
-                "usage": result.usage,
-                "error": result.error,
-                "metadata": result.metadata,
-            })
-        
-        with open(results_file, 'w') as f:
+            results_data.append(
+                {
+                    "data_point_id": result.data_point_id,
+                    "question": result.question,
+                    "model_answer": result.model_answer,
+                    "correct_answer": result.correct_answer,
+                    "is_correct": result.is_correct,
+                    "duration": result.duration,
+                    "usage": result.usage,
+                    "error": result.error,
+                    "metadata": result.metadata,
+                }
+            )
+
+        with open(results_file, "w") as f:
             json.dump(results_data, f, indent=2)
         
         # Calculate summary statistics
         total_questions = len(self.results)
         correct_answers = sum(1 for r in self.results if r.is_correct)
         total_duration = sum(r.duration for r in self.results)
-        
+
         accuracy = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
-        
+        usage_summary = self._aggregate_usage_metrics()
+
         # Create summary
         summary = {
             "run_id": self.run_id,
@@ -348,6 +353,7 @@ class BenchmarkRunner:
                 "temperature": self.config.temperature,
                 "top_p": self.config.top_p,
                 "max_tokens": self.config.max_tokens,
+                "system_prompt_name": self.config.system_prompt or self.prompt_name,
             },
             "benchmark_info": {
                 "total_size": len(benchmark),
@@ -358,14 +364,86 @@ class BenchmarkRunner:
                 "correct_answers": correct_answers,
                 "total_questions": total_questions,
                 "total_duration": total_duration,
-                "avg_duration_per_question": total_duration / total_questions if total_questions > 0 else 0,
+                "avg_duration_per_question": (
+                    total_duration / total_questions if total_questions > 0 else 0
+                ),
             },
+            "usage": usage_summary,
             "results_file": str(results_file),
         }
         
+        prompt_log = {
+            "name": self.prompt_name or self.config.system_prompt,
+            "file": self.prompt_file,
+            "content": self.prompt_content,
+        }
+        if any(prompt_log.values()):
+            summary["prompt"] = prompt_log
+
         # Save summary
         summary_file = final_results_dir / f"{self.run_id}_summary.json"
-        with open(summary_file, 'w') as f:
+        with open(summary_file, "w") as f:
             json.dump(summary, f, indent=2)
-        
-        return summary 
+
+        return summary
+
+    def _aggregate_usage_metrics(self) -> Dict[str, Any]:
+        """Aggregate token and request usage across all results."""
+        token_totals: Dict[str, float] = {}
+        llm_requests_total = 0
+        questions_with_usage = 0
+
+        for result in self.results:
+            usage = result.usage or {}
+            if not usage:
+                continue
+
+            questions_with_usage += 1
+            llm_requests_total += int(usage.get("llm_requests") or 0)
+
+            # Nested token structure (e.g., {"tokens": {"input": ..., "output": ...}})
+            nested_tokens = usage.get("tokens")
+            if isinstance(nested_tokens, dict):
+                for key, value in nested_tokens.items():
+                    if isinstance(value, (int, float)):
+                        token_totals[key] = token_totals.get(key, 0) + value
+
+            # Flat token keys used by some providers
+            for key in (
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "input_tokens",
+                "output_tokens",
+                "reasoning_tokens",
+            ):
+                value = usage.get(key)
+                if isinstance(value, (int, float)):
+                    token_totals[key] = token_totals.get(key, 0) + value
+
+        avg_tokens_per_question = {}
+        if questions_with_usage > 0:
+            avg_tokens_per_question = {
+                key: value / questions_with_usage for key, value in token_totals.items()
+            }
+
+        calculated_total_tokens = token_totals.get("total_tokens", 0)
+        if calculated_total_tokens == 0 and token_totals:
+            calculated_total_tokens = (
+                token_totals.get("input", 0)
+                + token_totals.get("output", 0)
+                + token_totals.get("reasoning", 0)
+            )
+            if calculated_total_tokens == 0:
+                calculated_total_tokens = (
+                    token_totals.get("prompt_tokens", 0)
+                    + token_totals.get("completion_tokens", 0)
+                )
+
+        return {
+            "questions_with_usage": questions_with_usage,
+            "total_llm_requests": llm_requests_total,
+            "token_totals": token_totals,
+            "calculated_total_tokens": calculated_total_tokens,
+            "avg_tokens_per_question": avg_tokens_per_question,
+        }
