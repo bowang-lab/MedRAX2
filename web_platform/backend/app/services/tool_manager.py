@@ -106,6 +106,20 @@ class ToolManager:
         
         # Register all available tools
         self._register_all_tools()
+
+        # Backwards-compatible tool ID aliases (old -> canonical)
+        self.tool_aliases = {
+            "torchxrayvision": "torchxrayvision_classifier",
+            "arcplus": "arcplus_classifier",
+            "chexagent": "chexagent_xray_vqa",
+            "llava_med": "llava_med_qa",
+            "chest_segmentation": "chest_xray_segmentation",
+            "report_generator": "chest_xray_report_generator",
+            "phrase_grounding": "xray_phrase_grounding",
+            "xray_generator": "chest_xray_generator",
+            "rag": "medical_knowledge_rag",
+            "web_search": "duckduckgo_search",
+        }
         
         # Check availability for each tool
         self._check_tool_availability()
@@ -147,7 +161,7 @@ class ToolManager:
         tool_definitions = [
             # CLASSIFICATION TOOLS
         ToolInfo(
-            id="torchxrayvision",
+            id="torchxrayvision_classifier",
             name="TorchXRayVision Classifier",
             description="Classifies chest X-rays for 18 pathologies using DenseNet model",
             category="classification",
@@ -157,7 +171,7 @@ class ToolManager:
             requires_gpu=False  # Works on CPU, GPU optional for speed
         ),
             ToolInfo(
-                id="arcplus",
+                id="arcplus_classifier",
                 name="ArcPlus Classifier",
                 description="Multi-head classifier for 19 diseases and 6 genders using Swin Transformer",
                 category="classification",
@@ -169,8 +183,8 @@ class ToolManager:
             
             # VQA TOOLS
             ToolInfo(
-                id="chexagent",
-                name="CheXagent VQA",
+                id="chexagent_xray_vqa",
+                name="CheXagent X-Ray VQA",
                 description="Comprehensive chest X-ray analysis using CheXagent-2-3b model",
                 category="vqa",
                 tool_class="CheXagentXRayVQATool",
@@ -179,8 +193,8 @@ class ToolManager:
                 requires_gpu=True
             ),
             ToolInfo(
-                id="llava_med",
-                name="LLaVA-Med",
+                id="llava_med_qa",
+                name="LLaVA-Med QA",
                 description="Medical visual question answering using LLaVA-Med model",
                 category="vqa",
                 tool_class="LlavaMedTool",
@@ -188,17 +202,6 @@ class ToolManager:
                 dependencies=["torch", "PIL"],
                 requires_gpu=True
             ),
-            ToolInfo(
-                id="medgemma",
-                name="MedGemma VQA",
-                description="Medical VQA using MedGemma 4B (Direct Integration)",
-                category="vqa",
-                tool_class="MedGemmaTool",
-                module_path="medrax.tools.vqa.medgemma.medgemma_tool",
-                dependencies=["transformers", "torch", "accelerate"],  # Removed bitsandbytes due to triton.ops conflict
-                requires_gpu=True  # Recommended, but works on CPU
-            ),
-            
             # SEGMENTATION TOOLS
             ToolInfo(
                 id="medsam2",
@@ -211,7 +214,7 @@ class ToolManager:
                 requires_gpu=True
             ),
             ToolInfo(
-                id="chest_segmentation",
+                id="chest_xray_segmentation",
                 name="Chest X-Ray Segmentation",
                 description="Chest X-ray organ segmentation with metrics",
                 category="segmentation",
@@ -223,8 +226,8 @@ class ToolManager:
             
             # REPORT GENERATION
             ToolInfo(
-                id="report_generator",
-                name="Radiology Report Generator",
+                id="chest_xray_report_generator",
+                name="Chest X-Ray Report Generator",
                 description="Generates comprehensive radiology reports with findings and impressions",
                 category="generation",
                 tool_class="ChestXRayReportGeneratorTool",
@@ -235,7 +238,7 @@ class ToolManager:
             
             # GROUNDING
             ToolInfo(
-                id="phrase_grounding",
+                id="xray_phrase_grounding",
                 name="X-Ray Phrase Grounding",
                 description="Locates medical findings in X-rays using MAIRA-2",
                 category="grounding",
@@ -257,8 +260,18 @@ class ToolManager:
                 requires_gpu=False
             ),
             ToolInfo(
-                id="xray_generator",
-                name="X-Ray Generator",
+                id="image_visualizer",
+                name="Image Visualizer",
+                description="Displays images with optional annotations",
+                category="utility",
+                tool_class="ImageVisualizerTool",
+                module_path="medrax.tools.utils",
+                dependencies=["matplotlib", "skimage"],
+                requires_gpu=False
+            ),
+            ToolInfo(
+                id="chest_xray_generator",
+                name="Chest X-Ray Generator",
                 description="Generates synthetic chest X-rays from text descriptions",
                 category="generation",
                 tool_class="ChestXRayGeneratorTool",
@@ -269,7 +282,7 @@ class ToolManager:
             
             # RETRIEVAL
             ToolInfo(
-                id="rag",
+                id="medical_knowledge_rag",
                 name="Medical Knowledge RAG",
                 description="Answers medical questions using RAG with knowledge base",
                 category="retrieval",
@@ -279,7 +292,7 @@ class ToolManager:
                 requires_gpu=False
             ),
             ToolInfo(
-                id="web_search",
+                id="duckduckgo_search",
                 name="DuckDuckGo Search",
                 description="Web search for medical information",
                 category="retrieval",
@@ -358,9 +371,13 @@ class ToolManager:
             for tool in self.tools.values()
         ]
     
+    def resolve_tool_id(self, tool_id: str) -> str:
+        """Resolve legacy tool IDs to canonical IDs."""
+        return self.tool_aliases.get(tool_id, tool_id)
+
     def get_tool(self, tool_id: str) -> Optional[ToolInfo]:
         """Get a specific tool."""
-        return self.tools.get(tool_id)
+        return self.tools.get(self.resolve_tool_id(tool_id))
     
     def load_tool(self, tool_id: str) -> Dict[str, Any]:
         """
@@ -370,7 +387,7 @@ class ToolManager:
         Returns:
             Status information about the tool
         """
-        tool = self.tools.get(tool_id)
+        tool = self.tools.get(self.resolve_tool_id(tool_id))
         if not tool:
             return {"success": False, "error": f"Tool '{tool_id}' not found"}
         
@@ -414,7 +431,7 @@ class ToolManager:
         This is called as a background task after load_tool() returns.
         Checks shutdown event and per-tool cancel event to allow graceful cancellation.
         """
-        tool = self.tools.get(tool_id)
+        tool = self.tools.get(self.resolve_tool_id(tool_id))
         if not tool or tool.status != ToolStatus.LOADING:
             if tool and tool.status == ToolStatus.LOADED:
                 logger.debug(f"Tool {tool.name} already loaded, skipping")
@@ -535,7 +552,8 @@ class ToolManager:
 
     def start_background_load(self, tool_id: str) -> bool:
         """Start background loading in a managed thread (tracked for clean shutdown)."""
-        tool = self.tools.get(tool_id)
+        resolved_id = self.resolve_tool_id(tool_id)
+        tool = self.tools.get(resolved_id)
         if not tool:
             return False
         if tool.status in (ToolStatus.LOADING, ToolStatus.LOADED):
@@ -557,20 +575,20 @@ class ToolManager:
         # Create and start daemon thread
         def _runner():
             try:
-                self.load_tool_in_background(tool_id)
+                self.load_tool_in_background(resolved_id)
             finally:
                 # Remove from tracking when done (thread-safe)
                 with self._threads_lock:
-                    self._threads.pop(tool_id, None)
+                    self._threads.pop(resolved_id, None)
                 # Clear cancel event
                 if tool.cancel_event:
                     tool.cancel_event = None
         
-        t = threading.Thread(target=_runner, name=f"tool-loader-{tool_id}", daemon=True)
+        t = threading.Thread(target=_runner, name=f"tool-loader-{resolved_id}", daemon=True)
         
         # Add to tracking (thread-safe)
         with self._threads_lock:
-            self._threads[tool_id] = t
+            self._threads[resolved_id] = t
         
         t.start()
         return True
@@ -794,7 +812,7 @@ class ToolManager:
         Returns:
             Status information about the tool
         """
-        tool = self.tools.get(tool_id)
+        tool = self.tools.get(self.resolve_tool_id(tool_id))
         if not tool:
             return {"success": False, "error": f"Tool '{tool_id}' not found"}
         

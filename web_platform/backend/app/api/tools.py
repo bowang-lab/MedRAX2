@@ -24,6 +24,7 @@ from ..schemas.tool import (
 from ..dependencies import get_current_doctor
 from ..services.tool_manager import tool_manager
 from ..utils.logging_config import logger
+from ..utils.tool_registry import get_tool_registry
 
 router = APIRouter()
 
@@ -71,6 +72,13 @@ def list_tools(current_doctor: Doctor = Depends(get_current_doctor)) -> List[Too
 
     # Convert to Pydantic models for proper validation
     return [ToolInfo(**tool_dict) for tool_dict in tools_data]
+
+
+@router.get("/registry")
+def get_tool_registry_ui(current_doctor: Doctor = Depends(get_current_doctor)):
+    """Return UI hints for rendering tool outputs without standardizing results."""
+    logger.debug(f"Doctor {current_doctor.id} requesting tool registry")
+    return {"tools": get_tool_registry()}
 
 
 @router.post("/{tool_id}/load")

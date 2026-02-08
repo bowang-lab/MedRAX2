@@ -215,7 +215,7 @@ async def startup_event():
     try:
         eager_env = os.getenv("EAGER_LOAD_TOOLS", "0").lower() in ("1", "true", "yes")
         if eager_env:
-            exclude_ids = {"xray_generator"}
+            exclude_ids = {"chest_xray_generator"}
             all_tools = tool_manager.get_all_tools()
             target_ids = [
                 t["id"]

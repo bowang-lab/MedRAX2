@@ -79,7 +79,7 @@ class TorchXRayVisionInput(BaseModel):
 async def test_torchxrayvision(input_data: TorchXRayVisionInput):
     """Test TorchXRayVision classifier tool directly."""
     try:
-        tool = tool_manager.get_tool("torchxrayvision")
+        tool = tool_manager.get_tool("torchxrayvision_classifier")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="TorchXRayVision tool not loaded")
 
@@ -110,7 +110,7 @@ class ArcPlusInput(BaseModel):
 async def test_arcplus(input_data: ArcPlusInput):
     """Test ArcPlus classifier tool directly."""
     try:
-        tool = tool_manager.get_tool("arcplus")
+        tool = tool_manager.get_tool("arcplus_classifier")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="ArcPlus tool not loaded")
 
@@ -309,7 +309,7 @@ class ChexAgentInput(BaseModel):
 async def test_chexagent(input_data: ChexAgentInput):
     """Test ChexAgent VQA tool directly."""
     try:
-        tool = tool_manager.get_tool("chexagent")
+        tool = tool_manager.get_tool("chexagent_xray_vqa")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="ChexAgent tool not loaded")
 
@@ -353,36 +353,6 @@ async def test_chexagent_xray_vqa(input_data: ChexAgentXrayVQAInput):
         return {"success": False, "error": str(e)}
 
 
-class MedGemmaInput(BaseModel):
-    """Input for MedGemma VQA"""
-
-    image_path: str = Field(..., description="Path to chest X-ray image")
-    question: str = Field(..., description="Question to ask about the image")
-
-
-@router.post(
-    "/medgemma",
-    summary="Test MedGemma VQA",
-    description="Medical VQA using MedGemma 4B model",
-    tags=["vqa"],
-)
-async def test_medgemma(input_data: MedGemmaInput):
-    """Test MedGemma VQA tool directly."""
-    try:
-        tool = tool_manager.get_tool("medgemma")
-        if not tool or tool.status != "loaded":
-            raise HTTPException(status_code=503, detail="MedGemma tool not loaded")
-
-        result = tool.instance._run(resolve_image_path(input_data.image_path), input_data.question)
-        # Convert numpy types to native Python types
-        converted_result = convert_numpy_types(result[0])
-        converted_metadata = convert_numpy_types(result[1])
-        return {"success": True, "result": converted_result, "metadata": converted_metadata}
-    except Exception as e:
-        logger.error(f"MedGemma test error: {e}\n{traceback.format_exc()}")
-        return {"success": False, "error": str(e)}
-
-
 # ============================================================================
 # REPORT GENERATION
 # ============================================================================
@@ -403,7 +373,7 @@ class ReportGeneratorInput(BaseModel):
 async def test_report_generator(input_data: ReportGeneratorInput):
     """Test report generator tool directly."""
     try:
-        tool = tool_manager.get_tool("report_generator")
+        tool = tool_manager.get_tool("chest_xray_report_generator")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="Report generator tool not loaded")
 
@@ -438,7 +408,7 @@ class GroundingInput(BaseModel):
 async def test_phrase_grounding(input_data: GroundingInput):
     """Test phrase grounding tool directly."""
     try:
-        tool = tool_manager.get_tool("phrase_grounding")
+        tool = tool_manager.get_tool("xray_phrase_grounding")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="Phrase grounding tool not loaded")
 
@@ -474,7 +444,7 @@ class XRayGeneratorInput(BaseModel):
 async def test_xray_generator(input_data: XRayGeneratorInput):
     """Test X-ray generator tool directly."""
     try:
-        tool = tool_manager.get_tool("xray_generator")
+        tool = tool_manager.get_tool("chest_xray_generator")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="X-ray generator tool not loaded")
 
@@ -562,7 +532,11 @@ class BatchTestInput(BaseModel):
     """Input for batch testing multiple tools"""
 
     image_path: str = Field(..., description="Path to test image")
-    tools: List[str] = Field(..., description="Tool IDs to test", example=["torchxrayvision", "chest_segmentation"])
+    tools: List[str] = Field(
+        ...,
+        description="Tool IDs to test",
+        example=["torchxrayvision_classifier", "chest_xray_segmentation"],
+    )
 
 
 @router.post(
@@ -584,17 +558,22 @@ async def batch_test_tools(input_data: BatchTestInput):
 
             # Call appropriate method based on tool type
             image_path = resolve_image_path(input_data.image_path)
-            if tool_id in ["torchxrayvision", "arcplus", "report_generator"]:
+            if tool_id in [
+                "torchxrayvision",
+                "arcplus",
+                "report_generator",
+                "torchxrayvision_classifier",
+                "arcplus_classifier",
+                "chest_xray_report_generator",
+            ]:
                 result = tool.instance._run(image_path)
-            elif tool_id == "chest_segmentation":
+            elif tool_id in ["chest_segmentation", "chest_xray_segmentation"]:
                 result = tool.instance._run(image_path, ["Left Lung", "Right Lung"])
             elif tool_id == "medsam2":
                 result = tool.instance._run(image_path, "auto", [])
-            elif tool_id == "chexagent":
+            elif tool_id in ["chexagent", "chexagent_xray_vqa"]:
                 result = tool.instance._run(image_path, "What abnormalities are visible?")
-            elif tool_id == "medgemma":
-                result = tool.instance._run(image_path, "What abnormalities are visible?")
-            elif tool_id == "phrase_grounding":
+            elif tool_id in ["phrase_grounding", "xray_phrase_grounding"]:
                 result = tool.instance._run(image_path, "opacity")
             else:
                 results[tool_id] = {"error": f"Tool {tool_id} not configured for batch testing"}
