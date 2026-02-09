@@ -100,19 +100,23 @@ class CheXagentXRayVQATool(BaseTool):
             {"from": "system", "value": "You are a helpful assistant."},
             {"from": "human", "value": query},
         ]
-        input_ids = self.tokenizer.apply_chat_template(conv, add_generation_prompt=True, return_tensors="pt").to(
-            device=self.device
-        )
+        input_ids = self.tokenizer.apply_chat_template(
+            conv, add_generation_prompt=True, return_tensors="pt"
+        ).to(device=self.device)
+        # Avoid cache-related errors in newer transformers
+        self.model.config.use_cache = False
+        attention_mask = torch.ones_like(input_ids)
 
         # Run inference
         with torch.inference_mode():
             output = self.model.generate(
                 input_ids,
+                attention_mask=attention_mask,
                 do_sample=False,
                 num_beams=1,
                 temperature=1.0,
                 top_p=1.0,
-                use_cache=True,
+                use_cache=False,
                 max_new_tokens=max_new_tokens,
             )[0]
             response = self.tokenizer.decode(output[input_ids.size(1) : -1])

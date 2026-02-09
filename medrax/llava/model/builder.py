@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+import inspect
 import torch
 from medrax.llava.model import LlavaMistralForCausalLM
 from medrax.llava.constants import (
@@ -44,14 +45,16 @@ def load_pretrained_model(
         # Load LLaVA model
         if "mistral" in model_name.lower():
             tokenizer = AutoTokenizer.from_pretrained(model_path, cache_dir=cache_dir)
-            model = LlavaMistralForCausalLM.from_pretrained(
-                model_path,
+            model_kwargs = dict(
                 low_cpu_mem_usage=low_cpu_mem_usage,
-                use_flash_attention_2=False,
                 cache_dir=cache_dir,
                 torch_dtype=torch_dtype,
                 **kwargs,
             )
+            sig = inspect.signature(LlavaMistralForCausalLM.from_pretrained)
+            if "use_flash_attention_2" in sig.parameters:
+                model_kwargs["use_flash_attention_2"] = False
+            model = LlavaMistralForCausalLM.from_pretrained(model_path, **model_kwargs)
 
     else:
         # Load language model
