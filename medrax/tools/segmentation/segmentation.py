@@ -230,8 +230,8 @@ class ChestXRaySegmentationTool(BaseTool):
             if len(original_img.shape) > 2:
                 original_img = original_img[:, :, 0]
 
-            # Use robust normalization that handles both 8-bit and 16-bit images
-            img = preprocess_medical_image(original_img)
+            # Normalize to the range expected by torchxrayvision models
+            img = preprocess_medical_image(original_img, target_range=(-1024.0, 1024.0))
             img = img[None, ...]
             img = self.transform(img)
             img = torch.from_numpy(img)
