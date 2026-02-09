@@ -107,19 +107,6 @@ class ToolManager:
         # Register all available tools
         self._register_all_tools()
 
-        # Backwards-compatible tool ID aliases (old -> canonical)
-        self.tool_aliases = {
-            "torchxrayvision": "torchxrayvision_classifier",
-            "arcplus": "arcplus_classifier",
-            "chexagent": "chexagent_xray_vqa",
-            "llava_med": "llava_med_qa",
-            "chest_segmentation": "chest_xray_segmentation",
-            "report_generator": "chest_xray_report_generator",
-            "phrase_grounding": "xray_phrase_grounding",
-            "xray_generator": "chest_xray_generator",
-            "rag": "medical_knowledge_rag",
-            "web_search": "duckduckgo_search",
-        }
         
         # Check availability for each tool
         self._check_tool_availability()
@@ -371,13 +358,9 @@ class ToolManager:
             for tool in self.tools.values()
         ]
     
-    def resolve_tool_id(self, tool_id: str) -> str:
-        """Resolve legacy tool IDs to canonical IDs."""
-        return self.tool_aliases.get(tool_id, tool_id)
-
     def get_tool(self, tool_id: str) -> Optional[ToolInfo]:
         """Get a specific tool."""
-        return self.tools.get(self.resolve_tool_id(tool_id))
+        return self.tools.get(tool_id)
     
     def load_tool(self, tool_id: str) -> Dict[str, Any]:
         """
@@ -387,7 +370,7 @@ class ToolManager:
         Returns:
             Status information about the tool
         """
-        tool = self.tools.get(self.resolve_tool_id(tool_id))
+        tool = self.tools.get(tool_id)
         if not tool:
             return {"success": False, "error": f"Tool '{tool_id}' not found"}
         
@@ -431,7 +414,7 @@ class ToolManager:
         This is called as a background task after load_tool() returns.
         Checks shutdown event and per-tool cancel event to allow graceful cancellation.
         """
-        tool = self.tools.get(self.resolve_tool_id(tool_id))
+        tool = self.tools.get(tool_id)
         if not tool or tool.status != ToolStatus.LOADING:
             if tool and tool.status == ToolStatus.LOADED:
                 logger.debug(f"Tool {tool.name} already loaded, skipping")
@@ -552,8 +535,7 @@ class ToolManager:
 
     def start_background_load(self, tool_id: str) -> bool:
         """Start background loading in a managed thread (tracked for clean shutdown)."""
-        resolved_id = self.resolve_tool_id(tool_id)
-        tool = self.tools.get(resolved_id)
+        tool = self.tools.get(tool_id)
         if not tool:
             return False
         if tool.status in (ToolStatus.LOADING, ToolStatus.LOADED):
@@ -575,20 +557,20 @@ class ToolManager:
         # Create and start daemon thread
         def _runner():
             try:
-                self.load_tool_in_background(resolved_id)
+                self.load_tool_in_background(tool_id)
             finally:
                 # Remove from tracking when done (thread-safe)
                 with self._threads_lock:
-                    self._threads.pop(resolved_id, None)
+                    self._threads.pop(tool_id, None)
                 # Clear cancel event
                 if tool.cancel_event:
                     tool.cancel_event = None
         
-        t = threading.Thread(target=_runner, name=f"tool-loader-{resolved_id}", daemon=True)
+        t = threading.Thread(target=_runner, name=f"tool-loader-{tool_id}", daemon=True)
         
         # Add to tracking (thread-safe)
         with self._threads_lock:
-            self._threads[resolved_id] = t
+            self._threads[tool_id] = t
         
         t.start()
         return True
@@ -812,7 +794,7 @@ class ToolManager:
         Returns:
             Status information about the tool
         """
-        tool = self.tools.get(self.resolve_tool_id(tool_id))
+        tool = self.tools.get(tool_id)
         if not tool:
             return {"success": False, "error": f"Tool '{tool_id}' not found"}
         

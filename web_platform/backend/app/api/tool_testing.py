@@ -71,7 +71,7 @@ class TorchXRayVisionInput(BaseModel):
 
 
 @router.post(
-    "/torchxrayvision",
+    "/torchxrayvision_classifier",
     summary="Test TorchXRayVision Classifier",
     description="Classify chest X-ray for 18 pathologies using DenseNet",
     tags=["classification"],
@@ -102,7 +102,7 @@ class ArcPlusInput(BaseModel):
 
 
 @router.post(
-    "/arcplus",
+    "/arcplus_classifier",
     summary="Test ArcPlus Classifier",
     description="Multi-head classifier for 19 diseases using Swin Transformer",
     tags=["classification"],
@@ -142,7 +142,7 @@ class ChestSegmentationInput(BaseModel):
 
 
 @router.post(
-    "/chest_segmentation",
+    "/chest_xray_segmentation",
     summary="Test Chest X-ray Segmentation",
     description="Segment anatomical structures in chest X-rays",
     tags=["segmentation"],
@@ -150,7 +150,7 @@ class ChestSegmentationInput(BaseModel):
 async def test_chest_segmentation(input_data: ChestSegmentationInput):
     """Test chest segmentation tool directly."""
     try:
-        tool = tool_manager.get_tool("chest_segmentation")
+        tool = tool_manager.get_tool("chest_xray_segmentation")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="Chest segmentation tool not loaded")
 
@@ -243,7 +243,7 @@ async def test_medsam2(input_data: MedSAM2Input):
 
 
 @router.post(
-    "/chest_segmentation_scan",
+    "/chest_xray_segmentation_scan",
     summary="Scan All Organs",
     description="Test what organs are actually detected in an image",
     tags=["segmentation"],
@@ -251,7 +251,7 @@ async def test_medsam2(input_data: MedSAM2Input):
 async def scan_chest_organs(image_path: str = Form(...)):
     """Scan all organs to see what's detected."""
     try:
-        tool = tool_manager.get_tool("chest_segmentation")
+        tool = tool_manager.get_tool("chest_xray_segmentation")
         if not tool or tool.status != "loaded":
             raise HTTPException(status_code=503, detail="Chest segmentation tool not loaded")
 
@@ -301,7 +301,7 @@ class ChexAgentInput(BaseModel):
 
 
 @router.post(
-    "/chexagent",
+    "/chexagent_xray_vqa",
     summary="Test ChexAgent VQA",
     description="Medical VQA using ChexAgent (GPT-4o)",
     tags=["vqa"],
@@ -365,7 +365,7 @@ class ReportGeneratorInput(BaseModel):
 
 
 @router.post(
-    "/report_generator",
+    "/chest_xray_report_generator",
     summary="Test Report Generator",
     description="Generate radiology reports from chest X-rays",
     tags=["generation"],
@@ -400,7 +400,7 @@ class GroundingInput(BaseModel):
 
 
 @router.post(
-    "/phrase_grounding",
+    "/xray_phrase_grounding",
     summary="Test Phrase Grounding",
     description="Locate medical findings in X-rays using MAIRA-2",
     tags=["grounding"],
@@ -436,7 +436,7 @@ class XRayGeneratorInput(BaseModel):
 
 
 @router.post(
-    "/xray_generator",
+    "/chest_xray_generator",
     summary="Test X-Ray Generator",
     description="Generate synthetic chest X-rays from text",
     tags=["generation"],
@@ -559,21 +559,18 @@ async def batch_test_tools(input_data: BatchTestInput):
             # Call appropriate method based on tool type
             image_path = resolve_image_path(input_data.image_path)
             if tool_id in [
-                "torchxrayvision",
-                "arcplus",
-                "report_generator",
                 "torchxrayvision_classifier",
                 "arcplus_classifier",
                 "chest_xray_report_generator",
             ]:
                 result = tool.instance._run(image_path)
-            elif tool_id in ["chest_segmentation", "chest_xray_segmentation"]:
+            elif tool_id == "chest_xray_segmentation":
                 result = tool.instance._run(image_path, ["Left Lung", "Right Lung"])
             elif tool_id == "medsam2":
                 result = tool.instance._run(image_path, "auto", [])
-            elif tool_id in ["chexagent", "chexagent_xray_vqa"]:
+            elif tool_id == "chexagent_xray_vqa":
                 result = tool.instance._run(image_path, "What abnormalities are visible?")
-            elif tool_id in ["phrase_grounding", "xray_phrase_grounding"]:
+            elif tool_id == "xray_phrase_grounding":
                 result = tool.instance._run(image_path, "opacity")
             else:
                 results[tool_id] = {"error": f"Tool {tool_id} not configured for batch testing"}
