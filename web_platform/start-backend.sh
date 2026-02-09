@@ -2,16 +2,19 @@
 
 set -e
 
-# Pin to GPU 2 for all backend processes (0-based index)
-export CUDA_VISIBLE_DEVICES=2
-echo "Forcing CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+# GPU selection (optional). Respect existing CUDA_VISIBLE_DEVICES if set.
+if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
+  echo "CUDA_VISIBLE_DEVICES not set; using all visible GPUs"
+else
+  echo "Using CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+fi
 
 echo "=================================================="
 echo "Starting MedRAX Backend Server"
 echo "=================================================="
 echo ""
 
-# Prefer conda env if available and environment.yml exists
+# Prefer conda env if available
 USE_CONDA=0
 if command -v conda &> /dev/null; then
     USE_CONDA=1
@@ -21,8 +24,9 @@ echo "Checking backend environment..."
 
 cd backend
 ENV_FILE="environment.yml"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "   [WARNING] $ENV_FILE not found; falling back to Python venv"
+CONDA_ENV_PATH="$(pwd)/conda_env"
+if [ ! -d "$CONDA_ENV_PATH" ] && [ ! -f "$ENV_FILE" ]; then
+    echo "   [WARNING] $ENV_FILE not found and conda_env missing; falling back to Python venv"
     USE_CONDA=0
 fi
 
@@ -47,16 +51,23 @@ fi
 PIP_INSTALL=1
 if [ $USE_CONDA -eq 1 ]; then
     echo "Using conda environment"
-    # Read env name from environment.yml (fallback to medrax-backend)
-    ENV_NAME=$(grep -E '^name:' environment.yml | awk '{print $2}')
-    if [ -z "$ENV_NAME" ]; then ENV_NAME="medrax-backend"; fi
-    if ! CONDA_NO_PLUGINS=true conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-        echo "   Creating conda env ($ENV_NAME) from environment.yml..."
-        CONDA_NO_PLUGINS=true conda env create -f environment.yml
+    if [ -d "$CONDA_ENV_PATH" ]; then
+        echo "   Using local conda env at $CONDA_ENV_PATH"
+        # shellcheck disable=SC1091
+        source "$(CONDA_NO_PLUGINS=true conda info --base)/etc/profile.d/conda.sh"
+        conda activate "$CONDA_ENV_PATH"
+    else
+        # Read env name from environment.yml (fallback to medrax-backend)
+        ENV_NAME=$(grep -E '^name:' environment.yml | awk '{print $2}')
+        if [ -z "$ENV_NAME" ]; then ENV_NAME="medrax-backend"; fi
+        if ! CONDA_NO_PLUGINS=true conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+            echo "   Creating conda env ($ENV_NAME) from environment.yml..."
+            CONDA_NO_PLUGINS=true conda env create -f environment.yml
+        fi
+        # shellcheck disable=SC1091
+        source "$(CONDA_NO_PLUGINS=true conda info --base)/etc/profile.d/conda.sh"
+        conda activate "$ENV_NAME"
     fi
-    # shellcheck disable=SC1091
-    source "$(CONDA_NO_PLUGINS=true conda info --base)/etc/profile.d/conda.sh"
-    conda activate "$ENV_NAME"
     echo "   Python: $(python --version)"
     # Environment.yml installs requirements via pip already; skip redundant pip install at runtime
     PIP_INSTALL=0

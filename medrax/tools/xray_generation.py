@@ -1,4 +1,5 @@
 from typing import Dict, Optional, Tuple, Type
+import os
 from pathlib import Path
 import uuid
 import tempfile
@@ -42,13 +43,18 @@ class ChestXRayGeneratorTool(BaseTool):
 
     def __init__(
         self,
-        model_path: str = "/model-weights/roentgen",
-        cache_dir: str = "/model-weights",
+        model_path: Optional[str] = None,
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
         device: Optional[str] = "cuda",
     ):
         """Initialize the chest X-ray generator tool."""
         super().__init__()
+        if model_path is None:
+            base_weights = os.getenv("MODELWEIGHTS", "/model-weights")
+            model_path = f"{base_weights}/roentgen"
+        if cache_dir is None:
+            cache_dir = os.getenv("MODEL_CACHE_DIR") or os.getenv("MODELWEIGHTS") or "/model-weights"
 
         self.device = torch.device(device) if device else "cuda"
         self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)

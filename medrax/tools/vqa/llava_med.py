@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional, Tuple, Type
+import os
 from pydantic import BaseModel, Field
 
 import torch
@@ -57,7 +58,7 @@ class LlavaMedTool(BaseTool):
     def __init__(
         self,
         model_path: str = "microsoft/llava-med-v1.5-mistral-7b",
-        cache_dir: str = "/model-weights",
+        cache_dir: Optional[str] = None,
         low_cpu_mem_usage: bool = True,
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str = "cuda",
@@ -66,6 +67,8 @@ class LlavaMedTool(BaseTool):
         **kwargs,
     ):
         super().__init__()
+        if cache_dir is None:
+            cache_dir = os.getenv("MODEL_CACHE_DIR") or "/model-weights"
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
             model_path=model_path,
             model_base=None,
