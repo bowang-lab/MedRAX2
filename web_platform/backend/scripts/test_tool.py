@@ -97,6 +97,12 @@ def normalize_json(value: Any) -> Any:
         return [normalize_json(v) for v in value]
     if isinstance(value, np.generic):
         return value.item()
+    # Handle pydicom MultiValue and other non-serializable types
+    if hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+        try:
+            return [normalize_json(v) for v in list(value)]
+        except Exception:
+            pass
     return value
 
 
