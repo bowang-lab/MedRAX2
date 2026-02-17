@@ -6,8 +6,11 @@ import json
 import numpy as np
 import os
 import sys
+from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Tuple
+
+load_dotenv()  # Load environment variables from .env file if present
 
 # Ensure repo root is on sys.path for medrax imports
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -62,7 +65,7 @@ def run_tool(tool_id: str, args: argparse.Namespace) -> Tuple[Dict[str, Any], Di
         return ChestXRayReportGeneratorTool(cache_dir=os.getenv("MODEL_CACHE_DIR"))._run(resolve_path(args.image_path))
     if tool_id == "xray_phrase_grounding":
         from medrax.tools.grounding import XRayPhraseGroundingTool
-        return XRayPhraseGroundingTool(cache_dir=os.getenv("MODEL_CACHE_DIR"))._run(
+        return XRayPhraseGroundingTool(cache_dir=os.getenv("MODEL_CACHE_DIR"), load_in_8bit=True)._run(
             resolve_path(args.image_path), args.phrase
         )
     if tool_id == "dicom_processor":
@@ -75,8 +78,9 @@ def run_tool(tool_id: str, args: argparse.Namespace) -> Tuple[Dict[str, Any], Di
         from medrax.tools.xray_generation import ChestXRayGeneratorTool
         return ChestXRayGeneratorTool()._run(args.prompt)
     if tool_id == "medical_knowledge_rag":
-        from medrax.tools.rag import RAGTool
-        return RAGTool()._run(args.query)
+        from medrax.tools.rag import RAGTool, RAGConfig
+        config = RAGConfig()
+        return RAGTool(config=config)._run(args.query)
     if tool_id == "duckduckgo_search":
         from medrax.tools.browsing.duckduckgo import DuckDuckGoSearchTool
         return DuckDuckGoSearchTool()._run(args.query)
