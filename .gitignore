@@ -190,6 +190,12 @@ model-weights/
 
 .DS_Store
 
-benchmarking/data/
 model_cache/
 medgemma/
+
+# benchmarking
+benchmarking/data/
+benchmark_results
+
+# env
+*_env.txt
