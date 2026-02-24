@@ -31,6 +31,7 @@ def create_benchmark(benchmark_name: str, data_dir: str, **kwargs) -> Benchmark:
     benchmark_map = {
         "rexvqa": ReXVQABenchmark,
         "chestagentbench": ChestAgentBenchBenchmark,
+        "mimic_cxr": MimicCXRBenchmark,
     }
 
     if benchmark_name not in benchmark_map:
@@ -110,13 +111,12 @@ def run_benchmark_from_config(cfg: DictConfig) -> None:
     output_dir = Path(hydra_run_dir).parent if hydra_run_dir else Path(cfg.runner.output_dir)
 
     # Create benchmark
+    benchmark_cfg = OmegaConf.to_container(cfg.benchmark, resolve=True) or {}
     benchmark_kwargs = {
-        "max_questions": cfg.benchmark.max_questions,
-        "random_seed": cfg.benchmark.random_seed,
+        key: value
+        for key, value in benchmark_cfg.items()
+        if key not in {"name", "data_dir"} and value is not None
     }
-    # Add subset_file if present
-    if OmegaConf.select(cfg, "benchmark.subset_file") is not None:
-        benchmark_kwargs["subset_file"] = cfg.benchmark.subset_file
     benchmark = create_benchmark(
         benchmark_name=cfg.benchmark.name, data_dir=cfg.benchmark.data_dir, **benchmark_kwargs
     )
@@ -269,8 +269,8 @@ def argparse_main():
     run_parser.add_argument(
         "--benchmark",
         required=True,
-        choices=["rexvqa", "chestagentbench"],
-        help="Benchmark dataset: rexvqa (radiology VQA) or chestagentbench (chest X-ray reasoning)",
+        choices=["rexvqa", "chestagentbench", "mimic_cxr"],
+        help="Benchmark dataset: rexvqa, chestagentbench, or mimic_cxr",
     )
     run_parser.add_argument(
         "--provider",

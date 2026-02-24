@@ -136,6 +136,8 @@ GOOGLE_SEARCH_ENGINE_ID=
 # MedGemma VQA Tool (Optional)
 # URL for the MedGemma FastAPI service
 MEDGEMMA_API_URL=
+MEDGEMMA_MODEL_NAME=
+MEDGEMMA_MAX_CONCURRENCY=
 ```
 
 ### Getting Started

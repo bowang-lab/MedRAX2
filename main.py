@@ -151,7 +151,9 @@ def initialize_agent(
         "ArcPlusClassifierTool": lambda: ArcPlusClassifierTool(cache_dir=model_dir, device=device),
         "ChestXRaySegmentationTool": lambda: ChestXRaySegmentationTool(device=device),
         "LlavaMedTool": lambda: LlavaMedTool(cache_dir=model_dir, device=device, load_in_8bit=True),
-        "CheXagentXRayVQATool": lambda: CheXagentXRayVQATool(cache_dir=model_dir, device=device),
+        "CheXagentXRayVQATool": lambda: CheXagentXRayVQATool(
+            cache_dir=model_dir, device=device, load_in_8bit=True
+        ),
         "ChestXRayReportGeneratorTool": lambda: ChestXRayReportGeneratorTool(cache_dir=model_dir, device=device),
         "XRayPhraseGroundingTool": lambda: XRayPhraseGroundingTool(
             cache_dir=model_dir, temp_dir=temp_dir, load_in_8bit=True, device=device

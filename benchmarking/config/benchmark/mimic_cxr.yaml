@@ -1,0 +1,10 @@
+# MIMIC-CXR benchmark configuration
+name: mimic_cxr
+data_dir: ${oc.env:MIMIC_DATA_DIR}
+manifest_path: /benchmarking/data/mimic_cxr/manifests/mimic_cxr_lt_2024_test2_multilabel.jsonl
+source_csv: null
+image_root: null
+label_mode: null
+subset_file: null
+max_questions: null  # null = process all questions
+random_seed: 42

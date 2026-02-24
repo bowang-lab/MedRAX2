@@ -5,7 +5,7 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from tqdm import tqdm
 import re
@@ -26,7 +26,8 @@ class BenchmarkResult:
     duration: float
     usage: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-    chunk_history: Optional[Dict[str, Any]] = None
+    chunk_history: Optional[Any] = None
+    tool_execution_trace: Optional[List[Dict[str, Any]]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -203,12 +204,17 @@ class BenchmarkRunner:
 
             # Get response from LLM
             response: LLMResponse = llm_provider.generate_response(request)
-            
-            # Extract answer (this may need customization based on benchmark)
-            model_answer = self._extract_answer(response.content)
-            
-            # Check if correct
-            is_correct = model_answer == data_point.correct_answer
+
+            # Extract and normalize answer.
+            extracted_answer = self._extract_answer(response.content)
+            is_multi_select = bool((data_point.metadata or {}).get("multi_select")) or (
+                (data_point.metadata or {}).get("label_mode") == "allow_multiple_findings"
+            )
+            model_answer = self._normalize_answer(extracted_answer, multi_select=is_multi_select)
+            correct_answer = self._normalize_answer(
+                data_point.correct_answer or "", multi_select=is_multi_select
+            )
+            is_correct = model_answer == correct_answer
             
             # Calculate duration
             duration = time.time() - start_time
@@ -218,14 +224,19 @@ class BenchmarkRunner:
                 data_point_id=data_point.id,
                 question=data_point.text,
                 model_answer=model_answer,
-                correct_answer=data_point.correct_answer,
+                correct_answer=correct_answer,
                 is_correct=is_correct,
                 duration=duration,
                 usage=response.usage,
                 chunk_history=response.chunk_history,
+                tool_execution_trace=response.tool_execution_trace,
                 metadata={
                     "data_point_metadata": data_point.metadata,
                     "raw_response": response.content,
+                    "extracted_answer_raw": extracted_answer,
+                    "normalized_model_answer": model_answer,
+                    "normalized_correct_answer": correct_answer,
+                    "multi_select_eval": is_multi_select,
                 },
             )
             
@@ -235,11 +246,12 @@ class BenchmarkRunner:
                 data_point_id=data_point.id,
                 question=data_point.text,
                 model_answer="",
-                correct_answer=data_point.correct_answer,
+                correct_answer=data_point.correct_answer or "",
                 is_correct=False,
                 duration=duration,
                 error=str(e),
                 chunk_history=None,
+                tool_execution_trace=None,
                 metadata={"data_point_metadata": data_point.metadata},
             )
 
@@ -252,14 +264,65 @@ class BenchmarkRunner:
         Returns:
             str: The extracted answer
         """
-        # Look for the '\boxed{A}' format
-        boxed_pattern = r"\\boxed\{([A-Fa-f])\}"
-        match = re.search(boxed_pattern, response_text)
-        if match:
-            return match.group(1).upper()
-        
-        # If no pattern matches, return the full response
-        return response_text.strip()
+        if not response_text:
+            return ""
+
+        boxed_matches = re.findall(r"\\boxed\{([^}]*)\}", response_text, flags=re.IGNORECASE)
+        for boxed in boxed_matches:
+            parsed = self._parse_answer_tokens(boxed)
+            if parsed:
+                return parsed
+
+        answer_patterns = [
+            r"(?:final\s*answer|answer)\s*[:\-]\s*([A-Za-z0-9](?:\s*(?:,|/|;|\band\b)\s*[A-Za-z0-9])*)",
+            r"(?:option|options)\s*[:\-]\s*([A-Za-z0-9](?:\s*(?:,|/|;|\band\b)\s*[A-Za-z0-9])*)",
+        ]
+        for pattern in answer_patterns:
+            match = re.search(pattern, response_text, flags=re.IGNORECASE)
+            if match:
+                parsed = self._parse_answer_tokens(match.group(1))
+                if parsed:
+                    return parsed
+
+        return ""
+
+    def _parse_answer_tokens(self, value: str) -> str:
+        """Parse one or more answer tokens (letters/numbers) into normalized CSV format."""
+        if not value:
+            return ""
+
+        normalized = value.upper()
+        normalized = normalized.replace("AND", ",")
+        normalized = normalized.replace("/", ",")
+        normalized = normalized.replace("|", ",")
+        normalized = normalized.replace(";", ",")
+
+        tokens = re.split(r"[^A-Z0-9]+", normalized)
+
+        parsed_tokens = set()
+        for token in tokens:
+            if not token:
+                continue
+            if token.isdigit():
+                parsed_tokens.add(str(int(token)))
+                continue
+            if token.isalpha() and 1 <= len(token) <= 2:
+                parsed_tokens.add(token)
+
+        ordered_tokens = sorted(
+            parsed_tokens,
+            key=lambda t: (0, int(t)) if t.isdigit() else (1, t),
+        )
+        return ",".join(ordered_tokens)
+
+    def _normalize_answer(self, value: str, multi_select: bool) -> str:
+        """Normalize extracted answers for single-choice and multi-select benchmarks."""
+        parsed = self._parse_answer_tokens(value)
+        if parsed:
+            if multi_select:
+                return parsed
+            return parsed.split(",")[0]
+        return (value or "").strip()
 
     def _save_individual_result(self, result: BenchmarkResult) -> None:
         """Save a single result to its own JSON file.
@@ -291,6 +354,7 @@ class BenchmarkRunner:
             "usage": result.usage,
             "error": result.error,
             "chunk_history": result.chunk_history,
+            "tool_execution_trace": result.tool_execution_trace,
             "metadata": result.metadata,
         }
         
@@ -327,6 +391,7 @@ class BenchmarkRunner:
                     "duration": result.duration,
                     "usage": result.usage,
                     "error": result.error,
+                    "tool_execution_trace": result.tool_execution_trace,
                     "metadata": result.metadata,
                 }
             )

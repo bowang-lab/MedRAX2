@@ -3,10 +3,12 @@
 import os
 import time
 import re
+import json
 import uuid
+from collections import deque
 
 from .base import LLMProvider, LLMRequest, LLMResponse
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from medrax.rag.rag import RAGConfig
 from main import initialize_agent
@@ -35,6 +37,7 @@ class MedRAXProvider(LLMProvider):
             "model_dir", "/hpf/projects/mkoziarski/alian/igem/MedRAX2/model-weights"
         )
         self.temp_dir = kwargs.get("temp_dir", "temp")
+        self.load_in_8bit = kwargs.get("load_in_8bit", True)
         # self.prompt_file = kwargs.get("prompt_file", "benchmarking/system_prompts.txt")
 
         super().__init__(model_name, system_prompt, **kwargs)
@@ -92,6 +95,7 @@ class MedRAXProvider(LLMProvider):
                 model_kwargs=model_kwargs,
                 rag_config=rag_config,
                 system_prompt=self.prompt_name,
+                load_in_8bit=self.load_in_8bit,
             )
 
             self.agent = agent
@@ -102,6 +106,152 @@ class MedRAXProvider(LLMProvider):
         except Exception as e:
             print(f"Error initializing MedRAX agent: {e}")
             raise
+
+    def _to_raw_string(self, value):
+        """Best-effort conversion to a raw string representation."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        try:
+            return json.dumps(value, default=str)
+        except Exception:
+            return str(value)
+
+    def _safe_json_parse(self, value):
+        """Best-effort JSON parsing for strings while preserving dict/list objects."""
+        if value is None:
+            return None
+        if isinstance(value, (dict, list, int, float, bool)):
+            return value
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            try:
+                return json.loads(text)
+            except Exception:
+                return None
+        return None
+
+    def _to_json_safe(self, value):
+        """Convert values to JSON-serializable forms for result persistence."""
+        try:
+            json.dumps(value)
+            return value
+        except Exception:
+            try:
+                return json.loads(json.dumps(value, default=str))
+            except Exception:
+                return self._to_raw_string(value)
+
+    def _extract_tool_requests(self, msg):
+        """Extract tool calls from exactly one request source per AI message."""
+        tool_calls_in_msg = getattr(msg, "tool_calls", None)
+        if tool_calls_in_msg:
+            return list(tool_calls_in_msg), "tool_calls"
+
+        additional_kwargs = getattr(msg, "additional_kwargs", {}) or {}
+        function_call = additional_kwargs.get("function_call")
+        if function_call:
+            return [function_call], "function_call"
+
+        function_calls = additional_kwargs.get("function_calls")
+        if function_calls:
+            if isinstance(function_calls, list):
+                return function_calls, "function_calls"
+            return [function_calls], "function_calls"
+
+        return [], None
+
+    def _extract_tool_name_and_kwargs(self, call):
+        """Normalize tool name and kwargs payload across call schemas."""
+        if not isinstance(call, dict):
+            return str(call), None, None
+
+        tool_name = (
+            call.get("name")
+            or call.get("tool")
+            or call.get("tool_name")
+            or call.get("function")
+            or ""
+        )
+
+        kwargs_payload = None
+        if "args" in call:
+            kwargs_payload = call.get("args")
+        elif "arguments" in call:
+            kwargs_payload = call.get("arguments")
+        elif "kwargs" in call:
+            kwargs_payload = call.get("kwargs")
+
+        kwargs_raw = self._to_raw_string(kwargs_payload)
+        kwargs_parsed = self._safe_json_parse(kwargs_payload)
+        return tool_name, kwargs_raw, kwargs_parsed
+
+    def _extract_error_from_payload(self, payload):
+        """Recursively scan payload for error markers."""
+        if isinstance(payload, dict):
+            analysis_status = str(payload.get("analysis_status", "")).strip().lower()
+            if analysis_status == "failed":
+                return (
+                    self._to_raw_string(payload.get("error"))
+                    or self._to_raw_string(payload.get("error_details"))
+                    or "analysis_status=failed"
+                )
+
+            for key in ("error", "error_details", "error_message", "exception", "traceback"):
+                if payload.get(key):
+                    return self._to_raw_string(payload.get(key))
+
+            for value in payload.values():
+                nested_error = self._extract_error_from_payload(value)
+                if nested_error:
+                    return nested_error
+
+        if isinstance(payload, list):
+            for item in payload:
+                nested_error = self._extract_error_from_payload(item)
+                if nested_error:
+                    return nested_error
+
+        return None
+
+    def _extract_error_from_raw(self, output_raw):
+        """Scan raw output text for obvious failure indicators."""
+        if not output_raw:
+            return None
+
+        error_tokens = [
+            "error",
+            "exception",
+            "traceback",
+            "analysis_status\": \"failed",
+            "analysis_status=failed",
+            "no_valid_response_generated",
+            "status_code",
+        ]
+        raw_text = str(output_raw)
+        lowered = raw_text.lower()
+        if any(token in lowered for token in error_tokens):
+            for line in raw_text.splitlines():
+                lowered_line = line.lower()
+                if any(token in lowered_line for token in error_tokens):
+                    return line.strip()[:2000]
+            return raw_text[:2000]
+        return None
+
+    def _infer_tool_response_status(self, output_raw, output_parsed):
+        """Infer tool execution status and extract error if present."""
+        parsed_error = self._extract_error_from_payload(output_parsed)
+        if parsed_error:
+            return "failed", parsed_error
+
+        raw_error = self._extract_error_from_raw(output_raw)
+        if raw_error:
+            return "failed", raw_error
+
+        return "completed", None
 
     def generate_response(self, request: LLMRequest) -> LLMResponse:
         """Generate response using MedRAX agent.
@@ -165,11 +315,16 @@ class MedRAXProvider(LLMProvider):
             llm_requests = 0
             token_usage = {"input": 0, "output": 0, "reasoning": 0}
             tool_calls = []
+            tool_execution_trace = []
+            pending_tool_request_indices = deque()
+            trace_sequence_index = 0
 
-            for chunk in self.agent.workflow.stream(
-                {"messages": messages},
-                {"configurable": {"thread_id": thread_id}},
-                stream_mode="updates",
+            for chunk_index, chunk in enumerate(
+                self.agent.workflow.stream(
+                    {"messages": messages},
+                    {"configurable": {"thread_id": thread_id}},
+                    stream_mode="updates",
+                )
             ):
                 if not isinstance(chunk, dict):
                     continue
@@ -182,7 +337,7 @@ class MedRAXProvider(LLMProvider):
                     if "messages" not in node_output:
                         continue
 
-                    for msg in node_output["messages"]:
+                    for message_index, msg in enumerate(node_output["messages"]):
                         if isinstance(msg, AIMessage):
                             llm_requests += 1
 
@@ -197,37 +352,111 @@ class MedRAXProvider(LLMProvider):
                             token_usage["output"] += output_tokens or 0
                             token_usage["reasoning"] += usage_meta.get("reasoning_tokens", 0) or 0
 
-                            # Capture tool calls from both LangChain tool_calls and Gemini function_call(s)
-                            collected_calls = []
-                            tool_calls_in_msg = getattr(msg, "tool_calls", None)
-                            if tool_calls_in_msg:
-                                collected_calls.extend(tool_calls_in_msg)
-
+                            # Use exactly one source per AI message for tool-call extraction.
+                            collected_calls, request_source = self._extract_tool_requests(msg)
                             additional_kwargs = getattr(msg, "additional_kwargs", {}) or {}
-                            function_call = additional_kwargs.get("function_call")
-                            if function_call:
-                                collected_calls.append(function_call)
-                            function_calls = additional_kwargs.get("function_calls")
-                            if function_calls:
-                                if isinstance(function_calls, list):
-                                    collected_calls.extend(function_calls)
-                                else:
-                                    collected_calls.append(function_calls)
 
                             if collected_calls:
                                 for call in collected_calls:
-                                    tool_name = (
-                                        call.get("name") if isinstance(call, dict) else str(call)
+                                    tool_name, kwargs_raw, kwargs_parsed = (
+                                        self._extract_tool_name_and_kwargs(call)
                                     )
                                     tool_calls.append({"node": node_name, "tool": tool_name})
+
+                                    trace_entry = {
+                                        "sequence_index": trace_sequence_index,
+                                        "node": node_name,
+                                        "tool": tool_name,
+                                        "request_source": request_source,
+                                        "request": {
+                                            "kwargs_raw": kwargs_raw,
+                                            "kwargs_parsed": kwargs_parsed,
+                                            "additional_kwargs": self._to_json_safe(
+                                                additional_kwargs
+                                            ),
+                                        },
+                                        "response": {
+                                            "output_raw": None,
+                                            "output_parsed": None,
+                                            "status": None,
+                                            "error": None,
+                                        },
+                                        "stream_indices": {
+                                            "request_chunk_index": chunk_index,
+                                            "request_message_index": message_index,
+                                            "response_chunk_index": None,
+                                            "response_message_index": None,
+                                        },
+                                    }
+                                    tool_execution_trace.append(trace_entry)
+                                    pending_tool_request_indices.append(len(tool_execution_trace) - 1)
+                                    trace_sequence_index += 1
 
                             # Handle case where content is a list
                             content = msg.content or ""
                             if isinstance(content, list):
-                                content = " ".join(content)
+                                content = self._to_raw_string(content) or ""
+                            elif not isinstance(content, str):
+                                content = self._to_raw_string(content) or ""
                             # Clean up the content (remove temp paths, etc.)
-                            if content.strip():
+                            if str(content).strip():
                                 final_response = re.sub(r"temp/[^\s]*", "", content).strip()
+                        elif isinstance(msg, ToolMessage) or type(msg).__name__ == "ToolMessage":
+                            output_content = getattr(msg, "content", None)
+                            output_raw = self._to_raw_string(output_content)
+                            output_parsed = self._safe_json_parse(output_content)
+                            status, error = self._infer_tool_response_status(output_raw, output_parsed)
+
+                            if pending_tool_request_indices:
+                                matched_trace_idx = pending_tool_request_indices.popleft()
+                                matched_entry = tool_execution_trace[matched_trace_idx]
+                                matched_entry["response"] = {
+                                    "output_raw": output_raw,
+                                    "output_parsed": self._to_json_safe(output_parsed),
+                                    "status": status,
+                                    "error": error,
+                                }
+                                matched_entry["stream_indices"]["response_chunk_index"] = chunk_index
+                                matched_entry["stream_indices"]["response_message_index"] = (
+                                    message_index
+                                )
+                            else:
+                                orphan_tool_name = getattr(msg, "name", None) or "unknown"
+                                tool_execution_trace.append(
+                                    {
+                                        "sequence_index": trace_sequence_index,
+                                        "node": node_name,
+                                        "tool": orphan_tool_name,
+                                        "request_source": None,
+                                        "request": {
+                                            "kwargs_raw": None,
+                                            "kwargs_parsed": None,
+                                            "additional_kwargs": None,
+                                        },
+                                        "response": {
+                                            "output_raw": output_raw,
+                                            "output_parsed": self._to_json_safe(output_parsed),
+                                            "status": "orphan_output",
+                                            "error": error,
+                                        },
+                                        "stream_indices": {
+                                            "request_chunk_index": None,
+                                            "request_message_index": None,
+                                            "response_chunk_index": chunk_index,
+                                            "response_message_index": message_index,
+                                        },
+                                    }
+                                )
+                                trace_sequence_index += 1
+
+            # Mark any pending calls that never produced a tool output.
+            while pending_tool_request_indices:
+                trace_idx = pending_tool_request_indices.popleft()
+                pending_entry = tool_execution_trace[trace_idx]
+                pending_entry["response"]["status"] = "unmatched_call"
+                pending_entry["response"]["error"] = (
+                    "No tool output was observed for this tool request."
+                )
 
             # Determine the final response
             if final_response:
@@ -248,6 +477,7 @@ class MedRAXProvider(LLMProvider):
                 },
                 duration=duration,
                 chunk_history=chunk_history,
+                tool_execution_trace=tool_execution_trace,
             )
 
         except Exception as e:

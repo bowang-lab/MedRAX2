@@ -1,0 +1,3 @@
+benchmark,provider,model,system-prompt,max_questions,tools,score,run_id
+mimic_cxr,medrax,gemini-3-pro-preview,MEDICAL_ASSISTANT,,,
+mimic_cxr,medrax,gemini-3-pro-preview,MEDICAL_ASSISTANT,,MedGemmaVQATool,

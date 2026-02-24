@@ -3,8 +3,10 @@ import csv
 import json
 import subprocess
 import sys
+import uuid
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 
 def _clean_field(row: Dict[str, str], key: str) -> str:
@@ -24,7 +26,7 @@ REQUIRED_COLUMNS = [
 ]
 
 
-def load_rows(csv_path: Path) -> List[Dict[str, str]]:
+def load_rows(csv_path: Path) -> Tuple[List[Dict[str, str]], List[str]]:
     with csv_path.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         missing = [col for col in REQUIRED_COLUMNS if col not in reader.fieldnames]
@@ -37,6 +39,50 @@ def write_rows(csv_path: Path, fieldnames: List[str], rows: List[Dict[str, str]]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def merge_selected_rows(
+    csv_path: Path,
+    updated_rows_by_idx: Dict[int, Dict[str, str]],
+) -> None:
+    """Merge selected row updates into CSV atomically under a file lock."""
+    if not updated_rows_by_idx:
+        return
+
+    try:
+        import fcntl
+    except ImportError:  # pragma: no cover
+        fcntl = None
+
+    with csv_path.open("r+", newline="", encoding="utf-8") as f:
+        if fcntl is not None:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            f.seek(0)
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames
+            if not fieldnames:
+                raise ValueError(f"CSV '{csv_path}' has no header row.")
+            current_rows = list(reader)
+            max_idx = max(updated_rows_by_idx)
+            if max_idx >= len(current_rows):
+                raise ValueError(
+                    f"CSV row count changed while running; max selected row index {max_idx + 1} "
+                    f"but file only has {len(current_rows)} data rows."
+                )
+
+            for idx, row in updated_rows_by_idx.items():
+                current_rows[idx] = row
+
+            f.seek(0)
+            f.truncate()
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(current_rows)
+            f.flush()
+        finally:
+            if fcntl is not None:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def list_run_dirs(output_dir: Path) -> Set[Path]:
@@ -59,6 +105,42 @@ def parse_tools_field(tools_raw: str) -> Optional[List[str]]:
         return None
     tools = [t.strip() for t in tools_raw.split(",") if t.strip()]
     return tools or None
+
+
+def parse_row_selector(rows_raw: str, total_rows: int) -> Set[int]:
+    """Parse 1-based row selector like '1,3,5-7' into 0-based row indices."""
+    selected: Set[int] = set()
+    for token in rows_raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if "-" in token:
+            start_raw, end_raw = token.split("-", 1)
+            try:
+                start = int(start_raw.strip())
+                end = int(end_raw.strip())
+            except ValueError as e:
+                raise ValueError(f"Invalid row range '{token}'. Use integers like 5-8.") from e
+            if start > end:
+                raise ValueError(f"Invalid row range '{token}': start must be <= end.")
+            row_numbers = range(start, end + 1)
+        else:
+            try:
+                row_num = int(token)
+            except ValueError as e:
+                raise ValueError(f"Invalid row value '{token}'. Use integers like 5.") from e
+            row_numbers = [row_num]
+
+        for row_num in row_numbers:
+            if row_num < 1 or row_num > total_rows:
+                raise ValueError(
+                    f"Row {row_num} is out of range for CSV data rows (1-{total_rows})."
+                )
+            selected.add(row_num - 1)
+
+    if not selected:
+        raise ValueError("Row selector did not include any valid rows.")
+    return selected
 
 
 def build_overrides(row: Dict[str, str]) -> List[str]:
@@ -100,6 +182,26 @@ def build_overrides(row: Dict[str, str]) -> List[str]:
     return overrides
 
 
+def _get_override_value(overrides: List[str], key: str) -> Optional[str]:
+    """Return the value for an override key from 'key=value' style overrides."""
+    prefix = f"{key}="
+    for item in overrides:
+        if item.startswith(prefix):
+            return item[len(prefix):]
+    return None
+
+
+def _build_unique_run_id(overrides: List[str]) -> str:
+    """Build a unique run_id so parallel workers never share output/log paths."""
+    benchmark = _get_override_value(overrides, "benchmark") or "benchmark"
+    provider = _get_override_value(overrides, "provider") or "provider"
+    model = _get_override_value(overrides, "provider.model") or "model"
+    max_questions = _get_override_value(overrides, "benchmark.max_questions") or "None"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    unique = uuid.uuid4().hex[:8]
+    return f"{benchmark}_{provider}_{model}_{max_questions}_{timestamp}_{unique}"
+
+
 def read_accuracy_from_run(run_dir: Path) -> Optional[float]:
     final_dir = run_dir / "final_results"
     if not final_dir.exists():
@@ -122,9 +224,9 @@ def run_benchmark(
     output_dir: Path,
     timeout: Optional[int] = None,
 ) -> Dict[str, Optional[object]]:
-    before_dirs = list_run_dirs(output_dir)
-
-    cmd = ["python", "-m", "benchmarking.cli"] + overrides
+    run_id = _build_unique_run_id(overrides)
+    run_dir = output_dir / run_id
+    cmd = ["python", "-m", "benchmarking.cli"] + overrides + [f"hydra.run.dir={run_dir}"]
     try:
         result = subprocess.run(
             cmd,
@@ -139,7 +241,7 @@ def run_benchmark(
                 "stdout": e.stdout,
                 "stderr": f"TimeoutExpired: {e}",
                 "returncode": -1,
-                "run_id": None,
+                "run_id": run_id,
             }
 
     if result.returncode != 0:
@@ -148,13 +250,15 @@ def run_benchmark(
             "stdout": result.stdout,
             "stderr": result.stderr,
             "returncode": result.returncode,
-            "run_id": None,
+            "run_id": run_id,
         }
 
-    after_dirs = list_run_dirs(output_dir)
-    run_dir = pick_run_dir(before_dirs, after_dirs)
-    run_id = run_dir.name if run_dir is not None else None
-    if run_dir is None:
+    if not run_dir.exists():
+        # Fallback if an alternate hydra.run.dir is injected elsewhere.
+        discovered_dirs = list_run_dirs(output_dir)
+        run_dir = sorted(discovered_dirs, key=lambda p: p.stat().st_mtime)[-1] if discovered_dirs else None
+        run_id = run_dir.name if run_dir is not None else run_id
+    if run_dir is None or not run_dir.exists():
         return {
             "accuracy": None,
             "stdout": result.stdout,
@@ -173,11 +277,22 @@ def run_benchmark(
     }
 
 
-def process_csv(csv_path: Path, timeout: Optional[int], jobs: int) -> None:
+def process_csv(
+    csv_path: Path,
+    timeout: Optional[int],
+    jobs: int,
+    row_selector: Optional[str],
+) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     output_dir = repo_root / "benchmark_results"
 
-    rows, fieldnames = load_rows(csv_path)
+    csv_rows, fieldnames = load_rows(csv_path)
+    selected_indices: Optional[Set[int]] = None
+    if row_selector is not None:
+        selected_indices = parse_row_selector(row_selector, len(csv_rows))
+        selected_rows = ", ".join(str(idx + 1) for idx in sorted(selected_indices))
+        print(f"Row filter active. Considering only row(s): {selected_rows}", flush=True)
+
     # Ensure run_id column exists in output
     if "run_id" not in fieldnames:
         if "score" in fieldnames:
@@ -185,18 +300,26 @@ def process_csv(csv_path: Path, timeout: Optional[int], jobs: int) -> None:
             fieldnames = fieldnames[:idx] + ["run_id"] + fieldnames[idx:]
         else:
             fieldnames.append("run_id")
-    updated_rows: List[Dict[str, str]] = []
-    skipped_rows: List[tuple] = []
+
+    final_rows: List[Optional[Dict[str, str]]] = [
+        row if (selected_indices is not None and idx not in selected_indices) else None
+        for idx, row in enumerate(csv_rows)
+    ]
 
     # Build work list
     work_items = []
-    for idx, row in enumerate(rows):
+    for idx, row in enumerate(csv_rows):
+        if selected_indices is not None and idx not in selected_indices:
+            continue
+
         # Skip blank/empty rows (all required fields empty)
         if all((row.get(col, "") or "").strip() == "" for col in REQUIRED_COLUMNS):
+            if selected_indices is not None:
+                final_rows[idx] = row
             continue
 
         if _clean_field(row, "score"):
-            skipped_rows.append((idx, row))
+            final_rows[idx] = row
             continue
         work_items.append((idx, row))
 
@@ -209,7 +332,7 @@ def process_csv(csv_path: Path, timeout: Optional[int], jobs: int) -> None:
         future_to_idx = {}
         for idx, row in work_items:
             overrides = build_overrides(row)
-            print(f"[{idx + 1}/{len(rows)}] Running with overrides: {overrides}", flush=True)
+            print(f"[{idx + 1}/{len(csv_rows)}] Running with overrides: {overrides}", flush=True)
             future = executor.submit(run_benchmark, overrides, repo_root, output_dir, timeout)
             future_to_idx[future] = idx
 
@@ -222,7 +345,6 @@ def process_csv(csv_path: Path, timeout: Optional[int], jobs: int) -> None:
             results_by_idx[idx] = result
 
     # Apply results in submission order
-    final_rows: List[Optional[Dict[str, str]]] = [None] * len(rows)
     for idx, row in work_items:
         result = results_by_idx.get(idx, {"accuracy": None, "stdout": "", "stderr": "", "returncode": -1})
         stdout = result.get("stdout") or ""
@@ -248,12 +370,20 @@ def process_csv(csv_path: Path, timeout: Optional[int], jobs: int) -> None:
 
         final_rows[idx] = row
 
-    # Append rows that already had scores
-    for idx, row in skipped_rows:
-        final_rows[idx] = row
-
-    # Filter out any None slots (should not happen) while preserving order
-    write_rows(csv_path, fieldnames, [r for r in final_rows if r is not None])
+    # When running a selected subset, merge only those rows back to avoid clobbering
+    # unrelated updates from other parallel jobs.
+    if selected_indices is not None:
+        merge_selected_rows(
+            csv_path,
+            {
+                idx: final_rows[idx]
+                for idx in selected_indices
+                if final_rows[idx] is not None
+            },
+        )
+    else:
+        # Default behavior: rewrite rows while filtering blank/empty lines.
+        write_rows(csv_path, fieldnames, [r for r in final_rows if r is not None])
  
 
 def parse_args() -> argparse.Namespace:
@@ -273,11 +403,17 @@ def parse_args() -> argparse.Namespace:
         default=1,
         help="Number of benchmarks to run in parallel (default: 1).",
     )
+    parser.add_argument(
+        "--rows",
+        type=str,
+        default=None,
+        help="1-based row selector (e.g. '3' or '1,4,7-10'). Only selected rows are processed.",
+    )
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    process_csv(args.csv_path, timeout=args.timeout, jobs=args.jobs)
+    process_csv(args.csv_path, timeout=args.timeout, jobs=args.jobs, row_selector=args.rows)
 
 
 if __name__ == "__main__":

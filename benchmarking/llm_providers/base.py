@@ -22,6 +22,7 @@ class LLMResponse:
     usage: Optional[Dict[str, Any]] = None
     duration: Optional[float] = None
     chunk_history: Optional[Any] = None
+    tool_execution_trace: Optional[List[Dict[str, Any]]] = None
     
 
 class LLMProvider(ABC):

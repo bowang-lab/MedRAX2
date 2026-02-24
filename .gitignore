@@ -189,3 +189,7 @@ model_cache/
 medgemma/
 medgemma_images/
 benchmark_results/
+benchmarking/eval_sets/
+
+# pip
+*_env.txt
