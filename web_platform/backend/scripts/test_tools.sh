@@ -8,12 +8,9 @@
 #SBATCH --output=medgemma-%j.out
 #SBATCH --error=medgemma-%j.err
 
-export MODELWEIGHTS="/home/andrew.lian/wanglab/MedRAX2/model-weights"
-export MODEL_CACHE_DIR="$HOME/.cache/huggingface"
-
 tool=$1
 
-image_path="/home/andrew.lian/wanglab/mimic/physionet.org/files/mimic-cxr-jpg/2.0.0/files/p10/p10000032/s50414267/02aa804e-bde0afdd-112c0b34-7bc16630-4e384014.jpg"
+image_path=$IMG_PATH_JPG
 phrase="Nodule"
 question="Identify the problem in this chest x-ray image and provide a brief explanation."
 prompt="Identify the problem in this chest x-ray image and provide a brief explanation."
