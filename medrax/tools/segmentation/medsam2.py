@@ -87,7 +87,13 @@ class MedSAM2Tool(BaseTool):
         if cache_dir is None:
             cache_dir = os.getenv("MODEL_CACHE_DIR") or "/model-weights"
         self.cache_dir = Path(cache_dir)
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
+        if temp_dir:
+            self.temp_dir = Path(temp_dir)
+        else:
+            repo_root = Path(__file__).resolve().parents[3]
+            default_temp = repo_root / "web_platform" / "backend" / "temp"
+            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Ensure proper hydra initialization by reinitializing with config_dir
