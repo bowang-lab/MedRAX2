@@ -54,7 +54,7 @@ class CheXagentXRayVQATool(BaseTool):
     dtype: torch.dtype = torch.bfloat16
     tokenizer: Optional[AutoTokenizer] = None
     model: Optional[AutoModelForCausalLM] = None
-    load_in_8bit: bool = True
+    load_in_8bit: bool = False
 
     def __init__(
         self,
@@ -62,7 +62,7 @@ class CheXagentXRayVQATool(BaseTool):
         device: Optional[str] = "cuda",
         dtype: torch.dtype = torch.bfloat16,
         cache_dir: Optional[str] = None,
-        load_in_8bit: bool = True,
+        load_in_8bit: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the CheXagentXRayVQATool.

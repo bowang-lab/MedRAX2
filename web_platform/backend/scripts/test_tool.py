@@ -76,7 +76,7 @@ def run_tool(tool_id: str, args: argparse.Namespace) -> Tuple[Dict[str, Any], Di
         return ImageVisualizerTool()._run(resolve_path(args.image_path))
     if tool_id == "chest_xray_generator":
         from medrax.tools.xray_generation import ChestXRayGeneratorTool
-        return ChestXRayGeneratorTool()._run(args.prompt)
+        return ChestXRayGeneratorTool(cache_dir=os.getenv("MODEL_CACHE_DIR"))._run(args.prompt)
     if tool_id == "medical_knowledge_rag":
         from medrax.tools.rag import RAGTool, RAGConfig
         config = RAGConfig()
