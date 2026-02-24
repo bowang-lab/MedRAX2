@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.gz
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -129,6 +130,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.medgemma/
 
 # MedRAX web platform local data
 web_platform/backend/medrax.db
@@ -181,8 +183,10 @@ afallah/
 logs/
 
 temp/
+.tmp/
 
 .gradio/
+.vscode/
 
 hf_files/
 medrax-pdfs/
@@ -190,12 +194,13 @@ model-weights/
 
 .DS_Store
 
-model_cache/
-medgemma/
-
 # benchmarking
 benchmarking/data/
-benchmark_results
+model_cache/
+medgemma/
+medgemma_images/
+benchmark_results/
+benchmarking/eval_sets/
 
 # env
 *_env.txt

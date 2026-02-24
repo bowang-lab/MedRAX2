@@ -1,4 +1,5 @@
 import os
+import re
 from typing import ClassVar, Dict, List, Optional, Tuple, Type
 
 import numpy as np
@@ -43,6 +44,7 @@ class OmniSwinTransformer(SwinTransformer):
 
     def forward(self, x, head_n=None):
         x = self.forward_features(x)
+        x = self.forward_head(x, pre_logits=True)
         if self.projector:
             x = self.projector(x)
         if head_n is not None:
@@ -52,6 +54,7 @@ class OmniSwinTransformer(SwinTransformer):
 
     def generate_embeddings(self, x, after_proj=True):
         x = self.forward_features(x)
+        x = self.forward_head(x, pre_logits=True)
         if after_proj and self.projector:
             x = self.projector(x)
         return x
@@ -246,6 +249,26 @@ class ArcPlusClassifierTool(BaseTool):
         # Remove "module." prefix if present (improved logic from example)
         if any([True if "module." in k else False for k in state_dict.keys()]):
             state_dict = {k.replace("module.", ""): v for k, v in state_dict.items() if k.startswith("module.")}
+
+        # Handle Swin downsample key layout differences across timm versions.
+        # Older checkpoints (used by ArcPlus) store downsample blocks at layers.0/1/2,
+        # while newer timm layouts expect them at layers.1/2/3.
+        model_state = self.model.state_dict()
+        checkpoint_has_legacy_layout = "layers.0.downsample.norm.weight" in state_dict
+        model_uses_shifted_layout = (
+            "layers.0.downsample.norm.weight" not in model_state
+            and "layers.1.downsample.norm.weight" in model_state
+        )
+        if checkpoint_has_legacy_layout and model_uses_shifted_layout:
+            shifted_state_dict = {}
+            for key, value in state_dict.items():
+                shifted_key = re.sub(
+                    r"^layers\.(\d+)\.downsample",
+                    lambda m: f"layers.{int(m.group(1)) + 1}.downsample",
+                    key,
+                )
+                shifted_state_dict[shifted_key] = value
+            state_dict = shifted_state_dict
 
         # Load the model weights
         msg = self.model.load_state_dict(state_dict, strict=False)

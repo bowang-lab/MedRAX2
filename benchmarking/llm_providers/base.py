@@ -22,6 +22,7 @@ class LLMResponse:
     usage: Optional[Dict[str, Any]] = None
     duration: Optional[float] = None
     chunk_history: Optional[Any] = None
+    tool_execution_trace: Optional[List[Dict[str, Any]]] = None
     
 
 class LLMProvider(ABC):
@@ -45,12 +46,14 @@ class LLMProvider(ABC):
         self.max_tokens = kwargs.get("max_tokens", 5000)
         self.prompt_name = system_prompt
         
+        self.prompt_file = kwargs.get("prompt_file", None)
+        
         # Load system prompt content from file
         try:
-            prompts = load_prompts_from_file("benchmarking/system_prompts.txt")
+            prompts = load_prompts_from_file(self.prompt_file)
             self.system_prompt = prompts.get(self.prompt_name, None)
             if self.system_prompt is None:
-                print(f"Warning: System prompt '{system_prompt}' not found in benchmarking/system_prompts.txt.")
+                print(f"Warning: System prompt '{system_prompt}' not found in {self.prompt_file}.")
         except Exception as e:
             print(f"Error loading system prompt: {e}")
             self.system_prompt = None

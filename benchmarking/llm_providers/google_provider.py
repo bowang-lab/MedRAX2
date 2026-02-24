@@ -103,3 +103,17 @@ class GoogleProvider(LLMProvider):
                 content=f"Error: {str(e)}",
                 duration=time.time() - start_time
             )
+
+if __name__ == "__main__":
+    # quick test
+    model_name = os.getenv("GOOGLE_MODEL", "gemini-3-pro-preview")
+    system_prompt = "You are a helpful assistant."
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    print(f"Model: {model_name}")
+
+    provider = GoogleProvider(model_name=model_name, system_prompt=system_prompt)
+    req = LLMRequest(text="Say hello and report your model name.")
+    resp = provider.generate_response(req)
+    print("Response:\n", resp.content)
+    print("Usage:", resp.usage)

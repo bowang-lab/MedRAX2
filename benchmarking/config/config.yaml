@@ -1,0 +1,18 @@
+# Main Hydra configuration for benchmarking pipeline
+# Usage: python -m benchmarking.cli [overrides]
+# Example: python -m benchmarking.cli benchmark=rexvqa provider=medrax
+
+defaults:
+  - benchmark: rexvqa
+  - provider: medrax
+  - runner: default
+  - override hydra/job_logging: disabled
+  - _self_
+
+hydra:
+  # Place Hydra run outputs (including .hydra) under benchmark_results with a run-id-like path
+  run:
+    dir: ${runner.output_dir}/${benchmark.name}_${provider.type}_${provider.model}_${benchmark.max_questions}_${now:%Y%m%d_%H%M%S}
+  sweep:
+    dir: ${hydra.run.dir}
+  output_subdir: .hydra

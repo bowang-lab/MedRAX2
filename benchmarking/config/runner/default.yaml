@@ -1,0 +1,3 @@
+# Default runner configuration
+output_dir: benchmark_results
+concurrency: 1

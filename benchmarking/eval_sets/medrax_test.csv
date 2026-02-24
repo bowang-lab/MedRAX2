@@ -1,0 +1,2 @@
+benchmark,provider,model,system-prompt,max_questions,tools,temperature,score,run_id
+rexvqa_medgemma,medrax,gemini-3-pro-preview,MEDICAL_ASSISTANT_VQA_TUNED,,"MedGemmaVQATool,XRayPhraseGroundingTool",,,

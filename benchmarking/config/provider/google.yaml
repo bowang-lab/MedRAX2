@@ -1,0 +1,8 @@
+# Google provider configuration
+type: google
+model: gemini-2.5-pro
+system_prompt: MEDICAL_ASSISTANT
+temperature: 0.7
+top_p: 0.95
+max_tokens: 10000
+prompt_file: medrax/docs/MedRAX2_system_prompt_v0.txt

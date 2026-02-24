@@ -3,13 +3,29 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 import torch
-import transformers
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+
+def _patch_transformers_cache_api_for_chexagent() -> None:
+    """Bridge old cache API used by CheXagent to newer transformers cache API."""
+    try:
+        from transformers.cache_utils import Cache
+    except Exception:
+        return
+
+    if not hasattr(Cache, "get_max_length"):
+        def get_max_length(self) -> Optional[int]:
+            get_max_cache_shape = getattr(self, "get_max_cache_shape", None)
+            if callable(get_max_cache_shape):
+                return get_max_cache_shape()
+            return None
+
+        Cache.get_max_length = get_max_length  # type: ignore[attr-defined]
 
 
 class XRayVQAToolInput(BaseModel):
@@ -38,6 +54,7 @@ class CheXagentXRayVQATool(BaseTool):
     dtype: torch.dtype = torch.bfloat16
     tokenizer: Optional[AutoTokenizer] = None
     model: Optional[AutoModelForCausalLM] = None
+    load_in_8bit: bool = True
 
     def __init__(
         self,
@@ -45,6 +62,7 @@ class CheXagentXRayVQATool(BaseTool):
         device: Optional[str] = "cuda",
         dtype: torch.dtype = torch.bfloat16,
         cache_dir: Optional[str] = None,
+        load_in_8bit: bool = True,
         **kwargs: Any,
     ) -> None:
         """Initialize the CheXagentXRayVQATool.
@@ -54,6 +72,7 @@ class CheXagentXRayVQATool(BaseTool):
             device: Device to run model on (cuda/cpu)
             dtype: Data type for model weights
             cache_dir: Directory to cache downloaded models
+            load_in_8bit: Whether to load model with bitsandbytes 8-bit quantization
             **kwargs: Additional arguments
         """
         super().__init__(**kwargs)
@@ -63,27 +82,34 @@ class CheXagentXRayVQATool(BaseTool):
 
         original_transformers_version = transformers.__version__
         transformers.__version__ = "4.40.0"
+        _patch_transformers_cache_api_for_chexagent()
 
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = dtype
         self.cache_dir = cache_dir
+        self.load_in_8bit = load_in_8bit
 
-        # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map=self.device,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-        )
-        self.model = self.model.to(dtype=self.dtype)
-        self.model.eval()
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None
 
-        transformers.__version__ = original_transformers_version
+        try:
+            # Load tokenizer and model
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map="auto" if load_in_8bit else self.device,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+                quantization_config=quantization_config,
+            )
+            if not load_in_8bit:
+                self.model = self.model.to(dtype=self.dtype)
+            self.model.eval()
+        finally:
+            transformers.__version__ = original_transformers_version
 
     def _generate_response(self, image_paths: List[str], prompt: str, max_new_tokens: int) -> str:
         """Generate response using CheXagent model.

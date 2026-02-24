@@ -1,0 +1,6 @@
+# ReXVQA benchmark configuration
+name: rexvqa
+data_dir: benchmarking/data/rexvqa_medgemma_cases
+subset_file: null
+max_questions: null  # null = process all questions
+random_seed: 42

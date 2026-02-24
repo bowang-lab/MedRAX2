@@ -1,0 +1,37 @@
+# MedRAX provider configuration
+type: medrax
+model: gemini-2.5-pro
+system_prompt: MEDICAL_ASSISTANT
+temperature: 0.7
+top_p: 0.95
+max_tokens: 10000
+prompt_file: medrax/docs/MedRAX2_system_prompt_v0.txt
+model_dir: /model-weights
+temp_dir: temp
+
+# MedRAX-specific: tool selection
+# Comment out tools you don't want to use, will be overriden by command line if specified
+tools:
+  - TorchXRayVisionClassifierTool   # Chest X-ray classification using TorchXRayVision
+  - ArcPlusClassifierTool           # Advanced chest X-ray classification using ArcPlus
+  - ChestXRayReportGeneratorTool    # Generate medical reports from X-rays
+  - XRayPhraseGroundingTool         # Locate described features in X-rays
+  - MedGemmaVQATool                 # Google MedGemma VQA tool
+  - MedicalRAGTool                  # Retrieval-augmented generation with medical knowledge
+  - WebBrowserTool                  # Web browsing and search capabilities
+  - DuckDuckGoSearchTool            # Privacy-focused web search using DuckDuckGo
+
+# MedRAX-specific: RAG configuration (only used if MedicalRAGTool is in tools)
+rag:
+  model: command-a-03-2025
+  embedding_model: embed-v4.0
+  rerank_model: rerank-v3.5
+  temperature: 0.3
+  pinecone_index_name: medrax2
+  chunk_size: 1500
+  chunk_overlap: 300
+  retriever_k: 3
+  local_docs_dir: rag_docs
+  huggingface_datasets:
+    - VictorLJZ/medrax2
+  dataset_split: train
