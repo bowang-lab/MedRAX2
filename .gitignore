@@ -141,7 +141,6 @@ web_platform/backend/temp/
 web_platform/backend/model_cache/
 web_platform/backend/hf_cache/
 web_platform/backend/torch_cache/
-web_platform/backend/conda_env/
 
 # Spyder project settings
 .spyderproject

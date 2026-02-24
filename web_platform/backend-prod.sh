@@ -11,7 +11,7 @@ echo ""
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-2}
 echo "Forcing CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
 
-# Prefer conda env if available and environment.yml exists
+# Prefer conda env if available
 USE_CONDA=0
 if command -v conda &> /dev/null; then
     USE_CONDA=1
@@ -20,11 +20,6 @@ fi
 echo "Checking backend environment..."
 
 cd "$(dirname "$0")/backend"
-ENV_FILE="environment.yml"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "   [WARNING] $ENV_FILE not found; falling back to Python venv"
-    USE_CONDA=0
-fi
 
 # Load environment variables from .env file if it exists
 if [ -f ".env" ]; then
@@ -71,17 +66,15 @@ fi
 PIP_INSTALL=1
 if [ $USE_CONDA -eq 1 ]; then
     echo "Using conda environment"
-    ENV_NAME=$(grep -E '^name:' environment.yml | awk '{print $2}')
-    if [ -z "$ENV_NAME" ]; then ENV_NAME="medrax-backend"; fi
+    ENV_NAME="medrax2"
     if ! CONDA_NO_PLUGINS=true conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-        echo "   Creating conda env ($ENV_NAME) from environment.yml..."
-        CONDA_NO_PLUGINS=true conda env create -f environment.yml
+        echo "   Creating conda env ($ENV_NAME)..."
+        CONDA_NO_PLUGINS=true conda create -n "$ENV_NAME" python=3.11 -y
     fi
     # shellcheck disable=SC1091
     source "$(CONDA_NO_PLUGINS=true conda info --base)/etc/profile.d/conda.sh"
     conda activate "$ENV_NAME"
     echo "   Python: $(python --version)"
-    PIP_INSTALL=0
 else
     echo "Conda not found, using Python venv"
     echo "Checking Python version..."
@@ -139,10 +132,8 @@ pip install --upgrade pip > /dev/null 2>&1 || true
 echo "   [OK] Pip upgraded"
 
 if [ $PIP_INSTALL -eq 1 ]; then
-  echo "   Installing packages from requirements.txt..."
-  pip install -r requirements.txt
-else
-  echo "   Skipping pip install (managed by conda environment.yml)"
+  echo "   Installing packages from pyproject.toml..."
+  pip install -e ../..
 fi
 
 echo "   [OK] All dependencies installed"
@@ -184,8 +175,9 @@ elif [ "$GPU_CHECK" = "cpu" ]; then
     if command -v nvidia-smi &> /dev/null; then
         echo "   [WARNING] NVIDIA GPU detected but PyTorch is CPU-only!"
         echo "   To fix: Delete conda environment and recreate:"
-        echo "     conda env remove -n alankrit-medrax2"
-        echo "     conda env create -f backend/environment.yml"
+        echo "     conda env remove -n medrax2"
+        echo "     conda create -n medrax2 python=3.11 -y"
+        echo "     pip install -e ../.."
         echo "   Continuing with CPU (tools will be slower)..."
     else
         echo "   [OK] No GPU detected (CPU mode)"
