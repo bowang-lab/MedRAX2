@@ -214,6 +214,8 @@ async def stream_chat_response(
                     yield create_sse_event("content_chunk", content=event["data"].get("content", ""))
                 elif event["type"] == "tool_start":
                     yield create_sse_event("tool_start", **event["data"])
+                elif event["type"] == "tool_output":
+                    yield create_sse_event("tool_output", **event["data"])
                 elif event["type"] == "tool_done":
                     yield create_sse_event("tool_done", **event["data"])
                 elif event["type"] == "tool_error":

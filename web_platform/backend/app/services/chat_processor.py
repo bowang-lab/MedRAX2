@@ -8,6 +8,7 @@ Inspired by the old ChatInterface but integrated with new architecture.
 import asyncio
 import base64
 import json
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -69,6 +70,20 @@ class ChatProcessor:
         if ext in {".gif"}:
             return "image/gif"
         return "application/octet-stream"
+
+    def _to_display_path(self, path: str) -> str:
+        """Convert file paths to frontend-displayable paths."""
+        if not path:
+            return path
+        if path.startswith("uploads/") or path.startswith("temp/"):
+            return f"/{path}"
+        backend_temp = Path(os.getenv("MEDRAX_TEMP_DIR", "temp")).resolve()
+        try:
+            if Path(path).resolve().is_relative_to(backend_temp):
+                return f"/temp/{Path(path).name}"
+        except Exception:
+            pass
+        return path
         
     async def process_message(
         self,
@@ -264,13 +279,7 @@ class ChatProcessor:
         tool_name = tool_message.name
         
         # Convert file paths to display paths for frontend
-        display_paths = []
-        for path in image_paths:
-            # Convert "uploads/chats/..." to "/uploads/chats/..."
-            if path.startswith("uploads/"):
-                display_paths.append(f"/{path}")
-            else:
-                display_paths.append(path)
+        display_paths = [self._to_display_path(path) for path in image_paths]
         
         # Create tool execution record with display paths
         execution = ToolExecution(
@@ -336,12 +345,7 @@ class ChatProcessor:
                 
                 # Update execution with generated images (convert to display paths)
                 if generated_images:
-                    generated_display_paths = []
-                    for path in generated_images:
-                        if path.startswith("uploads/") or path.startswith("temp/"):
-                            generated_display_paths.append(f"/{path}")
-                        else:
-                            generated_display_paths.append(path)
+                    generated_display_paths = [self._to_display_path(path) for path in generated_images]
                     execution.image_paths = display_paths + generated_display_paths
             
             # Update execution status
@@ -353,6 +357,20 @@ class ChatProcessor:
             except Exception:
                 self.db.rollback()
             
+            # Yield tool output event (for UI panels)
+            if result_data is not None:
+                yield {
+                    "type": "tool_output",
+                    "data": {
+                        "tool_name": tool_name,
+                        "execution_id": execution.id,
+                        "message_id": execution.message_id,
+                        "result": result_data,
+                        "metadata": metadata,
+                        "image_paths": execution.image_paths or [],
+                    },
+                }
+
             # Yield tool completion
             yield {
                 "type": "tool_done",

@@ -195,7 +195,7 @@ uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 # Mount static files for temporary files (e.g., segmentation outputs)
-temp_path = Path("temp")
+temp_path = Path(os.getenv("MEDRAX_TEMP_DIR", "temp"))
 temp_path.mkdir(parents=True, exist_ok=True)
 app.mount("/temp", StaticFiles(directory=str(temp_path)), name="temp")
 
@@ -209,7 +209,7 @@ async def startup_event():
     logger.info(f"📚 API documentation: http://{settings.HOST}:{settings.PORT}/docs")
     logger.info(f"🗄️  Database: {settings.DATABASE_URL}")
     logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
-    logger.info(f"📂 Temp directory: temp/")
+    logger.info(f"📂 Temp directory: {temp_path}")
 
     # Optional eager loading gated by env var to avoid long cold starts
     try:
