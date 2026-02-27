@@ -1,8 +1,8 @@
-import createClient from "openapi-fetch";
+import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "../types/openapi";
 import { API_CONFIG, API_SECRET_CONFIG } from "../config/api";
 
-function getAuthHeaders(): HeadersInit {
+function getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const token = localStorage.getItem("medrax_auth_token");
   const apiSecret = API_SECRET_CONFIG.getSecret();
@@ -12,24 +12,23 @@ function getAuthHeaders(): HeadersInit {
   return headers;
 }
 
-export const openapiClient = createClient<paths>({
-  baseUrl: API_CONFIG.baseURL,
-  fetch: async (input, init) => {
-    const headers = new Headers(init?.headers || {});
+const authMiddleware: Middleware = {
+  onRequest: ({ request }) => {
     const auth = getAuthHeaders();
-
     for (const [key, value] of Object.entries(auth)) {
-      if (!headers.has(key)) {
-        headers.set(key, value);
+      if (!request.headers.has(key)) {
+        request.headers.set(key, value);
       }
     }
-
-    return fetch(input, {
-      ...init,
-      headers,
-    });
+    return request;
   },
+};
+
+export const openapiClient = createClient<paths>({
+  baseUrl: API_CONFIG.baseURL,
 });
+
+openapiClient.use(authMiddleware);
 
 export function authHeaders(): HeadersInit {
   return getAuthHeaders();

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Suppress "devdir" warning from npm (deprecated config)
+unset npm_config_devdir
+
 # MedRAX Web Platform - Frontend Development Server
 echo "Starting MedRAX Frontend Server..."
 echo ""
