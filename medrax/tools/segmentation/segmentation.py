@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
+import os
 import uuid
-import tempfile
 
 import numpy as np
 import torch
@@ -80,7 +80,7 @@ class ChestXRaySegmentationTool(BaseTool):
     temp_dir: Path = Path("temp")
     organ_map: Dict[str, int] = None
 
-    def __init__(self, device: Optional[str] = "cuda", temp_dir: Optional[Path] = Path("temp")):
+    def __init__(self, device: Optional[str] = "cuda", temp_dir: Optional[Path] = None):
         """Initialize the segmentation tool with model and temporary directory."""
         super().__init__()
         self.model = xrv.baseline_models.chestx_det.PSPNet()
@@ -90,8 +90,13 @@ class ChestXRaySegmentationTool(BaseTool):
 
         self.transform = torchvision.transforms.Compose([xrv.datasets.XRayCenterCrop(), xrv.datasets.XRayResizer(512)])
 
-        self.temp_dir = temp_dir if isinstance(temp_dir, Path) else Path(temp_dir)
-        self.temp_dir.mkdir(exist_ok=True)
+        if temp_dir:
+            self.temp_dir = temp_dir if isinstance(temp_dir, Path) else Path(temp_dir)
+        else:
+            repo_root = Path(__file__).resolve().parents[3]
+            default_temp = repo_root / "web_platform" / "backend" / "temp"
+            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         # Map friendly names to model target indices
         self.organ_map = {
@@ -230,8 +235,8 @@ class ChestXRaySegmentationTool(BaseTool):
             if len(original_img.shape) > 2:
                 original_img = original_img[:, :, 0]
 
-            # Use robust normalization that handles both 8-bit and 16-bit images
-            img = preprocess_medical_image(original_img)
+            # Normalize to the range expected by torchxrayvision models
+            img = preprocess_medical_image(original_img, target_range=(-1024.0, 1024.0))
             img = img[None, ...]
             img = self.transform(img)
             img = torch.from_numpy(img)

@@ -1,4 +1,5 @@
 from typing import Dict, Optional, Tuple, Type
+import os
 from pydantic import BaseModel, Field
 
 import numpy as np
@@ -51,9 +52,16 @@ class TorchXRayVisionClassifierTool(BaseTool):
     device: Optional[str] = "cuda"
     transform: torchvision.transforms.Compose = None
 
-    def __init__(self, model_name: str = "densenet121-res224-all", device: Optional[str] = "cuda"):
+    def __init__(
+        self,
+        model_name: str = "densenet121-res224-all",
+        device: Optional[str] = "cuda",
+        cache_dir: Optional[str] = None,
+    ):
         super().__init__()
-        self.model = xrv.models.DenseNet(weights=model_name)
+        if cache_dir is None:
+            cache_dir = os.getenv("TORCH_CACHE_DIR") or os.getenv("MODEL_CACHE_DIR")
+        self.model = xrv.models.DenseNet(weights=model_name, cache_dir=cache_dir)
         self.model.eval()
         self.device = torch.device(device) if device else "cuda"
         self.model = self.model.to(self.device)

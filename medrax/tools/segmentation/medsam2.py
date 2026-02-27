@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
+import os
 from pathlib import Path
 import uuid
 import tempfile
@@ -73,7 +74,7 @@ class MedSAM2Tool(BaseTool):
     def __init__(
         self,
         device: Optional[str] = "cuda",
-        cache_dir: str = "/model-weights",
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
         model_path: str = "wanglab/MedSAM2",
         model_file: str = "MedSAM2_latest.pt",
@@ -83,8 +84,16 @@ class MedSAM2Tool(BaseTool):
         """Initialize the MedSAM2 tool."""
         super().__init__()
         self.device = device
+        if cache_dir is None:
+            cache_dir = os.getenv("MODEL_CACHE_DIR") or "/model-weights"
         self.cache_dir = Path(cache_dir)
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
+        if temp_dir:
+            self.temp_dir = Path(temp_dir)
+        else:
+            repo_root = Path(__file__).resolve().parents[3]
+            default_temp = repo_root / "web_platform" / "backend" / "temp"
+            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Ensure proper hydra initialization by reinitializing with config_dir

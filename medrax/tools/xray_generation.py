@@ -1,4 +1,5 @@
 from typing import Dict, Optional, Tuple, Type
+import os
 from pathlib import Path
 import uuid
 import tempfile
@@ -42,20 +43,30 @@ class ChestXRayGeneratorTool(BaseTool):
 
     def __init__(
         self,
-        model_path: str = "/model-weights/roentgen",
-        cache_dir: str = "/model-weights",
+        model_path: Optional[str] = None,
+        cache_dir: Optional[str] = None,
         temp_dir: Optional[str] = None,
         device: Optional[str] = "cuda",
     ):
         """Initialize the chest X-ray generator tool."""
         super().__init__()
+        if model_path is None:
+            base_weights = os.getenv("MODELWEIGHTS", "/model-weights")
+            model_path = f"{base_weights}/roentgen"
+        if cache_dir is None:
+            cache_dir = os.getenv("MODEL_CACHE_DIR") or os.getenv("MODELWEIGHTS") or "/model-weights"
 
         self.device = torch.device(device) if device else "cuda"
         self.model = StableDiffusionPipeline.from_pretrained(model_path, cache_dir=cache_dir)
         self.model = self.model.to(torch.float32).to(self.device)
 
-        self.temp_dir = Path(temp_dir if temp_dir else tempfile.mkdtemp())
-        self.temp_dir.mkdir(exist_ok=True)
+        if temp_dir:
+            self.temp_dir = Path(temp_dir)
+        else:
+            repo_root = Path(__file__).resolve().parents[3]
+            default_temp = repo_root / "web_platform" / "backend" / "temp"
+            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _run(
         self,
