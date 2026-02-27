@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "openapi:generate": "python ../backend/scripts/export_openapi.py --out ./openapi.json && openapi-typescript ./openapi.json -o ./lib/types/openapi.d.ts && rm ./openapi.json"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -30,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "eslint-plugin-import": "^2.32.0",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
