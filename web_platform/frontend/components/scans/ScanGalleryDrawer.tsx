@@ -56,15 +56,13 @@ export function ScanGalleryDrawer({ isOpen, patientId, onClose }: ScanGalleryDra
     try {
       const fetchedScans = await getPatientScans(patientId);
       setScans(fetchedScans);
-      if (currentPatient) {
-        updatePatient(currentPatient.id, { scanCount: fetchedScans.length });
-      }
+      updatePatient(patientId, { scanCount: fetchedScans.length });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load scans");
     } finally {
       setIsLoading(false);
     }
-  }, [patientId, currentPatient, updatePatient]);
+  }, [patientId, updatePatient]);
 
   useEffect(() => {
     if (isOpen && patientId) {

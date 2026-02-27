@@ -14,6 +14,21 @@ function getAuthHeaders(): HeadersInit {
 
 export const openapiClient = createClient<paths>({
   baseUrl: API_CONFIG.baseURL,
+  fetch: async (input, init) => {
+    const headers = new Headers(init?.headers || {});
+    const auth = getAuthHeaders();
+
+    for (const [key, value] of Object.entries(auth)) {
+      if (!headers.has(key)) {
+        headers.set(key, value);
+      }
+    }
+
+    return fetch(input, {
+      ...init,
+      headers,
+    });
+  },
 });
 
 export function authHeaders(): HeadersInit {
