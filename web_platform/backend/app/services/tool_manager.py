@@ -108,8 +108,12 @@ class ToolManager:
         self._register_all_tools()
 
         
-        # Check availability for each tool
-        self._check_tool_availability()
+        # Check availability for each tool (can be skipped for lightweight operations)
+        skip_dep_check = os.getenv("SKIP_TOOL_DEP_CHECK", "").lower() in ("1", "true", "yes")
+        if not skip_dep_check:
+            self._check_tool_availability()
+        else:
+            logger.info("[INFO] Skipping tool dependency checks (SKIP_TOOL_DEP_CHECK=1)")
     
     def __del__(self):
         """Cleanup resources on deletion."""
