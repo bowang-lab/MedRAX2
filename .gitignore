@@ -11,8 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
-eggs/
+downloads/eggs/
 .eggs/
 lib/
 lib64/
@@ -207,3 +206,9 @@ benchmarking/eval_sets/
 
 # env
 *_env.txt
+
+# Local deployment files
+medrax-backend.service
+docker-compose.yml
+web_platform/backend/Dockerfile
+web_platform/frontend/Dockerfile
