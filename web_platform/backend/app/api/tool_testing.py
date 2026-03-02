@@ -331,13 +331,13 @@ class ChexAgentXrayVQAInput(BaseModel):
 
 
 @router.post(
-    "/chexagent_xray_vqa",
-    summary="Test ChexAgent XrayVQA",
-    description="Medical VQA using ChexAgent (XrayVQA)",
+    "/chexagent_xray_vqa_custom",
+    summary="Test ChexAgent XrayVQA (Custom Input)",
+    description="Medical VQA using ChexAgent (XrayVQA) with custom input model",
     tags=["vqa"],
 )
-async def test_chexagent_xray_vqa(input_data: ChexAgentXrayVQAInput):
-    """Test ChexAgent XrayVQA tool directly."""
+async def test_chexagent_xray_vqa_custom(input_data: ChexAgentXrayVQAInput):
+    """Test ChexAgent XrayVQA tool directly using its specific input model."""
     try:
         tool = tool_manager.get_tool("chexagent_xray_vqa")
         if not tool or tool.status != "loaded":
