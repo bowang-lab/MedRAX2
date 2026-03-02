@@ -10,6 +10,7 @@ import importlib
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import re
 
 from ..utils.logging_config import logger
 from ..config import settings
@@ -1054,6 +1055,19 @@ class ToolManager:
     
     def _get_default_system_prompt(self) -> str:
         """Get default system prompt for medical agent."""
+        # Load the canonical prompt from medrax/docs/system_prompts.txt.
+        # Keep a safe fallback so agent creation never fails on prompt-loading issues.
+        system_prompts_path = Path(__file__).resolve().parents[4] / "medrax" / "docs" / "system_prompts.txt"
+        base_prompt = ""
+        try:
+            if system_prompts_path.exists():
+                content = system_prompts_path.read_text(encoding="utf-8")
+                match = re.search(r"\[MEDICAL_ASSISTANT\]\s*(.*?)(?=\n\[[^\]]+\]|$)", content, re.DOTALL)
+                if match:
+                    base_prompt = match.group(1).strip()
+        except Exception as e:
+            logger.warning(f"failed_to_load_system_prompt path={system_prompts_path} error={e}")
+
         loaded_tools = self.get_loaded_tools()
         tool_descriptions = []
         
@@ -1073,35 +1087,15 @@ class ToolManager:
             tool_descriptions.append(f"- {tool_name}: {tool_desc}")
         
         tools_list = "\n".join(tool_descriptions) if tool_descriptions else "- Various medical imaging and analysis tools"
-        
-        return f"""You are MedRAX, an advanced AI assistant specialized in medical imaging analysis and clinical support.
 
-You have access to the following tools:
-{tools_list}
+        if base_prompt:
+            return f"{base_prompt}\n\nTools:\n{tools_list}"
 
-IMPORTANT TOOL USAGE GUIDELINES:
-1. Use tools by their exact names as listed above (e.g., 'torchxrayvision_classifier', 'arcplus_classifier', etc.)
-2. NEVER call a tool named 'run' - this tool does not exist
-3. When asked to "check all tools" or "use all tools", interpret this as using multiple relevant tools from the list above
-4. Use the available tools proactively whenever they can help answer the user's questions or requests:
-   - Medical imaging tools for analyzing scans and images
-   - Classification tools to identify pathologies
-   - Question answering tools for medical queries
-   - Web search tools when asked to look up information
-   - Any other relevant tools from the list
-
-5. If a user asks you to analyze an image with "all tools", use the most relevant tools from your available list:
-   - For chest X-rays: torchxrayvision_classifier, arcplus_classifier, chest_xray_report_generator, etc.
-   - For general medical images: relevant VQA and classification tools
-
-Do not refuse to use tools based on assumptions about their purpose. If a tool is loaded and can help with the user's request, use it.
-
-When you receive search results from tools:
-- The results contain a "results" array with items having "title", "url", and "snippet" fields
-- Present the information clearly to the user, citing sources when appropriate
-- If search returns an error, inform the user about the specific issue
-
-Always be thorough, accurate, and helpful in your responses."""
+        # Fallback prompt to avoid breaking runtime if prompt file is missing.
+        return (
+            "You are MedRAX, an advanced AI assistant specialized in medical imaging analysis and clinical support.\n\n"
+            f"Tools:\n{tools_list}"
+        )
     
     def _tool_to_dict(self, tool: ToolInfo) -> Dict[str, Any]:
         """Convert tool to dictionary."""
