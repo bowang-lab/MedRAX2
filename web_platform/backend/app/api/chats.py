@@ -195,7 +195,7 @@ def delete_chat(
 ):
     """Delete a chat and all associated messages, scans, and tool execution files."""
     from ..models import Scan, ToolExecution
-    from ..utils.file_utils import delete_file
+    from ..utils.file_utils import delete_file, is_generated_tool_image_path
 
     chat = (
         db.query(Chat).join(Patient).filter(Chat.id == chat_id, Patient.doctor_id == current_doctor.id).first()
@@ -217,7 +217,7 @@ def delete_chat(
         if execution.image_paths:
             for image_path in execution.image_paths:
                 # Only delete generated images (in temp or output dirs), not input scans
-                if isinstance(image_path, str) and ("temp" in image_path.lower() or "output" in image_path.lower()):
+                if isinstance(image_path, str) and is_generated_tool_image_path(image_path):
                     delete_file(image_path)
 
     # Delete database record (cascades to messages, scans, tool executions)

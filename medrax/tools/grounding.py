@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional, Tuple, Type, Any
 from pathlib import Path
-import os
 import uuid
 import tempfile
 import matplotlib.pyplot as plt
@@ -15,6 +14,8 @@ from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool
+
+from medrax.paths import resolve_generated_dir
 
 
 class XRayPhraseGroundingInput(BaseModel):
@@ -97,12 +98,7 @@ class XRayPhraseGroundingTool(BaseTool):
 
         self.model = self.model.eval()
 
-        if temp_dir:
-            self.temp_dir = Path(temp_dir)
-        else:
-            repo_root = Path(__file__).resolve().parents[2]
-            default_temp = repo_root / "web_platform" / "backend" / "temp"
-            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir = Path(temp_dir) if temp_dir else resolve_generated_dir()
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _visualize_bboxes(

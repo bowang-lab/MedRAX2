@@ -136,7 +136,7 @@ def delete_patient(
 ):
     """Delete a patient and all associated data including files on disk."""
     from ..models import Chat, Message, Scan, ToolExecution
-    from ..utils.file_utils import delete_file
+    from ..utils.file_utils import delete_file, is_generated_tool_image_path
 
     patient = (
         db.query(Patient).filter(Patient.id == patient_id, Patient.doctor_id == current_doctor.id).first()
@@ -159,7 +159,7 @@ def delete_patient(
         if execution.image_paths:
             for image_path in execution.image_paths:
                 # Only delete generated images (in temp or output dirs), not input scans
-                if isinstance(image_path, str) and ("temp" in image_path.lower() or "output" in image_path.lower()):
+                if isinstance(image_path, str) and is_generated_tool_image_path(image_path):
                     delete_file(image_path)
 
     # Delete database record (cascades to chats, messages, scans, tool executions)

@@ -1,14 +1,14 @@
 from typing import Dict, Optional, Tuple, Type
 from pathlib import Path
-import os
 import uuid
-import tempfile
 import numpy as np
 import pydicom
 from PIL import Image
 from pydantic import BaseModel, Field
 from langchain_core.callbacks import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
+
+from medrax.paths import resolve_generated_dir
 
 
 class DicomProcessorInput(BaseModel):
@@ -36,12 +36,7 @@ class DicomProcessorTool(BaseTool):
     def __init__(self, temp_dir: Optional[str] = None):
         """Initialize the DICOM processor tool."""
         super().__init__()
-        if temp_dir:
-            self.temp_dir = Path(temp_dir)
-        else:
-            repo_root = Path(__file__).resolve().parents[2]
-            default_temp = repo_root / "web_platform" / "backend" / "temp"
-            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir = Path(temp_dir) if temp_dir else resolve_generated_dir()
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _apply_windowing(self, img: np.ndarray, center: float, width: float) -> np.ndarray:

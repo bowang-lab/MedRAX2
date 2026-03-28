@@ -139,8 +139,9 @@ venv.bak/
 web_platform/backend/medrax.db
 web_platform/backend/medrax.db-wal
 web_platform/backend/medrax.db-shm
+# User uploads + legacy path before medrax_data/ migration
 web_platform/backend/uploads/
-web_platform/backend/temp/
+web_platform/backend/medrax_data/
 web_platform/backend/model_cache/
 web_platform/backend/hf_cache/
 web_platform/backend/torch_cache/

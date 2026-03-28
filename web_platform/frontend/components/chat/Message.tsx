@@ -25,8 +25,8 @@ import { MarkdownRenderer } from "../ui/MarkdownRenderer";
  *
  * Strategy:
  * 1. Backend appends generated images to image_paths: [input_images, ...generated_images]
- * 2. Generated images are typically in temp/ folder (segmentation, visualization, etc.)
- * 3. Input images are typically in uploads/ folder or have "input" in the name
+ * 2. Generated images are under medrax/generated/ (legacy: temp/)
+ * 3. Input images are under medrax/uploads/ or have "input" in the name
  * 4. We want to show only the FINAL OUTPUT images (not inputs, not intermediate)
  *
  * @param message - The message with tool executions
@@ -47,14 +47,18 @@ function extractFinalImages(message: MessageWithDetails): string[] {
 
         const lowerPath = path.toLowerCase();
 
-        // Exclude input images (typically in uploads/ or have "input" in name)
-        if (lowerPath.includes("uploads/") || lowerPath.includes("input")) {
+        // Exclude input images (uploads tree or have "input" in name)
+        if (
+          lowerPath.includes("uploads/") ||
+          lowerPath.includes("medrax/uploads") ||
+          lowerPath.includes("input")
+        ) {
           return;
         }
 
-        // Include generated images (temp/, segmentation, visualization, etc.)
-        // These are the final outputs we want to show
+        // Include generated images (medrax/generated/, legacy temp/, etc.)
         if (
+          lowerPath.includes("medrax/generated") ||
           lowerPath.includes("temp/") ||
           lowerPath.includes("segmentation") ||
           lowerPath.includes("visualization") ||

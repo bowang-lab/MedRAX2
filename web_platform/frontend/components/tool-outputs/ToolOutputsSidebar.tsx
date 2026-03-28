@@ -321,7 +321,11 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                       {/* Input Images (filter only original uploads, exclude generated temp/visualizations) */}
                       {execution.imagePaths &&
                         execution.imagePaths.filter(
-                          (p) => typeof p === "string" && (p.startsWith("uploads/") || p.includes("/uploads/"))
+                          (p) =>
+                            typeof p === "string" &&
+                            (p.startsWith("uploads/") ||
+                              p.includes("/uploads/") ||
+                              p.includes("medrax/uploads"))
                         ).length > 0 && (
                           <div>
                             <div className="flex items-center space-x-2 mb-2">
@@ -333,7 +337,9 @@ export function ToolOutputsSidebar({ messageId, isOpen, onClose }: ToolOutputsSi
                                 .filter(
                                   (path) =>
                                     typeof path === "string" &&
-                                    (path.startsWith("uploads/") || path.includes("/uploads/"))
+                                    (path.startsWith("uploads/") ||
+                                      path.includes("/uploads/") ||
+                                      path.includes("medrax/uploads"))
                                 )
                                 .map((path, idx) => {
                                   const imageUrl = getImageUrl(path);

@@ -7,10 +7,9 @@
 import { API_CONFIG } from "../config/api";
 
 /**
- * Get full image URL from backend display path
- * Backend returns paths like "/uploads/chats/xyz/file.jpg" for scans
- * But tool_executions.image_paths contains "uploads/chats/xyz/file.jpg" without leading /
- * Frontend needs full URL like "http://localhost:8000/uploads/chats/xyz/file.jpg"
+ * Get full image URL from backend display path.
+ * Canonical paths: /medrax/uploads/..., /medrax/generated/...
+ * Legacy /uploads/ and /temp/ are rewritten for older stored rows.
  */
 export function getImageUrl(displayPath: string | null | undefined): string | null {
   if (!displayPath || displayPath.trim() === "") return null;
@@ -25,9 +24,12 @@ export function getImageUrl(displayPath: string | null | undefined): string | nu
     return displayPath;
   }
 
-  // Ensure the path starts with / for proper URL construction
-  const normalizedPath = displayPath.startsWith("/") ? displayPath : `/${displayPath}`;
+  let normalizedPath = displayPath.startsWith("/") ? displayPath : `/${displayPath}`;
+  if (normalizedPath.startsWith("/uploads/")) {
+    normalizedPath = `/medrax/uploads/${normalizedPath.slice("/uploads/".length)}`;
+  } else if (normalizedPath.startsWith("/temp/")) {
+    normalizedPath = `/medrax/generated/${normalizedPath.slice("/temp/".length)}`;
+  }
 
-  // Prepend backend base URL
   return `${API_CONFIG.baseURL}${normalizedPath}`;
 }
