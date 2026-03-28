@@ -67,6 +67,7 @@ class LlavaMedTool(BaseTool):
         **kwargs,
     ):
         super().__init__()
+        self._device = torch.device(device)
         if cache_dir is None:
             cache_dir = os.getenv("MODEL_CACHE_DIR") or "/model-weights"
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
@@ -97,7 +98,9 @@ class LlavaMedTool(BaseTool):
         prompt = conv.get_prompt()
 
         input_ids = (
-            tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
+            tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
+            .unsqueeze(0)
+            .to(self._device)
         )
 
         image_tensor = None
@@ -112,7 +115,7 @@ class LlavaMedTool(BaseTool):
                 image = Image.fromarray(img_normalized, mode='L')
             
             image_tensor = process_images([image], self.image_processor, self.model.config)[0]
-            image_tensor = image_tensor.unsqueeze(0).half().cuda()
+            image_tensor = image_tensor.unsqueeze(0).half().to(self._device)
 
         return input_ids, image_tensor
 

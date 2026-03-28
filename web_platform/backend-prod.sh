@@ -7,9 +7,10 @@ echo "Starting MedRAX Backend Server (production helper)"
 echo "=================================================="
 echo ""
 
-# Pin to GPU 2 for all backend processes (0-based index)
-export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-2}
-echo "Forcing CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+# Expose preferred GPUs for multi-GPU tool placement (see TOOL_GPU_* in backend .env).
+# Order 2,1 => cuda:0 maps to physical GPU 2, cuda:1 to physical GPU 1 (TOOL_GPU_PHYSICAL_ORDER default).
+export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-2,1}
+echo "Using CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
 
 # Prefer conda env if available
 USE_CONDA=0

@@ -8,12 +8,23 @@ Provides graceful degradation when tools are not available.
 import sys
 import importlib
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 import re
 
 from ..utils.logging_config import logger
+from ..utils.gpu_placement import select_tool_torch_device
 from ..config import settings
+
+_NO_DEVICE_TOOL_CLASSES = frozenset(
+    {
+        "RAGTool",
+        "DicomProcessorTool",
+        "ImageVisualizerTool",
+        "DuckDuckGoSearchTool",
+        "WebBrowserTool",
+    }
+)
 # from .image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
 # from .tool_wrapper import wrap_tool_for_production  # TODO: Re-enable when wrapper is fixed
 import threading
@@ -64,6 +75,7 @@ class ToolInfo:
         self.error_message: Optional[str] = None
         self.loaded_at: Optional[datetime] = None
         self.cancel_event: Optional[threading.Event] = None  # For cancelling individual tool loads
+        self.runtime_device: Optional[str] = None  # torch device used for this tool instance (e.g. cuda:0)
 
 
 class ToolManager:
@@ -359,6 +371,7 @@ class ToolManager:
                 "requires_gpu": tool.requires_gpu,
                 "error_message": tool.error_message,
                 "loaded_at": tool.loaded_at.isoformat() if tool.loaded_at else None,
+                "device": tool.runtime_device,
             }
             for tool in self.tools.values()
         ]
@@ -475,7 +488,7 @@ class ToolManager:
             logger.info(f"Background loading tool: {tool.name}")
             
             # Import and instantiate the tool (this may take 10-30 minutes for large models)
-            tool_instance = self._load_tool_instance(tool)
+            tool_instance, chosen_device = self._load_tool_instance(tool)
             
             # Final shutdown/cancellation check before marking as loaded
             if self._shutdown_event.is_set():
@@ -505,6 +518,7 @@ class ToolManager:
             with self._tool_status_lock:
                 if tool_instance:
                     tool.instance = tool_instance
+                    tool.runtime_device = chosen_device
                     tool.status = ToolStatus.LOADED
                     tool.loaded_at = datetime.utcnow()
                     tool.error_message = None
@@ -690,8 +704,8 @@ class ToolManager:
         else:
             logger.info("Shutdown complete (all threads joined cleanly)")
     
-    def _load_tool_instance(self, tool: ToolInfo):
-        """Load the actual tool instance with model caching."""
+    def _load_tool_instance(self, tool: ToolInfo) -> Tuple[Any, Optional[str]]:
+        """Load the actual tool instance with model caching. Returns (instance, torch device or None)."""
         try:
             # Set up model caching environment variables
             import os
@@ -715,6 +729,11 @@ class ToolManager:
             logger.info(f"Model caching configured for {tool.name}")
             logger.debug(f"  HF Cache: {hf_cache}")
             logger.debug(f"  Torch Cache: {torch_cache}")
+
+            device_str: Optional[str] = None
+            if tool.tool_class not in _NO_DEVICE_TOOL_CLASSES:
+                device_str = select_tool_torch_device(tool.requires_gpu, settings)
+                logger.info(f"Tool '{tool.name}' selected device: {device_str}")
             
             # Thread-safe dynamic import (prevents Python import deadlocks)
             with _import_lock:
@@ -745,7 +764,7 @@ class ToolManager:
                 from medrax.rag.rag import RAGConfig
                 config = RAGConfig()  # Use default configuration
                 logger.info(f"Creating RAGTool with default RAGConfig")
-                return tool_class(config)
+                return tool_class(config), None
             elif tool.tool_class == "MedGemmaTool":
                 # MedGemmaTool - direct integration with optional configuration
                 medgemma_kwargs = {}
@@ -761,8 +780,10 @@ class ToolManager:
                 if cache_dir:
                     medgemma_kwargs['cache_dir'] = cache_dir
                 
+                if device_str:
+                    medgemma_kwargs["device"] = device_str
                 logger.info(f"Creating MedGemmaTool (model loads on first use)")
-                return tool_class(**medgemma_kwargs)
+                return tool_class(**medgemma_kwargs), device_str
             elif tool.tool_class == "ArcPlusClassifierTool":
                 # ArcPlusClassifierTool - needs cache_dir for model weights
                 arcplus_kwargs = {}
@@ -775,14 +796,14 @@ class ToolManager:
                 else:
                     logger.warning("MODELWEIGHTS not set - ArcPlus will not have pretrained weights")
                 
-                # Device configuration
-                arcplus_kwargs['device'] = None  # Auto-detect
+                arcplus_kwargs["device"] = device_str or "cuda"
                 
                 logger.info(f"Creating ArcPlusClassifierTool")
-                return tool_class(**arcplus_kwargs)
+                return tool_class(**arcplus_kwargs), device_str
             else:
-                # Most tools can be instantiated without parameters
-                return tool_class()
+                if tool.tool_class in _NO_DEVICE_TOOL_CLASSES:
+                    return tool_class(), None
+                return tool_class(device=device_str), device_str
                 
         except ImportError as e:
             logger.error(f"Import error for tool {tool.name}: {e}")
@@ -840,6 +861,7 @@ class ToolManager:
             with self._tool_status_lock:
                 # Clear the instance
                 tool.instance = None
+                tool.runtime_device = None
                 tool.status = ToolStatus.AVAILABLE if tool.error_message is None else ToolStatus.UNAVAILABLE
                 tool.loaded_at = None
             
@@ -1106,6 +1128,7 @@ class ToolManager:
             "category": tool.category,
             "status": tool.status,
             "loaded_at": tool.loaded_at.isoformat() if tool.loaded_at else None,
+            "device": tool.runtime_device,
         }
 
 

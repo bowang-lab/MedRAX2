@@ -89,5 +89,16 @@ class Settings(BaseSettings):
     DEVICE: str = "auto"
     FORCE_CPU: bool = False
 
+    # Multi-GPU tool loading (web backend): pick cuda:i from free VRAM + physical order.
+    # TOOL_GPU_STRATEGY=auto: use TOOL_GPU_PHYSICAL_ORDER + TOOL_GPU_MIN_FREE_MIB (needs nvidia-smi).
+    # TOOL_GPU_STRATEGY=fixed: use TOOL_DEVICE if set, else DEVICE (non-auto).
+    TOOL_GPU_STRATEGY: str = "auto"
+    # Physical GPU indices to try in order (comma-separated). Example: 2,1 = prefer GPU 2, else GPU 1.
+    TOOL_GPU_PHYSICAL_ORDER: str = "2,1"
+    # Minimum free VRAM (MiB) on a GPU before we prefer placing a new tool there.
+    TOOL_GPU_MIN_FREE_MIB: int = 2048
+    # When TOOL_GPU_STRATEGY=fixed, device string for all tools (e.g. cuda:0, cuda:1).
+    TOOL_DEVICE: str = ""
+
 
 settings = Settings()
