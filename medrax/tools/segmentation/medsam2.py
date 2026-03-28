@@ -15,6 +15,8 @@ from langchain_core.callbacks import (
 )
 from langchain_core.tools import BaseTool
 
+from medrax.paths import resolve_generated_dir
+
 # Add MedSAM2 to Python path for proper module resolution
 medsam2_path = str(Path(__file__).parent.parent.parent.parent / "MedSAM2")
 if medsam2_path not in sys.path:
@@ -87,12 +89,7 @@ class MedSAM2Tool(BaseTool):
         if cache_dir is None:
             cache_dir = os.getenv("MODEL_CACHE_DIR") or "/model-weights"
         self.cache_dir = Path(cache_dir)
-        if temp_dir:
-            self.temp_dir = Path(temp_dir)
-        else:
-            repo_root = Path(__file__).resolve().parents[3]
-            default_temp = repo_root / "web_platform" / "backend" / "temp"
-            self.temp_dir = Path(os.getenv("MEDRAX_TEMP_DIR", str(default_temp)))
+        self.temp_dir = Path(temp_dir) if temp_dir else resolve_generated_dir()
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         try:

@@ -14,7 +14,7 @@ import pydicom
 from PIL import Image
 from fastapi import UploadFile
 
-from ..config import settings
+from ..config import resolve_generated_dir, resolve_upload_dir, settings
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[st
     if not file.filename:
         raise ValueError("File must have a valid filename")
 
-    upload_path = Path(settings.UPLOAD_DIR)
+    upload_path = resolve_upload_dir()
     if subdirectory:
         upload_path = upload_path / subdirectory
     upload_path.mkdir(parents=True, exist_ok=True)
@@ -128,24 +128,60 @@ async def save_upload_file(file: UploadFile, subdirectory: str = "") -> tuple[st
         content = await file.read()
         await f.write(content)
 
-    display_path = f"/uploads/{subdirectory}/{unique_filename}" if subdirectory else f"/uploads/{unique_filename}"
+    display_path = (
+        f"/medrax/uploads/{subdirectory}/{unique_filename}"
+        if subdirectory
+        else f"/medrax/uploads/{unique_filename}"
+    )
 
     if ext in {"dcm", "dicom"}:
         png_path = convert_dicom_to_png(file_path)
         if png_path and png_path.exists():
-            display_path = f"/{png_path.as_posix()}"
+            png_name = png_path.name
+            display_path = (
+                f"/medrax/uploads/{subdirectory}/{png_name}"
+                if subdirectory
+                else f"/medrax/uploads/{png_name}"
+            )
         else:
             logger.warning(f"Using original DICOM for display; PNG conversion failed for {file_path}")
 
     return str(file_path), display_path
 
 
+def is_generated_tool_image_path(path: str) -> bool:
+    """True if path points to tool-generated imagery (safe to delete on chat/patient removal)."""
+    p = path.lower()
+    return (
+        "medrax/generated" in p
+        or "/temp/" in p
+        or p.startswith("temp/")
+        or "output" in p
+    )
+
+
+def filesystem_path_from_display_url(url_path: str) -> Path:
+    """Map a stored display URL path (e.g. /medrax/uploads/...) to an on-disk path."""
+    raw = (url_path or "").strip().lstrip("/")
+    if raw.startswith("medrax/uploads/"):
+        return resolve_upload_dir() / raw[len("medrax/uploads/") :]
+    if raw.startswith("medrax/generated/"):
+        return resolve_generated_dir() / raw[len("medrax/generated/") :]
+    if raw.startswith("uploads/"):
+        return resolve_upload_dir() / raw[len("uploads/") :]
+    return Path(url_path)
+
+
 def delete_file(file_path: str) -> bool:
-    """Delete a file from disk."""
+    """Delete a file from disk. Accepts absolute paths or web paths under /medrax/ or /uploads/."""
     try:
         path = Path(file_path)
-        if path.exists():
+        if path.is_file():
             path.unlink()
+            return True
+        mapped = filesystem_path_from_display_url(file_path)
+        if mapped.is_file():
+            mapped.unlink()
             return True
         return False
     except Exception as e:

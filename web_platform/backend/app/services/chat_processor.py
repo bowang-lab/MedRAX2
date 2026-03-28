@@ -8,7 +8,6 @@ Inspired by the old ChatInterface but integrated with new architecture.
 import asyncio
 import base64
 import json
-import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +17,9 @@ from sqlalchemy.orm import Session
 from ..models.message import Message
 from ..models.scan import Scan
 from ..models.tool_execution import ToolExecution, ToolExecutionLog, ToolExecutionResult
+from ..utils.file_utils import filesystem_path_from_display_url
 from ..utils.logging_config import logger
+from ..config import resolve_upload_dir, resolve_generated_dir
 # from .image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
 
 
@@ -55,7 +56,7 @@ class ChatProcessor:
         Prefer a display-ready path for DICOMs if available.
         """
         if scan.file_type and scan.file_type.lower() in {"dcm", "dicom"} and scan.display_path:
-            candidate = Path(scan.display_path.lstrip("/"))
+            candidate = filesystem_path_from_display_url(scan.display_path)
             if candidate.exists():
                 return str(candidate)
         return scan.file_path
@@ -72,16 +73,31 @@ class ChatProcessor:
         return "application/octet-stream"
 
     def _to_display_path(self, path: str) -> str:
-        """Convert file paths to frontend-displayable paths."""
+        """Convert file paths to URLs under /medrax/uploads/ or /medrax/generated/."""
         if not path:
             return path
-        if path.startswith("uploads/") or path.startswith("temp/"):
-            return f"/{path}"
-        backend_temp = Path(os.getenv("MEDRAX_TEMP_DIR", "temp")).resolve()
+        p = path.strip()
+        if p.startswith("/medrax/"):
+            return p
+        if p.startswith("/uploads/"):
+            return f"/medrax/uploads/{p[len('/uploads/'):]}"
+        if p.startswith("/temp/"):
+            return f"/medrax/generated/{p[len('/temp/'):]}"
+        if p.startswith("uploads/"):
+            return f"/medrax/{p}"
+        if p.startswith("temp/"):
+            return f"/medrax/generated/{p[len('temp/'):]}"
+        upload_root = resolve_upload_dir()
+        gen_root = resolve_generated_dir()
         try:
-            if Path(path).resolve().is_relative_to(backend_temp):
-                return f"/temp/{Path(path).name}"
-        except Exception:
+            abs_p = Path(p).expanduser().resolve()
+            if abs_p.is_relative_to(upload_root):
+                rel = abs_p.relative_to(upload_root)
+                return f"/medrax/uploads/{rel.as_posix()}"
+            if abs_p.is_relative_to(gen_root):
+                rel = abs_p.relative_to(gen_root)
+                return f"/medrax/generated/{rel.as_posix()}"
+        except (ValueError, OSError):
             pass
         return path
         

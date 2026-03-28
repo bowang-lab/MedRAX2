@@ -13,7 +13,12 @@ from fastapi.encoders import jsonable_encoder
 from pathlib import Path
 import time
 
-from .config import settings
+from .config import (
+    settings,
+    resolve_medrax_data_root,
+    resolve_upload_dir,
+    resolve_generated_dir,
+)
 import os
 from .api import api_router
 from .services.tool_manager import tool_manager
@@ -69,12 +74,14 @@ async def validate_api_secret(request: Request, call_next):
         "/",  # Root endpoint
     ]
 
-    # Allow /uploads/ paths for serving medical images
-    # Note: In production, consider using signed URLs or token-based auth
+    # MedRAX static tree: /medrax/uploads/, /medrax/generated/
+    if request.url.path.startswith("/medrax/"):
+        return await call_next(request)
+
+    # Legacy aliases (same directories as under medrax_data/)
     if request.url.path.startswith("/uploads/"):
         return await call_next(request)
 
-    # Allow /temp/ paths for serving temporary files (segmentation outputs, etc.)
     if request.url.path.startswith("/temp/"):
         return await call_next(request)
 
@@ -180,7 +187,15 @@ async def log_requests(request: Request, call_next):
 def response_would_be_404(path: str) -> bool:
     """Check if a path would likely result in 404."""
     # API routes and valid endpoints
-    valid_prefixes = ["/api/", "/docs", "/redoc", "/health", "/uploads/", "/temp/"]
+    valid_prefixes = [
+        "/api/",
+        "/docs",
+        "/redoc",
+        "/health",
+        "/medrax/",
+        "/uploads/",
+        "/temp/",
+    ]
     if path == "/" or any(path.startswith(prefix) for prefix in valid_prefixes):
         return False
     return True
@@ -189,15 +204,20 @@ def response_would_be_404(path: str) -> bool:
 # Include API routes
 app.include_router(api_router)
 
-# Mount static files for uploads
-uploads_path = Path(settings.UPLOAD_DIR)
+# Single on-disk root: medrax_data/uploads + medrax_data/generated
+medrax_data_root = resolve_medrax_data_root()
+medrax_data_root.mkdir(parents=True, exist_ok=True)
+uploads_path = resolve_upload_dir()
 uploads_path.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+generated_path = resolve_generated_dir()
+generated_path.mkdir(parents=True, exist_ok=True)
 
-# Mount static files for temporary files (e.g., segmentation outputs)
-temp_path = Path(os.getenv("MEDRAX_TEMP_DIR", "temp"))
-temp_path.mkdir(parents=True, exist_ok=True)
-app.mount("/temp", StaticFiles(directory=str(temp_path)), name="temp")
+# Canonical URL prefix: /medrax/uploads/..., /medrax/generated/...
+app.mount("/medrax", StaticFiles(directory=str(medrax_data_root)), name="medrax")
+
+# Legacy URL prefixes (same folders on disk)
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+app.mount("/temp", StaticFiles(directory=str(generated_path)), name="temp")
 
 
 @app.on_event("startup")
@@ -208,8 +228,9 @@ async def startup_event():
     logger.info(f"🚀 {settings.APP_NAME} started successfully!")
     logger.info(f"📚 API documentation: http://{settings.HOST}:{settings.PORT}/docs")
     logger.info(f"🗄️  Database: {settings.DATABASE_URL}")
-    logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
-    logger.info(f"📂 Temp directory: {temp_path}")
+    logger.info(f"📂 MedRAX data root: {medrax_data_root}")
+    logger.info(f"📂 Uploads: {uploads_path}")
+    logger.info(f"📂 Generated (tools): {generated_path}")
 
     # Optional eager loading gated by env var to avoid long cold starts
     try:

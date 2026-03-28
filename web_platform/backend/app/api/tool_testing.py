@@ -67,7 +67,7 @@ def convert_numpy_types(obj):
 class TorchXRayVisionInput(BaseModel):
     """Input for TorchXRayVision classifier"""
 
-    image_path: str = Field(..., description="Path to chest X-ray image", example="/uploads/test.jpg")
+    image_path: str = Field(..., description="Path to chest X-ray image", example="/medrax/uploads/test.jpg")
 
 
 @router.post(
@@ -331,13 +331,13 @@ class ChexAgentXrayVQAInput(BaseModel):
 
 
 @router.post(
-    "/chexagent_xray_vqa",
-    summary="Test ChexAgent XrayVQA",
-    description="Medical VQA using ChexAgent (XrayVQA)",
+    "/chexagent_xray_vqa_custom",
+    summary="Test ChexAgent XrayVQA (Custom Input)",
+    description="Medical VQA using ChexAgent (XrayVQA) with custom input model",
     tags=["vqa"],
 )
-async def test_chexagent_xray_vqa(input_data: ChexAgentXrayVQAInput):
-    """Test ChexAgent XrayVQA tool directly."""
+async def test_chexagent_xray_vqa_custom(input_data: ChexAgentXrayVQAInput):
+    """Test ChexAgent XrayVQA tool directly using its specific input model."""
     try:
         tool = tool_manager.get_tool("chexagent_xray_vqa")
         if not tool or tool.status != "loaded":
@@ -472,8 +472,9 @@ async def test_xray_generator(input_data: XRayGeneratorInput):
 async def upload_test_image(file: UploadFile = File(...)):
     """Upload a test image and get its path."""
     try:
-        # Save to temp directory
-        temp_dir = Path("temp/test_uploads")
+        from ..config import resolve_upload_dir
+
+        temp_dir = resolve_upload_dir() / "test_uploads"
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = temp_dir / file.filename

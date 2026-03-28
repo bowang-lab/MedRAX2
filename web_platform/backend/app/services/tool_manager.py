@@ -8,11 +8,23 @@ Provides graceful degradation when tools are not available.
 import sys
 import importlib
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+import re
 
 from ..utils.logging_config import logger
+from ..utils.gpu_placement import select_tool_torch_device
 from ..config import settings
+
+_NO_DEVICE_TOOL_CLASSES = frozenset(
+    {
+        "RAGTool",
+        "DicomProcessorTool",
+        "ImageVisualizerTool",
+        "DuckDuckGoSearchTool",
+        "WebBrowserTool",
+    }
+)
 # from .image_registry import image_registry  # TODO: Re-enable when wrapper is fixed
 # from .tool_wrapper import wrap_tool_for_production  # TODO: Re-enable when wrapper is fixed
 import threading
@@ -63,6 +75,7 @@ class ToolInfo:
         self.error_message: Optional[str] = None
         self.loaded_at: Optional[datetime] = None
         self.cancel_event: Optional[threading.Event] = None  # For cancelling individual tool loads
+        self.runtime_device: Optional[str] = None  # torch device used for this tool instance (e.g. cuda:0)
 
 
 class ToolManager:
@@ -108,8 +121,12 @@ class ToolManager:
         self._register_all_tools()
 
         
-        # Check availability for each tool
-        self._check_tool_availability()
+        # Check availability for each tool (can be skipped for lightweight operations)
+        skip_dep_check = os.getenv("SKIP_TOOL_DEP_CHECK", "").lower() in ("1", "true", "yes")
+        if not skip_dep_check:
+            self._check_tool_availability()
+        else:
+            logger.info("[INFO] Skipping tool dependency checks (SKIP_TOOL_DEP_CHECK=1)")
     
     def __del__(self):
         """Cleanup resources on deletion."""
@@ -354,6 +371,7 @@ class ToolManager:
                 "requires_gpu": tool.requires_gpu,
                 "error_message": tool.error_message,
                 "loaded_at": tool.loaded_at.isoformat() if tool.loaded_at else None,
+                "device": tool.runtime_device,
             }
             for tool in self.tools.values()
         ]
@@ -470,7 +488,7 @@ class ToolManager:
             logger.info(f"Background loading tool: {tool.name}")
             
             # Import and instantiate the tool (this may take 10-30 minutes for large models)
-            tool_instance = self._load_tool_instance(tool)
+            tool_instance, chosen_device = self._load_tool_instance(tool)
             
             # Final shutdown/cancellation check before marking as loaded
             if self._shutdown_event.is_set():
@@ -500,6 +518,7 @@ class ToolManager:
             with self._tool_status_lock:
                 if tool_instance:
                     tool.instance = tool_instance
+                    tool.runtime_device = chosen_device
                     tool.status = ToolStatus.LOADED
                     tool.loaded_at = datetime.utcnow()
                     tool.error_message = None
@@ -685,8 +704,8 @@ class ToolManager:
         else:
             logger.info("Shutdown complete (all threads joined cleanly)")
     
-    def _load_tool_instance(self, tool: ToolInfo):
-        """Load the actual tool instance with model caching."""
+    def _load_tool_instance(self, tool: ToolInfo) -> Tuple[Any, Optional[str]]:
+        """Load the actual tool instance with model caching. Returns (instance, torch device or None)."""
         try:
             # Set up model caching environment variables
             import os
@@ -710,6 +729,11 @@ class ToolManager:
             logger.info(f"Model caching configured for {tool.name}")
             logger.debug(f"  HF Cache: {hf_cache}")
             logger.debug(f"  Torch Cache: {torch_cache}")
+
+            device_str: Optional[str] = None
+            if tool.tool_class not in _NO_DEVICE_TOOL_CLASSES:
+                device_str = select_tool_torch_device(tool.requires_gpu, settings)
+                logger.info(f"Tool '{tool.name}' selected device: {device_str}")
             
             # Thread-safe dynamic import (prevents Python import deadlocks)
             with _import_lock:
@@ -740,7 +764,7 @@ class ToolManager:
                 from medrax.rag.rag import RAGConfig
                 config = RAGConfig()  # Use default configuration
                 logger.info(f"Creating RAGTool with default RAGConfig")
-                return tool_class(config)
+                return tool_class(config), None
             elif tool.tool_class == "MedGemmaTool":
                 # MedGemmaTool - direct integration with optional configuration
                 medgemma_kwargs = {}
@@ -756,8 +780,10 @@ class ToolManager:
                 if cache_dir:
                     medgemma_kwargs['cache_dir'] = cache_dir
                 
+                if device_str:
+                    medgemma_kwargs["device"] = device_str
                 logger.info(f"Creating MedGemmaTool (model loads on first use)")
-                return tool_class(**medgemma_kwargs)
+                return tool_class(**medgemma_kwargs), device_str
             elif tool.tool_class == "ArcPlusClassifierTool":
                 # ArcPlusClassifierTool - needs cache_dir for model weights
                 arcplus_kwargs = {}
@@ -770,14 +796,14 @@ class ToolManager:
                 else:
                     logger.warning("MODELWEIGHTS not set - ArcPlus will not have pretrained weights")
                 
-                # Device configuration
-                arcplus_kwargs['device'] = None  # Auto-detect
+                arcplus_kwargs["device"] = device_str or "cuda"
                 
                 logger.info(f"Creating ArcPlusClassifierTool")
-                return tool_class(**arcplus_kwargs)
+                return tool_class(**arcplus_kwargs), device_str
             else:
-                # Most tools can be instantiated without parameters
-                return tool_class()
+                if tool.tool_class in _NO_DEVICE_TOOL_CLASSES:
+                    return tool_class(), None
+                return tool_class(device=device_str), device_str
                 
         except ImportError as e:
             logger.error(f"Import error for tool {tool.name}: {e}")
@@ -835,6 +861,7 @@ class ToolManager:
             with self._tool_status_lock:
                 # Clear the instance
                 tool.instance = None
+                tool.runtime_device = None
                 tool.status = ToolStatus.AVAILABLE if tool.error_message is None else ToolStatus.UNAVAILABLE
                 tool.loaded_at = None
             
@@ -1050,6 +1077,19 @@ class ToolManager:
     
     def _get_default_system_prompt(self) -> str:
         """Get default system prompt for medical agent."""
+        # Load the canonical prompt from medrax/docs/system_prompts.txt.
+        # Keep a safe fallback so agent creation never fails on prompt-loading issues.
+        system_prompts_path = Path(__file__).resolve().parents[4] / "medrax" / "docs" / "system_prompts.txt"
+        base_prompt = ""
+        try:
+            if system_prompts_path.exists():
+                content = system_prompts_path.read_text(encoding="utf-8")
+                match = re.search(r"\[MEDICAL_ASSISTANT\]\s*(.*?)(?=\n\[[^\]]+\]|$)", content, re.DOTALL)
+                if match:
+                    base_prompt = match.group(1).strip()
+        except Exception as e:
+            logger.warning(f"failed_to_load_system_prompt path={system_prompts_path} error={e}")
+
         loaded_tools = self.get_loaded_tools()
         tool_descriptions = []
         
@@ -1069,35 +1109,15 @@ class ToolManager:
             tool_descriptions.append(f"- {tool_name}: {tool_desc}")
         
         tools_list = "\n".join(tool_descriptions) if tool_descriptions else "- Various medical imaging and analysis tools"
-        
-        return f"""You are MedRAX, an advanced AI assistant specialized in medical imaging analysis and clinical support.
 
-You have access to the following tools:
-{tools_list}
+        if base_prompt:
+            return f"{base_prompt}\n\nTools:\n{tools_list}"
 
-IMPORTANT TOOL USAGE GUIDELINES:
-1. Use tools by their exact names as listed above (e.g., 'torchxrayvision_classifier', 'arcplus_classifier', etc.)
-2. NEVER call a tool named 'run' - this tool does not exist
-3. When asked to "check all tools" or "use all tools", interpret this as using multiple relevant tools from the list above
-4. Use the available tools proactively whenever they can help answer the user's questions or requests:
-   - Medical imaging tools for analyzing scans and images
-   - Classification tools to identify pathologies
-   - Question answering tools for medical queries
-   - Web search tools when asked to look up information
-   - Any other relevant tools from the list
-
-5. If a user asks you to analyze an image with "all tools", use the most relevant tools from your available list:
-   - For chest X-rays: torchxrayvision_classifier, arcplus_classifier, chest_xray_report_generator, etc.
-   - For general medical images: relevant VQA and classification tools
-
-Do not refuse to use tools based on assumptions about their purpose. If a tool is loaded and can help with the user's request, use it.
-
-When you receive search results from tools:
-- The results contain a "results" array with items having "title", "url", and "snippet" fields
-- Present the information clearly to the user, citing sources when appropriate
-- If search returns an error, inform the user about the specific issue
-
-Always be thorough, accurate, and helpful in your responses."""
+        # Fallback prompt to avoid breaking runtime if prompt file is missing.
+        return (
+            "You are MedRAX, an advanced AI assistant specialized in medical imaging analysis and clinical support.\n\n"
+            f"Tools:\n{tools_list}"
+        )
     
     def _tool_to_dict(self, tool: ToolInfo) -> Dict[str, Any]:
         """Convert tool to dictionary."""
@@ -1108,6 +1128,7 @@ Always be thorough, accurate, and helpful in your responses."""
             "category": tool.category,
             "status": tool.status,
             "loaded_at": tool.loaded_at.isoformat() if tool.loaded_at else None,
+            "device": tool.runtime_device,
         }
 
 
